@@ -37,7 +37,7 @@ export function clearSession() {
 }
 
 export function usePlayerSession() {
-  const [session, setSession] = useState<PlayerSession | null>(() => loadSession());
+  const [session, setSession] = useState<PlayerSession | null>(null);
 
   useEffect(() => {
     setSession(loadSession());

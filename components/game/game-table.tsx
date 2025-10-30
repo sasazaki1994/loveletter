@@ -21,10 +21,11 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
   const [open, setOpen] = useState(false);
 
   const cardDefinition = topDiscard ? CARD_DEFINITIONS[topDiscard] : undefined;
+  const discardKey = cardDefinition ? `${cardDefinition.id}-${discardPile.length}` : "empty";
 
   return (
-    <div className="relative flex h-full items-center justify-center">
-      <div className="bg-table-felt relative h-[34rem] w-[34rem] rounded-full shadow-[0_80px_120px_rgba(0,0,0,0.35)]">
+    <div className="relative flex h-full w-full items-center justify-center">
+      <div className="bg-table-felt relative h-full w-full rounded-full shadow-[0_80px_120px_rgba(0,0,0,0.35)]">
         <div className="absolute inset-[7%] rounded-full border border-[rgba(215,178,110,0.2)]" />
         <div className="absolute inset-[14%] rounded-full border border-[rgba(215,178,110,0.2)]" />
 
@@ -44,12 +45,16 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
             <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
                 <motion.button
+                  key={discardKey}
                   type="button"
                   className={cn(
                     "relative h-[10.5rem] w-[7.4rem] rounded-[18px] border border-[rgba(215,178,110,0.45)] bg-gradient-to-br from-[rgba(32,68,63,0.92)] via-[rgba(24,54,50,0.95)] to-[rgba(16,36,33,0.98)] p-4 text-left shadow-[0_18px_40px_rgba(0,0,0,0.4)]",
                     !cardDefinition && "opacity-60",
                   )}
                   style={{ willChange: "transform" }}
+                  initial={{ opacity: 0, y: 24, scale: 0.9, rotateX: -10 }}
+                  animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
                   whileHover={{ scale: 1.05, rotate: 0.7 }}
                 >
                   {cardDefinition ? (

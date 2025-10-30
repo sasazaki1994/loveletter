@@ -47,6 +47,8 @@ interface GameContextValue {
   requiresTarget: boolean;
   targetOptions: TargetOption[];
   noAvailableTargets: boolean;
+  actionError: string | null;
+  clearActionError: () => void;
 }
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
@@ -60,6 +62,8 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
   const [selectedTarget, setSelectedTarget] = useState<PlayerId | null>(null);
   const [guessedRank, setGuessedRank] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const clearActionError = useCallback(() => setActionError(null), []);
 
   const prevStateRef = useRef<ClientGameState | null>(null);
 
@@ -202,6 +206,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     setSelectedCard(null);
     setSelectedTarget(null);
     setGuessedRank(null);
+    setActionError(null);
   }, []);
 
   const playCard = useCallback(async () => {
@@ -217,11 +222,18 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       return;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 3500);
+
     try {
       setActing(true);
+      setActionError(null);
       const response = await fetch("/api/game/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           gameId: state.id,
           roomId: state.roomId,
@@ -248,9 +260,16 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       cancelSelection();
       await refetch();
     } catch (error) {
+      const message = error instanceof Error ? error.message : "アクションに失敗しました";
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setActionError("カード送信がタイムアウトしました。通信状況をご確認ください。");
+      } else {
+        setActionError(message);
+      }
       console.error(error);
       playSound("deny");
     } finally {
+      clearTimeout(timeoutId);
       setActing(false);
     }
   }, [acting, cancelSelection, guessedRank, noAvailableTargets, playSound, refetch, selectedCard, selectedTarget, selfId, state]);
@@ -282,6 +301,8 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       requiresTarget,
       targetOptions,
       noAvailableTargets,
+      actionError,
+      clearActionError,
     }),
     [
       acting,
@@ -306,6 +327,8 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       requiresTarget,
       targetOptions,
       noAvailableTargets,
+      actionError,
+      clearActionError,
     ],
   );
 

@@ -24,6 +24,8 @@ export function ActionBar() {
     requiresTarget,
     targetOptions,
     noAvailableTargets,
+    actionError,
+    clearActionError,
   } = useGameContext();
 
   const [hintVisible, setHintVisible] = useState(false);
@@ -76,6 +78,15 @@ export function ActionBar() {
             {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
           </Button>
         </div>
+
+        {actionError && (
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-[rgba(215,120,110,0.35)] bg-[rgba(60,20,18,0.65)] px-4 py-3 text-sm text-[var(--color-warn-light)]" role="alert">
+            <span>{actionError}</span>
+            <Button variant="ghost" className="h-8 px-3 text-xs text-[var(--color-warn-light)]" onClick={clearActionError}>
+              閉じる
+            </Button>
+          </div>
+        )}
 
         {hintVisible && cardDefinition && (
           <div className="rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)]">

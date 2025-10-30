@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { and, desc, eq, inArray, ne, sql, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 
 import { db, type DbClient } from "@/lib/db/client";
 import { buildFullDeck, draw, shuffleDeck } from "@/lib/game/deck";
@@ -39,45 +39,6 @@ const MAX_LOGS = 50;
 type PlayerRole = (typeof playerRoleEnum.enumValues)[number];
 
 type TransactionClient = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
-
-export async function listRecentRooms(limit = 12) {
-  const roomRows = await db
-    .select({
-      id: rooms.id,
-      status: rooms.status,
-      createdAt: rooms.createdAt,
-      updatedAt: rooms.updatedAt,
-    })
-    .from(rooms)
-    .where(ne(rooms.status, "finished"))
-    .orderBy(desc(rooms.createdAt))
-    .limit(limit);
-
-  if (roomRows.length === 0) {
-    return [];
-  }
-
-  const PLAYER_ROLE_PLAYER: PlayerRole = "player";
-
-  const counts = await db
-    .select({
-      roomId: players.roomId,
-      count: sql<number>`count(*)`,
-    })
-    .from(players)
-    .where(eq(players.role, PLAYER_ROLE_PLAYER))
-    .groupBy(players.roomId);
-
-  const countMap = new Map<string, number>();
-  counts.forEach((row) => {
-    countMap.set(row.roomId, Number(row.count));
-  });
-
-  return roomRows.map((room) => ({
-    ...room,
-    playerCount: countMap.get(room.id) ?? 0,
-  }));
-}
 
 export async function cleanupStaleActiveRooms(maxAgeMinutes = 60) {
   const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
@@ -149,56 +110,6 @@ export async function createRoomWithBot(nickname: string) {
   });
 }
 
-export async function joinRoom(
-  roomId: string,
-  nickname: string,
-  role: PlayerRole = "observer",
-) {
-  return db.transaction(async (tx) => {
-    const [room] = await tx
-      .select({ id: rooms.id, status: rooms.status })
-      .from(rooms)
-      .where(eq(rooms.id, roomId));
-
-    if (!room) {
-      throw new Error("指定されたルームが存在しません。");
-    }
-
-    const currentPlayers = await tx
-      .select({ id: players.id, seat: players.seat, role: players.role })
-      .from(players)
-      .where(eq(players.roomId, roomId));
-
-    const playerSeats = currentPlayers
-      .filter((p) => p.role === "player")
-      .map((p) => p.seat);
-
-    if (role === "player" && playerSeats.length >= 4) {
-      throw new Error("プレイヤー枠が満席です。");
-    }
-
-    const seat = role === "player" ? findNextSeat(playerSeats) : -1;
-
-    const [player] = await tx
-      .insert(players)
-      .values({
-        roomId,
-        nickname,
-        role,
-        seat,
-        isBot: false,
-        avatarSeed: randomAvatarSeed(),
-      })
-      .returning();
-
-    await tx
-      .update(rooms)
-      .set({ updatedAt: new Date() })
-      .where(eq(rooms.id, roomId));
-
-    return { roomId, playerId: player.id };
-  });
-}
 
 export async function fetchGameState(
   roomId: string,

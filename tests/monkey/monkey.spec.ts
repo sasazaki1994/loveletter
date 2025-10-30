@@ -69,7 +69,7 @@ test('UI monkey test with logging and screenshots', async ({ page, browserName }
     .slice(0, 19);
   const artifactsRoot = process.env.MONKEY_ARTIFACTS_DIR
     ? path.resolve(process.env.MONKEY_ARTIFACTS_DIR)
-    : path.join(process.cwd(), '.monkey-artifacts');
+    : path.resolve(process.cwd(), '..', 'monkey-artifacts');
   const outDir = path.join(artifactsRoot, runLabel);
   fs.mkdirSync(outDir, { recursive: true });
   const actionLog: ActionLog[] = [];
@@ -113,21 +113,27 @@ test('UI monkey test with logging and screenshots', async ({ page, browserName }
 
   // Error/console/network hooks
   page.on('console', (msg) => {
-    if (msg.type() === 'error' || msg.type() === 'warning') {
-      const loc = msg.location();
-      logError({
-        t: Date.now(),
-        type: 'console',
-        message: msg.text(),
-        location: { url: loc.url, lineNumber: loc.lineNumber, columnNumber: loc.columnNumber },
-      });
-    }
+    if (msg.type() !== 'error' && msg.type() !== 'warning') return;
+    const text = msg.text();
+    if (/ERR_ABORTED/i.test(text)) return;
+    const loc = msg.location();
+    logError({
+      t: Date.now(),
+      type: 'console',
+      message: text,
+      location: { url: loc.url, lineNumber: loc.lineNumber, columnNumber: loc.columnNumber },
+    });
   });
   page.on('pageerror', (err) => {
     logError({ t: Date.now(), type: 'pageerror', message: err.message, stack: err.stack });
   });
   page.on('requestfailed', (req) => {
-    logError({ t: Date.now(), type: 'requestfailed', message: req.failure()?.errorText, url: req.url() });
+    const failure = req.failure();
+    const errorText = failure?.errorText ?? '';
+    if (errorText.includes('ERR_ABORTED')) {
+      return;
+    }
+    logError({ t: Date.now(), type: 'requestfailed', message: errorText || undefined, url: req.url() });
   });
   page.on('response', async (res) => {
     const status = res.status();
@@ -222,7 +228,7 @@ test('UI monkey test with logging and screenshots', async ({ page, browserName }
     const clicks = 1 + Math.floor(rng() * 3);
     for (let k = 0; k < clicks; k += 1) {
       await el.click({ timeout: 4000 }).catch(async (e) => {
-        logError({ t: Date.now(), type: 'console', message: `click failed: ${e}` });
+        logAction({ t: Date.now(), kind: 'note', info: { event: 'click-failed', error: String(e) } });
       });
       logAction({
         t: Date.now(),

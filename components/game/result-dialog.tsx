@@ -26,7 +26,7 @@ export function ResultDialog() {
               ? "山札が尽きたため手札が高いプレイヤーが勝利しました。"
               : state?.result?.reason === "elimination"
                 ? "最後の生存者が勝者となりました。"
-                : "次のラウンド開始までは観戦状態です。"}
+                : "次のラウンドが開始されるまでお待ちください。"}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 text-sm text-[var(--color-text-muted)]">

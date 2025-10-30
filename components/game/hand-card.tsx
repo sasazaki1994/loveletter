@@ -21,6 +21,11 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
 
   return (
     <motion.button
+      layout
+      initial={{ opacity: 0, y: 24, rotate: -2 }}
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
+      exit={{ opacity: 0, y: -36, rotate: 6 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       type="button"
       className={cn(
         "relative h-[11rem] w-[7.6rem] origin-bottom rounded-[22px] border border-[rgba(215,178,110,0.45)] bg-gradient-to-br from-[rgba(28,68,63,0.92)] via-[rgba(22,52,47,0.95)] to-[rgba(14,32,29,0.98)] p-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.45)]",

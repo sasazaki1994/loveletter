@@ -37,6 +37,7 @@ export function useGamePolling({
   const fetchState = useCallback(async () => {
     if (!roomId) return;
 
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     const requestId = requestIdRef.current + 1;
@@ -45,6 +46,8 @@ export function useGamePolling({
     if (!hasResolvedRef.current) {
       setLoading(true);
     }
+
+    let aborted = false;
 
     try {
       const params = new URLSearchParams({ roomId });
@@ -88,6 +91,7 @@ export function useGamePolling({
       hasResolvedRef.current = true;
     } catch (err) {
       if ((err as Error).name === "AbortError") {
+        aborted = true;
         return;
       }
       if (requestId !== requestIdRef.current) {
@@ -96,6 +100,9 @@ export function useGamePolling({
       setError((err as Error).message ?? "通信エラーが発生しました");
     } finally {
       if (requestId === requestIdRef.current) {
+        if (aborted && !hasResolvedRef.current) {
+          return;
+        }
         setLoading(false);
       }
     }

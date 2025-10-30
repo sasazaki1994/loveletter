@@ -27,7 +27,6 @@
 
 ### API ルート
 - `POST /api/room/create` — 新規ルーム作成、プレイヤー登録
-- `POST /api/room/join` — 既存ルームに参加 or 観戦
 - `GET /api/game/state?roomId=...&playerId=...` — 現在のゲーム状態 (ETag / lastUpdated)
 - `POST /api/game/action` — カード使用などのアクション。サーバ側でターン & フェーズ検証
 
