@@ -1,0 +1,125 @@
+'use client';
+
+import { motion } from "framer-motion";
+import { useState } from "react";
+
+import { CardSymbol } from "@/components/icons/card-symbol";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import type { CardId } from "@/lib/game/types";
+import { cn } from "@/lib/utils";
+
+interface GameTableProps {
+  drawPileCount: number;
+  discardPile: CardId[];
+  revealedSetupCards: CardId[];
+}
+
+export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: GameTableProps) {
+  const topDiscard = discardPile[discardPile.length - 1];
+  const [open, setOpen] = useState(false);
+
+  const cardDefinition = topDiscard ? CARD_DEFINITIONS[topDiscard] : undefined;
+
+  return (
+    <div className="relative flex h-full items-center justify-center">
+      <div className="bg-table-felt relative h-[34rem] w-[34rem] rounded-full shadow-[0_80px_120px_rgba(0,0,0,0.35)]">
+        <div className="absolute inset-[7%] rounded-full border border-[rgba(215,178,110,0.2)]" />
+        <div className="absolute inset-[14%] rounded-full border border-[rgba(215,178,110,0.2)]" />
+
+        <div className="relative h-full w-full">
+          <div className="absolute left-1/2 top-1/2 flex -translate-x-[120%] -translate-y-1/2 flex-col items-center gap-2">
+            <span className="text-xs uppercase tracking-[0.4em] text-[var(--color-text-muted)]">Draw</span>
+            <motion.div
+              className="h-[9.6rem] w-[6.5rem] rounded-[18px] border border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.9)] shadow-[0_12px_30px_rgba(0,0,0,0.35)]"
+              style={{ willChange: "transform" }}
+              animate={{ rotate: [0, -2, 2, 0] }}
+              transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+            />
+            <p className="text-xs text-[var(--color-text-muted)]">残り {drawPileCount} 枚</p>
+          </div>
+
+          <div className="absolute left-1/2 top-1/2 flex -translate-y-1/2 translate-x-[20%] flex-col items-center gap-2">
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <motion.button
+                  type="button"
+                  className={cn(
+                    "relative h-[10.5rem] w-[7.4rem] rounded-[18px] border border-[rgba(215,178,110,0.45)] bg-gradient-to-br from-[rgba(32,68,63,0.92)] via-[rgba(24,54,50,0.95)] to-[rgba(16,36,33,0.98)] p-4 text-left shadow-[0_18px_40px_rgba(0,0,0,0.4)]",
+                    !cardDefinition && "opacity-60",
+                  )}
+                  style={{ willChange: "transform" }}
+                  whileHover={{ scale: 1.05, rotate: 0.7 }}
+                >
+                  {cardDefinition ? (
+                    <div className="flex h-full flex-col justify-between">
+                      <div className="flex items-center justify-between text-[var(--color-accent-light)]">
+                        <span className="font-heading text-3xl">{cardDefinition.rank}</span>
+                        <CardSymbol icon={cardDefinition.icon} size={28} />
+                      </div>
+                      <span className="font-heading text-base text-[var(--color-accent-light)]">
+                        {cardDefinition.name}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-[var(--color-text-muted)]">捨て札なし</span>
+                  )}
+                </motion.button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72" side="top" align="center">
+                <h4 className="font-heading text-lg text-[var(--color-accent-light)]">捨て札履歴</h4>
+                <ScrollArea className="mt-3 h-48">
+                  <div className="space-y-2 pr-3 text-sm text-[var(--color-text-muted)]">
+                    {[...discardPile].reverse().map((card, index) => {
+                      const def = CARD_DEFINITIONS[card];
+                      return (
+                        <div
+                          key={`${card}-${index}`}
+                          className="flex items-center justify-between rounded-lg border border-[rgba(215,178,110,0.2)] bg-[rgba(12,32,30,0.7)] px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-heading text-lg text-[var(--color-accent-light)]">
+                              {def.rank}
+                            </span>
+                            <div>
+                              <p className="text-sm text-[var(--color-accent-light)]">{def.name}</p>
+                              <p className="text-xs text-[var(--color-text-muted)] truncate">
+                                {def.description}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-[var(--color-text-muted)]">捨て札スタック</p>
+          </div>
+
+          {revealedSetupCards.length > 0 && (
+            <div className="absolute bottom-[12%] left-1/2 flex -translate-x-1/2 gap-2">
+              {revealedSetupCards.map((card, index) => {
+                const def = CARD_DEFINITIONS[card];
+                return (
+                  <div
+                    key={`${card}-${index}`}
+                    className="flex items-center gap-2 rounded-full border border-[rgba(215,178,110,0.35)] bg-[rgba(12,32,30,0.75)] px-3 py-1 text-xs text-[var(--color-text-muted)]"
+                  >
+                    <span className="font-heading text-base text-[var(--color-accent-light)]">
+                      {def.rank}
+                    </span>
+                    <span>{def.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
