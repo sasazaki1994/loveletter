@@ -32,17 +32,15 @@ export function PlayerHUD({
 
   const isDisabled = !selectable || isSelf || player.isEliminated || disabled;
 
-  const handPlaceholders = Array.from({ length: player.handCount });
   const visibleDiscards = player.discardPile.slice(-4);
   const hiddenDiscardCount = player.discardPile.length - visibleDiscards.length;
-  const showDrawStack = typeof drawPileCount === "number";
 
   return (
     <button
       type="button"
       onClick={selectable ? () => onSelectTarget?.(player.id) : undefined}
       className={cn(
-        "group flex w-full max-w-sm flex-col gap-2 rounded-2xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)]/80 px-4 py-3 text-left transition-all",
+        "group flex w-[17rem] max-w-full flex-col gap-2 rounded-2xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)]/80 px-4 py-3 text-left transition-all",
         selectable && !isSelf && "hover:border-[var(--color-accent)] hover:bg-[rgba(18,42,39,0.8)]",
         selected && "border-[var(--color-accent)] shadow-[0_0_24px_rgba(215,178,110,0.35)]",
         isActive && "ring-1 ring-[var(--color-accent)]",
@@ -71,23 +69,7 @@ export function PlayerHUD({
           {isActive && <Badge variant="default">手番</Badge>}
         </div>
       </div>
-      <div className="mt-2 grid gap-3 sm:grid-cols-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-muted)]">Hand</p>
-          <div className="mt-1 flex min-h-[2.5rem] items-center gap-1">
-            {handPlaceholders.length > 0 ? (
-              handPlaceholders.map((_, index) => (
-                <span
-                  key={`hand-${player.id}-${index}`}
-                  className="h-10 w-7 rounded-xl border border-[rgba(215,178,110,0.35)] bg-[rgba(24,54,50,0.9)] shadow-[0_6px_14px_rgba(0,0,0,0.4)]"
-                  aria-hidden="true"
-                />
-              ))
-            ) : (
-              <span className="text-xs text-[var(--color-text-muted)]">手札なし</span>
-            )}
-          </div>
-        </div>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-muted)]">Discard</p>
           <div className="mt-1 flex min-h-[2.5rem] items-center">
@@ -120,10 +102,10 @@ export function PlayerHUD({
             )}
           </div>
         </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-muted)]">Draw</p>
-          <div className="mt-1 flex min-h-[2.5rem] items-center gap-2">
-            {showDrawStack ? (
+        {typeof drawPileCount === "number" && (
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-muted)]">Draw</p>
+            <div className="mt-1 flex min-h-[2.5rem] items-center gap-2">
               <div className="relative h-12 w-9">
                 {[0, 1, 2].map((layer) => (
                   <span
@@ -134,14 +116,10 @@ export function PlayerHUD({
                   />
                 ))}
               </div>
-            ) : (
-              <span className="text-xs text-[var(--color-text-muted)]">非公開</span>
-            )}
-            {showDrawStack && (
               <span className="text-xs text-[var(--color-text-muted)]">残り {drawPileCount} 枚</span>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
       {topCardDefinition ? (
         <div className="mt-2 flex items-center gap-3 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.55)] px-3 py-2 text-xs">

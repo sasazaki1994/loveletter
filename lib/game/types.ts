@@ -116,6 +116,19 @@ export interface FullGameState extends GameState {
 export type ClientGameState = GameState & {
   self?: PlayerPrivateState;
   hand?: CardId[];
+  effectHints?: {
+    peek?: {
+      actionId: string;
+      targetId: PlayerId;
+      card: CardId;
+    };
+  };
+  lastAction?: {
+    id: string;
+    type: string;
+    actorId: PlayerId;
+    targetId?: PlayerId;
+  };
 };
 
 export type GameActionType =

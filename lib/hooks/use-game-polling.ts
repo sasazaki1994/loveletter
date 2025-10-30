@@ -71,6 +71,21 @@ export function useGamePolling({
         return;
       }
 
+      if (response.status === 404) {
+        if (requestId === requestIdRef.current) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          etagRef.current = null;
+          setState(null);
+          setLastUpdated(null);
+          setError(null);
+          hasResolvedRef.current = true;
+        }
+        return;
+      }
+
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as {
           error?: string;

@@ -47,7 +47,12 @@ export async function cleanupStaleActiveRooms(maxAgeMinutes = 60) {
     .select({ roomId: rooms.id })
     .from(rooms)
     .innerJoin(games, eq(games.roomId, rooms.id))
-    .where(and(eq(rooms.status, "active"), lt(games.updatedAt, cutoff)));
+    .where(
+      and(
+        inArray(rooms.status, ["active", "finished"]),
+        lt(games.updatedAt, cutoff),
+      ),
+    );
 
   const ids = stale.map((r) => r.roomId);
   if (ids.length === 0) return { deletedRooms: 0 } as const;
@@ -519,7 +524,9 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
   });
 
   if (runBotAfterCommit) {
-    await executeBotTurn(action.roomId);
+    executeBotTurn(action.roomId).catch((error) => {
+      console.error("bot turn error", error);
+    });
   }
 
   return { success };
@@ -814,8 +821,7 @@ async function concludeRound(
       icon: "crown",
     });
 
-  // ゲーム終了後はルームを削除（関連データはON DELETE CASCADEで削除）
-  await tx.delete(rooms).where(eq(rooms.id, game.roomId));
+  // ルームは即時削除せず、クリーンアップジョブで一定時間後に処理する
 }
 
 async function eliminatePlayers(tx: TransactionClient, playerIds: string[]) {
@@ -1013,6 +1019,43 @@ function mapToClientState(
       } as ClientGameState["self"];
       base.hand = hand.cards as CardId[];
     }
+
+    // effectHints: actor専用の一時的な可視化ヒント（例: peekで相手手札を短時間表示）
+    // 最新のpeekアクションのうち、視点プレイヤーが実行者のものを検出
+    const lastPeek = actionRows
+      .slice()
+      .reverse()
+      .find((a) => a.type === "peek" && a.actorId === perspectivePlayerId);
+    if (lastPeek) {
+      const payload = (lastPeek.payload ?? {}) as { targetId?: string };
+      const targetId = payload.targetId;
+      if (targetId) {
+        const targetHandRow = handRows.find((h) => h.playerId === targetId);
+        const targetTop = targetHandRow?.cards?.[0] as CardId | undefined;
+        if (targetTop) {
+          base.effectHints = {
+            ...(base.effectHints ?? {}),
+            peek: {
+              actionId: lastPeek.id,
+              targetId,
+              card: targetTop,
+            },
+          };
+        }
+      }
+    }
+  }
+
+  // 公開してよい最終アクション（機密値は含めない）
+  if (actionRows.length > 0) {
+    const a = actionRows[actionRows.length - 1]!;
+    const payload = (a.payload ?? {}) as { targetId?: string };
+    base.lastAction = {
+      id: a.id,
+      type: a.type,
+      actorId: a.actorId,
+      targetId: payload.targetId,
+    };
   }
 
   return base;

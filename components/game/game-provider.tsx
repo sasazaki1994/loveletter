@@ -53,6 +53,8 @@ interface GameContextValue {
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 
+const ACTION_TIMEOUT_MS = 6500;
+
 export function GameProvider({ roomId, playerId, children }: GameProviderProps) {
   const { state, loading, error, refetch, lastUpdated } = useGamePolling({
     roomId,
@@ -223,9 +225,9 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       controller.abort();
-    }, 3500);
+    }, ACTION_TIMEOUT_MS);
 
     try {
       setActing(true);
@@ -261,12 +263,15 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       await refetch();
     } catch (error) {
       const message = error instanceof Error ? error.message : "アクションに失敗しました";
-      if (error instanceof DOMException && error.name === "AbortError") {
+      const isAbortError = error instanceof DOMException && error.name === "AbortError";
+      if (isAbortError) {
         setActionError("カード送信がタイムアウトしました。通信状況をご確認ください。");
       } else {
         setActionError(message);
       }
-      console.error(error);
+      if (!isAbortError) {
+        console.error(error);
+      }
       playSound("deny");
     } finally {
       clearTimeout(timeoutId);

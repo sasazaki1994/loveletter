@@ -6,10 +6,10 @@ interface SeatMapProps {
 }
 
 const POSITIONS: Record<number, { x: number; y: number }> = {
-  0: { x: 50, y: 85 },
-  1: { x: 15, y: 50 },
-  2: { x: 50, y: 15 },
-  3: { x: 85, y: 50 },
+  0: { x: 50, y: 78 },
+  1: { x: 10, y: 50 },
+  2: { x: 50, y: 10 },
+  3: { x: 90, y: 50 },
 };
 
 export function SeatMap({ state, selfId }: SeatMapProps) {
