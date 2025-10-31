@@ -32,7 +32,7 @@ export function LogPanel() {
 
   return (
     <aside
-      className="fixed bottom-6 right-6 z-20 w-80 rounded-xl border border-[rgba(215,178,110,0.2)] bg-[rgba(10,28,26,0.85)] shadow-[0_18px_46px_rgba(0,0,0,0.4)]"
+      className="pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.2)] bg-[rgba(10,28,26,0.85)] shadow-[0_18px_46px_rgba(0,0,0,0.4)]"
       role="log"
       aria-live="polite"
       aria-relevant="additions"

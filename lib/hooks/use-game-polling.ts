@@ -23,6 +23,7 @@ export function useGamePolling({
   playerId,
   interval = 1200,
 }: UseGamePollingOptions): UseGamePollingResult {
+  const BOT_POLL_INTERVAL = 350;
   const [state, setState] = useState<ClientGameState | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -127,18 +128,52 @@ export function useGamePolling({
     fetchState();
   }, [fetchState]);
 
+  const isBotTurn = useMemo(() => {
+    if (!state) return false;
+    if (!state.players || state.players.length === 0) return false;
+
+    const playerMap = new Map(state.players.map((p) => [p.id, p]));
+    const activeIsBot = state.activePlayerId ? playerMap.get(state.activePlayerId)?.isBot : false;
+    const awaitingIsBot = state.awaitingPlayerId
+      ? playerMap.get(state.awaitingPlayerId)?.isBot
+      : false;
+
+    return Boolean(activeIsBot || awaitingIsBot);
+  }, [state]);
+
+  const effectiveInterval = useMemo(() => {
+    if (!isBotTurn) return interval;
+    return Math.min(interval, BOT_POLL_INTERVAL);
+  }, [interval, isBotTurn]);
+
   useEffect(() => {
     if (!roomId) return () => {};
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     timerRef.current = setInterval(() => {
       fetchState().catch((err) => console.error(err));
-    }, interval);
+    }, effectiveInterval);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
       abortRef.current?.abort();
     };
-  }, [fetchState, interval, roomId]);
+  }, [effectiveInterval, fetchState, roomId]);
+
+  useEffect(() => {
+    if (!isBotTurn) return undefined;
+
+    const timeoutId = setTimeout(() => {
+      fetchState().catch((err) => console.error(err));
+    }, Math.min(effectiveInterval, BOT_POLL_INTERVAL));
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [effectiveInterval, fetchState, isBotTurn]);
 
   const refetch = useCallback(async () => {
     await fetchState();

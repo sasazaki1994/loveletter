@@ -2,18 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { z } from "zod";
 
-import type { ClientGameState } from "@/lib/game/types";
 import { fetchGameState } from "@/lib/server/game-service";
-
-interface CachedStateEntry {
-  etag: string;
-  state: ClientGameState | null;
-  lastUpdated: string | null;
-  expiresAt: number;
-}
-
-const STATE_CACHE = new Map<string, CachedStateEntry>();
-const CACHE_TTL_MS = 60_000;
+import {
+  getStateCache,
+  setStateCache,
+} from "@/lib/server/game-state-cache";
 
 const querySchema = z.object({
   roomId: z.string().uuid(),
@@ -28,18 +21,9 @@ export async function GET(request: NextRequest) {
 
     const now = Date.now();
     const clientTag = request.headers.get("if-none-match");
-    const cacheKey = parsed.roomId;
-    const cached = STATE_CACHE.get(cacheKey);
-    if (cached && cached.expiresAt <= now) {
-      STATE_CACHE.delete(cacheKey);
-    }
+    const cached = getStateCache(parsed.roomId, now);
 
-    if (
-      cached &&
-      cached.expiresAt > now &&
-      clientTag &&
-      clientTag === cached.etag
-    ) {
+    if (cached && clientTag && clientTag === cached.etag) {
       return new NextResponse(null, {
         status: 304,
         headers: {
@@ -54,12 +38,11 @@ export async function GET(request: NextRequest) {
       parsed.playerId,
     );
 
-    STATE_CACHE.set(cacheKey, {
+    setStateCache(parsed.roomId, {
       etag,
       state,
       lastUpdated,
-      expiresAt: now + CACHE_TTL_MS,
-    });
+    }, now);
 
     return NextResponse.json(
       { state, lastUpdated },

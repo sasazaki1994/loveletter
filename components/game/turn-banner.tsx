@@ -31,7 +31,7 @@ export function TurnBanner({ state, isMyTurn }: TurnBannerProps) {
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: -32, opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="pointer-events-none fixed right-6 top-6 z-30"
+      className="pointer-events-none w-full"
       aria-live="polite"
     >
       <div className="pointer-events-auto min-w-[18rem] rounded-3xl border border-[rgba(215,178,110,0.35)] bg-[rgba(17,40,36,0.92)] px-6 py-4 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">

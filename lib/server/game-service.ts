@@ -13,6 +13,7 @@ import type {
   PlayerId,
   PollingResponse,
 } from "@/lib/game/types";
+import { invalidateStateCache } from "@/lib/server/game-state-cache";
 import {
   actions,
   games,
@@ -190,7 +191,7 @@ export async function handleGameAction(
 }
 
 async function handleResign(playerId: string, roomId: string) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await tx
       .update(players)
       .set({ isEliminated: true })
@@ -219,6 +220,12 @@ async function handleResign(playerId: string, roomId: string) {
 
     return { success: true };
   });
+
+  if (result.success) {
+    invalidateStateCache(roomId);
+  }
+
+  return result;
 }
 
 async function handlePlayCard(action: GameActionRequest): Promise<GameActionResult> {
@@ -522,6 +529,10 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
 
     return { success: true, runBotAfterCommit } as const;
   });
+
+  if (success) {
+    invalidateStateCache(action.roomId);
+  }
 
   if (runBotAfterCommit) {
     executeBotTurn(action.roomId).catch((error) => {

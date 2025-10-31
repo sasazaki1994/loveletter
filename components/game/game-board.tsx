@@ -4,16 +4,26 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { AnimatePresence, LayoutGroup } from "framer-motion";
 
 import { ActionBar } from "@/components/game/action-bar";
+import { CardEffectLayer, type CardEffectEvent } from "@/components/game/card-effect-layer";
 import { GameTable } from "@/components/game/game-table";
 import { HandCard } from "@/components/game/hand-card";
 import { LogPanel } from "@/components/game/log-panel";
 import { PlayerHUD } from "@/components/game/player-hud";
 import { ResultDialog } from "@/components/game/result-dialog";
-import { SoundControls } from "@/components/game/sound-controls";
 import { TurnBanner } from "@/components/game/turn-banner";
 import { useGameContext } from "@/components/game/game-provider";
 import { Badge } from "@/components/ui/badge";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
+
+const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
+  0: { x: 0, y: 0.64 },
+  1: { x: -0.88, y: -0.08 },
+  2: { x: 0, y: -0.76 },
+  3: { x: 0.88, y: -0.08 },
+};
+
+type PlayerSnapshot = ClientGameState["players"][number] | NonNullable<ClientGameState["self"]>;
 
 export function GameBoard() {
   const {
@@ -32,6 +42,8 @@ export function GameBoard() {
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
+  const [effectEvents, setEffectEvents] = useState<CardEffectEvent[]>([]);
+  const prevStateRef = useRef<ClientGameState | null>(null);
   const hand = useMemo(() => state?.hand ?? state?.self?.hand ?? [], [state?.hand, state?.self?.hand]);
   const orderedPlayers = useMemo(() => {
     if (!state) return [];
@@ -43,6 +55,36 @@ export function GameBoard() {
     const me = state.players.find((p) => p.id === selfId);
     return me?.seat ?? 0;
   }, [state, selfId]);
+
+  const generateEventId = useCallback(() => {
+    const globalCrypto = typeof window !== "undefined" ? window.crypto : undefined;
+    if (globalCrypto?.randomUUID) {
+      return globalCrypto.randomUUID();
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }, []);
+
+  const pushEffectEvent = useCallback((event: CardEffectEvent) => {
+    setEffectEvents((prev) => [...prev.slice(-5), event]);
+  }, []);
+
+  const handleEventComplete = useCallback((eventId: string) => {
+    setEffectEvents((prev) => prev.filter((event) => event.id !== eventId));
+  }, []);
+
+  const resolveEffectType = useCallback((baseType: CardEffectType, lastActionType?: string) => {
+    if (!lastActionType) return baseType;
+    switch (lastActionType) {
+      case "guess":
+        return "guess_eliminate";
+      case "peek":
+        return "peek";
+      case "compare":
+        return "compare";
+      default:
+        return baseType;
+    }
+  }, []);
 
   useEffect(() => {
     const element = tableContainerRef.current;
@@ -103,15 +145,8 @@ export function GameBoard() {
         3: { left: "92%", top: "48%", transform: "translate(-50%, -50%)" },
       };
 
-      const offsets: Record<number, { x: number; y: number }> = {
-        0: { x: 0, y: 0.64 },
-        1: { x: -0.88, y: -0.08 },
-        2: { x: 0, y: -0.76 },
-        3: { x: 0.88, y: -0.08 },
-      };
-
       const { width, height } = tableSize;
-      const offset = offsets[relative];
+      const offset = RELATIVE_OFFSETS[relative];
 
       if (!offset) {
         return fallback[relative] ?? fallback[0];
@@ -128,6 +163,32 @@ export function GameBoard() {
         left: "50%",
         top: "50%",
         transform: `translate(-50%, -50%) translate(${translateX}px, ${translateY}px)`,
+      };
+    },
+    [selfSeat, tableSize],
+  );
+
+  const getSeatPosition = useCallback(
+    (seat: number) => {
+      const relative = (seat - selfSeat + 4) % 4;
+      const offset = RELATIVE_OFFSETS[relative];
+      const { width, height } = tableSize;
+
+      if (!offset || width <= 0 || height <= 0) {
+        return {
+          x: width / 2,
+          y: height / 2,
+          valid: false,
+        };
+      }
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      return {
+        x: centerX + (width / 2) * offset.x,
+        y: centerY + (height / 2) * offset.y,
+        valid: true,
       };
     },
     [selfSeat, tableSize],
@@ -156,22 +217,155 @@ export function GameBoard() {
     [setSelectedTarget],
   );
 
-  // Effect animations: peek（相手手札の一時表示）
-  const peekHint = state?.effectHints?.peek;
-  const peekTarget = useMemo(
-    () => (peekHint ? orderedPlayers.find((p) => p.id === peekHint.targetId) : undefined),
-    [orderedPlayers, peekHint],
-  );
-  const [activePeekId, setActivePeekId] = useState<string | null>(null);
   useEffect(() => {
-    if (!peekHint) return;
-    if (activePeekId === peekHint.actionId) return;
-    setActivePeekId(peekHint.actionId);
-    const timer = window.setTimeout(() => {
-      setActivePeekId((current) => (current === peekHint.actionId ? null : current));
-    }, 1500);
-    return () => window.clearTimeout(timer);
-  }, [peekHint, activePeekId]);
+    if (!state) {
+      setEffectEvents([]);
+      prevStateRef.current = null;
+      return;
+    }
+
+    const prev = prevStateRef.current;
+
+    const buildLookup = (snapshot: ClientGameState | null) => {
+      const map = new Map<PlayerId, PlayerSnapshot>();
+      if (!snapshot) return map;
+      snapshot.players.forEach((player) => {
+        map.set(player.id, player);
+      });
+      if (snapshot.self) {
+        map.set(snapshot.self.id, snapshot.self);
+      }
+      return map;
+    };
+
+    const playerLookup = buildLookup(state);
+
+    const computeEliminated = (snapshot: ClientGameState | null) => {
+      const eliminated = new Set<PlayerId>();
+      if (!snapshot) return eliminated;
+      snapshot.players.forEach((player) => {
+        if (player.isEliminated) eliminated.add(player.id);
+      });
+      if (snapshot.self?.isEliminated) {
+        eliminated.add(snapshot.self.id);
+      }
+      return eliminated;
+    };
+
+    const computeShielded = (snapshot: ClientGameState | null) => {
+      const shielded = new Set<PlayerId>();
+      if (!snapshot) return shielded;
+      snapshot.players.forEach((player) => {
+        if (player.shield) shielded.add(player.id);
+      });
+      if (snapshot.self?.shield) {
+        shielded.add(snapshot.self.id);
+      }
+      return shielded;
+    };
+
+    const prevEliminated = computeEliminated(prev);
+    const currentEliminated = computeEliminated(state);
+    const newlyEliminated = [...currentEliminated].filter((id) => !prevEliminated.has(id));
+
+    const prevShielded = computeShielded(prev);
+    const currentShielded = computeShielded(state);
+    const newlyShielded = [...currentShielded].filter((id) => !prevShielded.has(id));
+
+    if (prev) {
+      const prevDiscardLength = prev.discardPile.length;
+      const currentDiscardLength = state.discardPile.length;
+
+      if (currentDiscardLength > prevDiscardLength) {
+        const newCards = state.discardPile.slice(prevDiscardLength) as CardId[];
+        const playedCardId = newCards[0];
+        if (playedCardId) {
+          const definition = CARD_DEFINITIONS[playedCardId];
+          if (definition) {
+            let actorId: PlayerId | undefined = state.lastAction?.actorId ?? undefined;
+
+            for (const player of state.players) {
+              const previousPlayer = prev.players.find((p) => p.id === player.id);
+              const previousCount = previousPlayer?.discardPile.length ?? 0;
+              if (player.discardPile.length > previousCount) {
+                actorId = player.id;
+                break;
+              }
+            }
+
+            if (!actorId && state.self && prev.self) {
+              if (state.self.discardPile.length > prev.self.discardPile.length) {
+                actorId = state.self.id;
+              }
+            }
+
+            const actor = actorId ? playerLookup.get(actorId) : undefined;
+            const targetId = state.lastAction?.targetId;
+            const target = targetId ? playerLookup.get(targetId) : undefined;
+
+            const resolvedEffectType = resolveEffectType(
+              definition.effectType,
+              state.lastAction?.type,
+            );
+
+            const eliminatedSeats = newlyEliminated
+              .map((id) => {
+                const participant = playerLookup.get(id);
+                return participant?.seat;
+              })
+              .filter((seat): seat is number => typeof seat === "number");
+
+            const event: CardEffectEvent = {
+              id: generateEventId(),
+              cardId: playedCardId,
+              effectType: resolvedEffectType,
+              actorId: actor?.id,
+              actorSeat: actor?.seat,
+              actorNickname: actor?.nickname,
+              targetId: target?.id,
+              targetSeat: target?.seat,
+              targetNickname: target?.nickname,
+              eliminatedPlayerIds: newlyEliminated,
+              eliminatedSeats,
+              createdAt: Date.now(),
+            };
+
+            const metadata: NonNullable<CardEffectEvent["metadata"]> = {};
+
+            if (resolvedEffectType === "guess_eliminate" && target?.id) {
+              metadata.guess = { success: newlyEliminated.includes(target.id) };
+            }
+
+            if (resolvedEffectType === "peek" && state.effectHints?.peek) {
+              const hint = state.effectHints.peek;
+              metadata.peek = {
+                revealedCardId: hint.card,
+                targetNickname: playerLookup.get(hint.targetId)?.nickname ?? target?.nickname,
+              };
+            }
+
+            if (resolvedEffectType === "force_discard" && newCards.length > 1) {
+              metadata.forcedDiscard = {
+                discardedCardIds: newCards.slice(1) as CardId[],
+              };
+            }
+
+            if (resolvedEffectType === "shield" && actor?.id && newlyShielded.includes(actor.id)) {
+              metadata.shielded = { playerIds: newlyShielded };
+            }
+
+            if (Object.keys(metadata).length > 0) {
+              event.metadata = metadata;
+            }
+
+            pushEffectEvent(event);
+          }
+        }
+      }
+    }
+
+    prevStateRef.current = state;
+  }, [generateEventId, pushEffectEvent, resolveEffectType, state]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -210,12 +404,11 @@ export function GameBoard() {
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto">
-      <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
-      <LogPanel />
-      <ResultDialog />
-      <div className="fixed left-6 top-6 z-30">
-        <SoundControls />
+      <div className="pointer-events-none fixed right-4 top-6 z-30 flex w-[calc(100vw-2.5rem)] max-w-sm flex-col gap-4 sm:right-6">
+        <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
+        <LogPanel />
       </div>
+      <ResultDialog />
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-16 pb-32" role="region" aria-label="ゲームテーブル">
         <div className="flex flex-1 flex-col items-center gap-6">
@@ -231,6 +424,12 @@ export function GameBoard() {
                 revealedSetupCards={state?.revealedSetupCards ?? []}
               />
               <div className="pointer-events-none absolute inset-0">
+                <CardEffectLayer
+                  events={effectEvents}
+                  tableSize={tableSize}
+                  getSeatPosition={getSeatPosition}
+                  onEventComplete={handleEventComplete}
+                />
                 {orderedPlayers.map((player) => (
                   <div key={player.id} className="absolute pointer-events-auto" style={getHudPlacementStyle(player.seat)}>
                     <PlayerHUD
@@ -246,61 +445,6 @@ export function GameBoard() {
                     />
                   </div>
                 ))}
-
-              {/* peek overlay */}
-              <AnimatePresence>
-                {activePeekId && peekHint && peekTarget && (
-                  <div className="absolute" style={getHudPlacementStyle(peekTarget.seat)}>
-                    <div className="relative -mt-4">
-                      <div className="pointer-events-none absolute -inset-6 rounded-2xl bg-[rgba(10,28,26,0.65)] blur-md" aria-hidden />
-                      <div className="relative rounded-2xl border border-[rgba(215,178,110,0.45)] bg-gradient-to-br from-[rgba(28,68,63,0.96)] via-[rgba(22,52,47,0.96)] to-[rgba(14,32,29,0.98)] px-5 py-4 text-center shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
-                        <div className="text-[var(--color-accent-light)]">
-                          <p className="text-[10px] uppercase tracking-[0.35em] opacity-80">Peek</p>
-                          <p className="mt-1 text-sm opacity-80">{peekTarget.nickname} の手札</p>
-                          <p className="mt-2 font-heading text-4xl">{CARD_DEFINITIONS[peekHint.card]?.rank ?? "?"}</p>
-                          <p className="mt-1 text-sm">{CARD_DEFINITIONS[peekHint.card]?.name ?? "Unknown"}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </AnimatePresence>
-
-              {/* simple effect cues for other actions */}
-              {state?.lastAction && (() => {
-                const a = state.lastAction;
-                const actor = orderedPlayers.find((p) => p.id === a.actorId);
-                const target = a.targetId ? orderedPlayers.find((p) => p.id === a.targetId) : undefined;
-                const show = (label: string, seat: number) => (
-                  <div className="absolute" style={getHudPlacementStyle(seat)}>
-                    <div className="mt-2 rounded-full border border-[rgba(215,178,110,0.35)] bg-[rgba(12,32,30,0.8)] px-3 py-1 text-xs text-[var(--color-accent-light)] shadow-[0_10px_24px_rgba(0,0,0,0.45)]">
-                      {label}
-                    </div>
-                  </div>
-                );
-                switch (a.type) {
-                  case "compare":
-                    return actor && target ? (
-                      <>
-                        {show("VS", actor.seat)}
-                        {show("VS", target.seat)}
-                      </>
-                    ) : null;
-                  case "force_discard":
-                    return target ? show("Forced Discard", target.seat) : null;
-                  case "swap_hands":
-                    return actor && target ? (
-                      <>
-                        {show("Swap", actor.seat)}
-                        {show("Swap", target.seat)}
-                      </>
-                    ) : null;
-                  case "shield":
-                    return actor ? show("Shielded", actor.seat) : null;
-                  default:
-                    return null;
-                }
-              })()}
               </div>
             </div>
           </div>
