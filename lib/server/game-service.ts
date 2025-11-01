@@ -167,7 +167,20 @@ export async function fetchGameState(
     playerId,
   );
 
-  const etag = `${game.updatedAt.getTime()}-${logRows[0]?.createdAt.getTime() ?? 0}`;
+  // より効率的なETag生成：ゲーム状態の主要な変化を反映
+  // updatedAt + 最新ログ + フェーズ + ターン + プレイヤー数（状態変化をより正確に反映）
+  const stateVersion = [
+    game.updatedAt.getTime(),
+    logRows[0]?.createdAt.getTime() ?? 0,
+    game.phase,
+    game.turnIndex,
+    game.round,
+    allPlayers.length,
+    playerId ?? 'common', // プレイヤー固有の状態も考慮
+  ].join(':');
+  
+  // 簡易ハッシュ（長い文字列を短縮）
+  const etag = `"${Buffer.from(stateVersion).toString('base64').slice(0, 32)}"`;
 
   return {
     state: clientState,

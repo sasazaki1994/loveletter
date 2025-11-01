@@ -18,6 +18,24 @@ interface UseGamePollingResult {
   lastUpdated: string | null;
 }
 
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000;
+const MAX_RETRY_DELAY = 8000;
+
+function isNetworkError(error: unknown): boolean {
+  if (error instanceof TypeError && error.message.includes('fetch')) {
+    return true;
+  }
+  if (error instanceof Error) {
+    return error.name === 'NetworkError' || error.message.includes('network') || error.message.includes('Failed to fetch');
+  }
+  return false;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
 export function useGamePolling({
   roomId,
   playerId,
@@ -34,9 +52,17 @@ export function useGamePolling({
   const abortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const hasResolvedRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchState = useCallback(async () => {
+  const fetchState = useCallback(async (isRetry = false) => {
     if (!roomId) return;
+
+    // リトライ中は既存のタイマーをクリア
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -44,7 +70,7 @@ export function useGamePolling({
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
-    if (!hasResolvedRef.current) {
+    if (!hasResolvedRef.current && !isRetry) {
       setLoading(true);
     }
 
@@ -68,6 +94,7 @@ export function useGamePolling({
         if (requestId === requestIdRef.current) {
           setLoading(false);
           setError(null);
+          retryCountRef.current = 0; // 成功時はリトライカウントをリセット
         }
         return;
       }
@@ -83,6 +110,7 @@ export function useGamePolling({
           setLastUpdated(null);
           setError(null);
           hasResolvedRef.current = true;
+          retryCountRef.current = 0;
         }
         return;
       }
@@ -105,15 +133,44 @@ export function useGamePolling({
       setLastUpdated(payload.lastUpdated);
       setError(null);
       hasResolvedRef.current = true;
+      retryCountRef.current = 0; // 成功時はリトライカウントをリセット
     } catch (err) {
-      if ((err as Error).name === "AbortError") {
+      if (isAbortError(err)) {
         aborted = true;
         return;
       }
       if (requestId !== requestIdRef.current) {
         return;
       }
-      setError((err as Error).message ?? "通信エラーが発生しました");
+
+      // AbortErrorは無視、それ以外のエラーを処理
+      const errorMessage = err instanceof Error ? err.message : "通信エラーが発生しました";
+      
+      // ネットワークエラーでリトライ可能な場合
+      if (isNetworkError(err) && retryCountRef.current < MAX_RETRIES) {
+        retryCountRef.current += 1;
+        const delay = Math.min(
+          INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current - 1),
+          MAX_RETRY_DELAY
+        );
+        
+        // リトライ前に短時間エラーを表示
+        setError("接続が不安定です。再試行中...");
+        
+        retryTimeoutRef.current = setTimeout(() => {
+          fetchState(true).catch(() => {
+            // 最終的なリトライ失敗時の処理は下記のelseブロックで行う
+          });
+        }, delay);
+        return;
+      }
+
+      // リトライ不可能または上限に達した場合
+      if (retryCountRef.current >= MAX_RETRIES) {
+        setError("接続が回復しませんでした。ページを再読み込みしてください。");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       if (requestId === requestIdRef.current) {
         if (aborted && !hasResolvedRef.current) {
@@ -125,7 +182,7 @@ export function useGamePolling({
   }, [playerId, roomId]);
 
   useEffect(() => {
-    fetchState();
+    fetchState(false);
   }, [fetchState]);
 
   const isBotTurn = useMemo(() => {
@@ -152,13 +209,24 @@ export function useGamePolling({
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
     timerRef.current = setInterval(() => {
-      fetchState().catch((err) => console.error(err));
+      fetchState(false).catch((err) => {
+        // AbortErrorはログに記録しない
+        if (!isAbortError(err)) {
+          console.error('[Polling]', err);
+        }
+      });
     }, effectiveInterval);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
       abortRef.current?.abort();
     };
   }, [effectiveInterval, fetchState, roomId]);
@@ -167,7 +235,12 @@ export function useGamePolling({
     if (!isBotTurn) return undefined;
 
     const timeoutId = setTimeout(() => {
-      fetchState().catch((err) => console.error(err));
+      fetchState(false).catch((err) => {
+        // AbortErrorはログに記録しない
+        if (!isAbortError(err)) {
+          console.error('[Bot Polling]', err);
+        }
+      });
     }, Math.min(effectiveInterval, BOT_POLL_INTERVAL));
 
     return () => {
@@ -176,7 +249,8 @@ export function useGamePolling({
   }, [effectiveInterval, fetchState, isBotTurn]);
 
   const refetch = useCallback(async () => {
-    await fetchState();
+    retryCountRef.current = 0; // 手動リフレッシュ時はリトライカウントをリセット
+    await fetchState(false);
   }, [fetchState]);
 
   return useMemo(

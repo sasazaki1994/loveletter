@@ -7,7 +7,27 @@ import { CardSymbol } from '@/components/icons/card-symbol';
 import { CARD_DEFINITIONS } from '@/lib/game/cards';
 import type { CardEffectType, CardId, CardIconId, PlayerId } from '@/lib/game/types';
 
-const DISPLAY_DURATION_MS = 2200;
+const BASE_DISPLAY_DURATION_MS = 2200;
+
+// エフェクトタイプごとの表示時間（ミリ秒）
+function getDisplayDuration(effectType: CardEffectType, hasResult: boolean): number {
+  switch (effectType) {
+    case 'peek':
+      // peekエフェクトは情報が重要なので長めに表示
+      return hasResult ? 4500 : 3500;
+    case 'guess_eliminate':
+      // 推測エフェクトも結果が重要
+      return 3500;
+    case 'compare':
+      return 3500;
+    case 'force_discard':
+      return 3000;
+    case 'swap_hands':
+      return 3000;
+    default:
+      return BASE_DISPLAY_DURATION_MS;
+  }
+}
 
 interface SeatPosition {
   x: number;
@@ -56,7 +76,7 @@ interface CardEffectLayerProps {
 
 export function CardEffectLayer({ events, tableSize, getSeatPosition, onEventComplete }: CardEffectLayerProps) {
   return (
-    <div className="pointer-events-none absolute inset-0">
+    <div className="pointer-events-none absolute inset-0 z-20">
       <AnimatePresence initial={false}>
         {events.map((event) => (
           <EffectItem
@@ -80,10 +100,27 @@ interface EffectItemProps {
 }
 
 function EffectItem({ event, tableSize, getSeatPosition, onEventComplete }: EffectItemProps) {
+  // エフェクトが結果を持っているかどうかを判定
+  const hasResult = useMemo(() => {
+    switch (event.effectType) {
+      case 'peek':
+        return Boolean(event.metadata?.peek?.revealedCardId);
+      case 'guess_eliminate':
+        return Boolean(event.metadata?.guess);
+      case 'force_discard':
+        return Boolean(event.metadata?.forcedDiscard?.discardedCardIds?.length);
+      case 'compare':
+        return Boolean(event.eliminatedSeats?.length !== undefined);
+      default:
+        return true;
+    }
+  }, [event]);
+
   useEffect(() => {
-    const timer = window.setTimeout(() => onEventComplete(event.id), DISPLAY_DURATION_MS);
+    const duration = getDisplayDuration(event.effectType, hasResult);
+    const timer = window.setTimeout(() => onEventComplete(event.id), duration);
     return () => window.clearTimeout(timer);
-  }, [event.id, onEventComplete]);
+  }, [event.id, event.effectType, hasResult, onEventComplete]);
 
   const actorPos = useMemo(() => resolveSeatPosition(event.actorSeat, getSeatPosition), [event.actorSeat, getSeatPosition]);
   const targetPos = useMemo(() => resolveSeatPosition(event.targetSeat, getSeatPosition), [event.targetSeat, getSeatPosition]);
@@ -200,9 +237,31 @@ function renderGuessEffect(
           exit={{ y: 12, opacity: 0 }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
         >
-          <span className="rounded-full border border-[rgba(255,210,160,0.42)] bg-[rgba(28,18,12,0.72)] px-3 py-1 text-xs uppercase tracking-[0.36em] text-[var(--color-accent-light)]">
-            Guess
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-[rgba(255,210,160,0.42)] bg-[rgba(28,18,12,0.72)] px-3 py-1 text-xs uppercase tracking-[0.36em] text-[var(--color-accent-light)]">
+              Guess
+            </span>
+            {guessSuccess && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.3, ease: 'easeOut' }}
+                className="flex items-center justify-center rounded-full bg-[rgba(255,100,80,0.25)] p-1"
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  className="h-3.5 w-3.5 text-[rgba(255,140,120,0.9)]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M16 6L7 15l-5-5" />
+                </svg>
+              </motion.div>
+            )}
+          </div>
           {icon && (
             <motion.div
               className="mt-2 rounded-full border border-[rgba(255,210,160,0.35)] bg-[rgba(24,46,42,0.78)] p-2 shadow-[0_14px_30px_rgba(0,0,0,0.35)]"
@@ -228,6 +287,7 @@ function renderPeekEffect(
   if (!targetPos) return null;
   const peekMeta = event.metadata?.peek;
   const revealedDefinition = peekMeta ? CARD_DEFINITIONS[peekMeta.revealedCardId] : undefined;
+  const isSuccess = Boolean(revealedDefinition);
 
   return (
     <>
@@ -247,13 +307,40 @@ function renderPeekEffect(
             transition={{ duration: 1.4, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
           />
           <div className="relative text-[var(--color-accent-light)]">
-            <p className="text-[10px] uppercase tracking-[0.42em] opacity-75">Veil</p>
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-[10px] uppercase tracking-[0.42em] opacity-75">Veil</p>
+              {isSuccess && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.3, ease: 'easeOut' }}
+                  className="flex items-center justify-center rounded-full bg-[rgba(90,200,170,0.25)] p-1"
+                >
+                  <svg
+                    viewBox="0 0 20 20"
+                    className="h-3.5 w-3.5 text-[rgba(90,240,200,0.9)]"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M16 6L7 15l-5-5" />
+                  </svg>
+                </motion.div>
+              )}
+            </div>
             <p className="mt-1 text-sm opacity-80">{peekMeta?.targetNickname ?? event.targetNickname ?? 'Unknown'} の手札</p>
             {revealedDefinition ? (
-              <div className="mt-3 flex flex-col items-center gap-1">
+              <motion.div
+                className="mt-3 flex flex-col items-center gap-1"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4, ease: 'easeOut' }}
+              >
                 <span className="font-heading text-4xl drop-shadow">{revealedDefinition.rank}</span>
                 <span className="text-sm opacity-85">{revealedDefinition.name}</span>
-              </div>
+              </motion.div>
             ) : (
               <span className="mt-3 inline-block rounded-full border border-[rgba(255,255,255,0.22)] px-3 py-1 text-xs text-[rgba(255,255,255,0.72)]">
                 Hidden

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { AnimatePresence, LayoutGroup } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 
 import { ActionBar } from "@/components/game/action-bar";
 import { CardEffectLayer, type CardEffectEvent } from "@/components/game/card-effect-layer";
@@ -13,15 +13,19 @@ import { ResultDialog } from "@/components/game/result-dialog";
 import { TurnBanner } from "@/components/game/turn-banner";
 import { useGameContext } from "@/components/game/game-provider";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
+import { AlertCircle, RefreshCw, X } from "lucide-react";
 
 const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
-  0: { x: 0, y: 0.64 },
-  1: { x: -0.88, y: -0.08 },
-  2: { x: 0, y: -0.76 },
-  3: { x: 0.88, y: -0.08 },
+  0: { x: 0, y: 0.82 },
+  1: { x: -1.08, y: 0.02 },
+  2: { x: 0, y: -0.9 },
+  3: { x: 1.2, y: 0.02 },
 };
+
+const EFFECT_POSITION_SCALE = 0.78;
 
 type PlayerSnapshot = ClientGameState["players"][number] | NonNullable<ClientGameState["self"]>;
 
@@ -38,6 +42,9 @@ export function GameBoard() {
     cancelSelection,
     requiresTarget,
     targetOptions,
+    error,
+    refetch,
+    loading,
   } = useGameContext();
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
@@ -139,10 +146,10 @@ export function GameBoard() {
       const relative = (seat - selfSeat + 4) % 4;
 
       const fallback: Record<number, CSSProperties> = {
-        0: { left: "50%", top: "78%", transform: "translate(-50%, -50%)" },
-        1: { left: "8%", top: "48%", transform: "translate(-50%, -50%)" },
-        2: { left: "50%", top: "14%", transform: "translate(-50%, -50%)" },
-        3: { left: "92%", top: "48%", transform: "translate(-50%, -50%)" },
+        0: { left: "50%", top: "86%", transform: "translate(-50%, -50%)" },
+        1: { left: "6%", top: "50%", transform: "translate(-50%, -50%)" },
+        2: { left: "50%", top: "10%", transform: "translate(-50%, -50%)" },
+        3: { left: "96%", top: "50%", transform: "translate(-50%, -50%)" },
       };
 
       const { width, height } = tableSize;
@@ -186,8 +193,8 @@ export function GameBoard() {
       const centerY = height / 2;
 
       return {
-        x: centerX + (width / 2) * offset.x,
-        y: centerY + (height / 2) * offset.y,
+        x: centerX + (width / 2) * offset.x * EFFECT_POSITION_SCALE,
+        y: centerY + (height / 2) * offset.y * EFFECT_POSITION_SCALE,
         valid: true,
       };
     },
@@ -408,6 +415,58 @@ export function GameBoard() {
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
       </div>
+      
+      {/* エラー通知バナー */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="pointer-events-auto fixed left-1/2 top-4 z-40 w-full max-w-md -translate-x-1/2"
+            role="alert"
+            aria-live="assertive"
+          >
+            <div className="mx-4 flex items-start gap-3 rounded-xl border border-[rgba(215,120,110,0.4)] bg-[rgba(60,20,18,0.85)] px-4 py-3 shadow-lg backdrop-blur-sm">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-warn-light)]" />
+              <div className="flex-1 space-y-2">
+                <p className="text-sm font-medium text-[var(--color-warn-light)]">{error}</p>
+                {error.includes("接続が回復") && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        refetch().catch(() => {});
+                      }}
+                      disabled={loading}
+                      className="h-7 text-xs"
+                    >
+                      <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                      再試行
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => window.location.reload()}
+                      className="h-7 text-xs"
+                    >
+                      ページを再読み込み
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => {}}
+                className="h-7 w-7 shrink-0 p-0 text-[var(--color-warn-light)] hover:bg-[rgba(215,120,110,0.15)]"
+                aria-label="エラーを閉じる"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <ResultDialog />
 
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-16 pb-32" role="region" aria-label="ゲームテーブル">
@@ -431,7 +490,7 @@ export function GameBoard() {
                   onEventComplete={handleEventComplete}
                 />
                 {orderedPlayers.map((player) => (
-                  <div key={player.id} className="absolute pointer-events-auto" style={getHudPlacementStyle(player.seat)}>
+                  <div key={player.id} className="absolute pointer-events-auto z-10" style={getHudPlacementStyle(player.seat)}>
                     <PlayerHUD
                       player={player}
                       isSelf={player.id === selfId}
@@ -440,7 +499,6 @@ export function GameBoard() {
                       selected={selectedTarget === player.id}
                       disabled={targetOptionMap.get(player.id)?.disabled}
                       targetReason={targetOptionMap.get(player.id)?.reason}
-                      drawPileCount={state?.drawPileCount}
                       onSelectTarget={handleSelectTarget}
                     />
                   </div>

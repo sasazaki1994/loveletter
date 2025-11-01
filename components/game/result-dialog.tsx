@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,8 +10,20 @@ import { useGameContext } from "@/components/game/game-provider";
 export function ResultDialog() {
   const { state, refetch } = useGameContext();
   const router = useRouter();
+  const [open, setOpen] = useState(false);
 
-  const open = Boolean(state?.result);
+  useEffect(() => {
+    if (state?.result) {
+      // リザルトが設定されてから1秒後にダイアログを表示
+      const timer = setTimeout(() => {
+        setOpen(true);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    } else {
+      setOpen(false);
+    }
+  }, [state?.result]);
   const winners = useMemo(() => {
     if (!state?.players) return [];
     const winnerIds = state.result?.winnerIds ?? [];
@@ -58,12 +70,16 @@ export function ResultDialog() {
     }
 
     // ログに記録されていない脱落プレイヤーを追加（念のため）
-    const loggedEliminations = new Set(eliminationOrder);
+    // processedIdsを使用して重複を防ぐ
     for (const player of state.players) {
-      if (player.isEliminated && !winnerSet.has(player.id) && !loggedEliminations.has(player.id)) {
+      if (player.isEliminated && !winnerSet.has(player.id) && !processedIds.has(player.id)) {
         eliminationOrder.push(player.id);
+        processedIds.add(player.id);
       }
     }
+
+    // すべての脱落プレイヤーIDのセットを作成（重複チェック用）
+    const allEliminatedIds = new Set(eliminationOrder);
 
     // 勝者を1位として配置
     const winners = state.players.filter((p) => winnerSet.has(p.id));
@@ -83,8 +99,9 @@ export function ResultDialog() {
     }
 
     // 2位: まだ脱落していない非勝者（生存者）
+    // eliminationOrderに含まれていないことを確認
     const survivors = state.players.filter(
-      (p) => !p.isEliminated && !winnerSet.has(p.id)
+      (p) => !p.isEliminated && !winnerSet.has(p.id) && !allEliminatedIds.has(p.id)
     );
     if (survivors.length > 0) {
       placements.push({ place: currentPlace, players: survivors });
@@ -92,13 +109,19 @@ export function ResultDialog() {
     }
 
     // 3位以降: 脱落したプレイヤーを脱落順（早い順）で配置
+    // 重複を防ぐためにprocessedIdsを使用
+    const processedEliminatedIds = new Set<string>();
     for (const eliminatedId of eliminationOrder) {
+      // 既に処理済みまたは生存者リストに含まれている場合はスキップ
+      if (processedEliminatedIds.has(eliminatedId)) continue;
+      
       const player = playerMap.get(eliminatedId);
-      if (player) {
+      if (player && player.isEliminated && !winnerSet.has(player.id)) {
         placements.push({ 
           place: currentPlace, 
           players: [player] 
         });
+        processedEliminatedIds.add(eliminatedId);
         currentPlace += 1;
       }
     }
@@ -124,8 +147,8 @@ export function ResultDialog() {
             <div>
               <h4 className="font-heading text-xl text-[var(--color-accent-light)]">順位</h4>
               <ol className="mt-3 space-y-3 text-base">
-                {placements.map((entry) => (
-                  <li key={entry.place}>
+                {placements.map((entry, index) => (
+                  <li key={`place-${entry.place}-${index}`}>
                     <div className="font-semibold text-[var(--color-accent-light)]">
                       {entry.place}位
                     </div>

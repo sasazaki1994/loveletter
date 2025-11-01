@@ -281,377 +281,451 @@ function renderArpeggio({
 }
 
 function createCardDraw() {
-  const duration = 360;
+  const duration = 240;
   const buffer = createBuffer(duration);
 
+  // より明るく短いメインビープ（高音域強調）
   const chirp = renderTone({
-    durationMs: 120,
-    startFreq: 780,
-    endFreq: 980,
+    durationMs: 80,
+    startFreq: 880,
+    endFreq: 1200,
     waveform: "square",
-    volume: 0.58,
-    curve: "easeInOut",
+    volume: 0.68,
+    curve: "exp",
   });
-  applyEnvelope(chirp, { attackMs: 4, decayMs: 80, sustainLevel: 0.18, releaseMs: 40 });
-  applyBitCrush(chirp, 7);
+  applyEnvelope(chirp, { attackMs: 2, decayMs: 50, sustainLevel: 0.15, releaseMs: 28 });
+  applyBitCrush(chirp, 4);
   mixInto(buffer, chirp, 0);
 
-  const shuffle = renderNoise({ durationMs: 190, color: "pink", volume: 0.3 });
-  applyHighPass(shuffle, 1100);
-  applyEnvelope(shuffle, { attackMs: 6, decayMs: 90, sustainLevel: 0.12, releaseMs: 80 });
-  mixInto(buffer, shuffle, msToSamples(25));
+  // 短いシャッフルノイズ
+  const shuffle = renderNoise({ durationMs: 120, color: "pink", volume: 0.28 });
+  applyHighPass(shuffle, 1500);
+  applyEnvelope(shuffle, { attackMs: 3, decayMs: 60, sustainLevel: 0.1, releaseMs: 50 });
+  applyBitCrush(shuffle, 5);
+  mixInto(buffer, shuffle, msToSamples(15));
 
-  const flutter = renderTone({
-    durationMs: 210,
-    startFreq: 340,
-    endFreq: 320,
-    waveform: "triangle",
-    volume: 0.32,
-    curve: "linear",
-    vibratoHz: 11,
-    vibratoDepth: 0.3,
-  });
-  applyEnvelope(flutter, { attackMs: 12, decayMs: 130, sustainLevel: 0.18, releaseMs: 120 });
-  mixInto(buffer, flutter, msToSamples(90));
-
+  // 高音域のスパークル（より明るく）
   const sparkle = renderTone({
-    durationMs: 90,
-    startFreq: 1320,
-    endFreq: 1000,
+    durationMs: 60,
+    startFreq: 1600,
+    endFreq: 2000,
     waveform: "triangle",
-    volume: 0.28,
+    volume: 0.38,
     curve: "exp",
   });
-  applyEnvelope(sparkle, { attackMs: 2, decayMs: 70, sustainLevel: 0, releaseMs: 24 });
-  mixInto(buffer, sparkle, msToSamples(170));
+  applyEnvelope(sparkle, { attackMs: 1, decayMs: 40, sustainLevel: 0, releaseMs: 20 });
+  mixInto(buffer, sparkle, msToSamples(100));
 
-  applyDelay(buffer, { delayMs: 110, gain: 0.18, repeats: 1, decay: 0.6 });
-
-  return normalize(buffer, 0.78);
-}
-
-function createCardPlace() {
-  const duration = 300;
-  const buffer = createBuffer(duration);
-
-  const pop = renderTone({
-    durationMs: 170,
-    startFreq: 260,
-    endFreq: 210,
-    waveform: "square",
-    volume: 0.62,
-    curve: "log",
-  });
-  applyEnvelope(pop, { attackMs: 0, decayMs: 120, sustainLevel: 0.12, releaseMs: 40 });
-  applyBitCrush(pop, 6);
-  mixInto(buffer, pop, 0);
-
-  const slap = renderNoise({ durationMs: 120, color: "white", volume: 0.26 });
-  applyHighPass(slap, 1400);
-  applyEnvelope(slap, { attackMs: 0, decayMs: 70, sustainLevel: 0.1, releaseMs: 36 });
-  mixInto(buffer, slap, 0);
-
-  const chirp = renderTone({
-    durationMs: 100,
-    startFreq: 980,
-    endFreq: 720,
-    waveform: "triangle",
-    volume: 0.32,
-    curve: "exp",
-  });
-  applyEnvelope(chirp, { attackMs: 2, decayMs: 70, sustainLevel: 0, releaseMs: 24 });
-  mixInto(buffer, chirp, msToSamples(60));
-
-  const thump = renderTone({
-    durationMs: 150,
-    startFreq: 180,
-    endFreq: 150,
-    waveform: "sine",
-    volume: 0.28,
-    curve: "linear",
-  });
-  applyEnvelope(thump, { attackMs: 10, decayMs: 90, sustainLevel: 0.2, releaseMs: 70 });
-  mixInto(buffer, thump, msToSamples(120));
-
-  return normalize(buffer, 0.8);
-}
-
-function createConfirm() {
-  const duration = 420;
-  const buffer = createBuffer(duration);
-
-  const root = 660;
-  const steps = [0, 5, 9];
-  steps.forEach((semitone, index) => {
-    const freq = root * 2 ** (semitone / 12);
-    const tone = renderTone({
-      durationMs: 110,
-      startFreq: freq,
-      endFreq: freq * 1.08,
-      waveform: "square",
-      volume: 0.42,
-      curve: "easeInOut",
-    });
-    applyEnvelope(tone, { attackMs: 6, decayMs: 70, sustainLevel: 0.25, releaseMs: 40 });
-    applyBitCrush(tone, 7);
-    mixInto(buffer, tone, msToSamples(70 * index));
-  });
-
-  const sparkle = renderTone({
-    durationMs: 200,
-    startFreq: 1180,
-    endFreq: 1500,
-    waveform: "triangle",
-    volume: 0.32,
-    curve: "exp",
-    vibratoHz: 7,
-    vibratoDepth: 0.12,
-  });
-  applyEnvelope(sparkle, { attackMs: 12, decayMs: 90, sustainLevel: 0.35, releaseMs: 120 });
-  mixInto(buffer, sparkle, msToSamples(150));
-
-  const noise = renderNoise({ durationMs: 240, color: "pink", volume: 0.18 });
-  applyEnvelope(noise, { attackMs: 20, decayMs: 100, sustainLevel: 0.2, releaseMs: 120 });
-  mixInto(buffer, noise, msToSamples(40));
-
-  applyDelay(buffer, { delayMs: 140, gain: 0.22, repeats: 1, decay: 0.6 });
+  // 短いデレイでパンチを追加
+  applyDelay(buffer, { delayMs: 80, gain: 0.22, repeats: 1, decay: 0.65 });
 
   return normalize(buffer, 0.82);
 }
 
-function createShield() {
-  const duration = 620;
+function createCardPlace() {
+  const duration = 220;
   const buffer = createBuffer(duration);
 
+  // よりパンチのあるポップ（メロディ要素追加）
+  const pop = renderTone({
+    durationMs: 100,
+    startFreq: 320,
+    endFreq: 240,
+    waveform: "square",
+    volume: 0.72,
+    curve: "log",
+  });
+  applyEnvelope(pop, { attackMs: 0, decayMs: 70, sustainLevel: 0.1, releaseMs: 30 });
+  applyBitCrush(pop, 4);
+  mixInto(buffer, pop, 0);
+
+  // 短いメロディックチャイム（2音）
+  const melody1 = renderTone({
+    durationMs: 50,
+    startFreq: 880,
+    endFreq: 1100,
+    waveform: "square",
+    volume: 0.42,
+    curve: "exp",
+  });
+  applyEnvelope(melody1, { attackMs: 1, decayMs: 35, sustainLevel: 0.15, releaseMs: 15 });
+  applyBitCrush(melody1, 5);
+  mixInto(buffer, melody1, msToSamples(30));
+
+  const melody2 = renderTone({
+    durationMs: 50,
+    startFreq: 1320,
+    endFreq: 1600,
+    waveform: "square",
+    volume: 0.38,
+    curve: "exp",
+  });
+  applyEnvelope(melody2, { attackMs: 1, decayMs: 35, sustainLevel: 0.15, releaseMs: 15 });
+  applyBitCrush(melody2, 5);
+  mixInto(buffer, melody2, msToSamples(80));
+
+  // 短いパンチのあるノイズ
+  const slap = renderNoise({ durationMs: 80, color: "white", volume: 0.24 });
+  applyHighPass(slap, 1600);
+  applyEnvelope(slap, { attackMs: 0, decayMs: 50, sustainLevel: 0.08, releaseMs: 30 });
+  applyBitCrush(slap, 6);
+  mixInto(buffer, slap, 0);
+
+  // 短い低音のパンチ
+  const thump = renderTone({
+    durationMs: 100,
+    startFreq: 200,
+    endFreq: 160,
+    waveform: "square",
+    volume: 0.32,
+    curve: "linear",
+  });
+  applyEnvelope(thump, { attackMs: 5, decayMs: 60, sustainLevel: 0.15, releaseMs: 35 });
+  applyBitCrush(thump, 5);
+  mixInto(buffer, thump, msToSamples(90));
+
+  applyDelay(buffer, { delayMs: 70, gain: 0.24, repeats: 1, decay: 0.65 });
+
+  return normalize(buffer, 0.85);
+}
+
+function createConfirm() {
+  const duration = 480;
+  const buffer = createBuffer(duration);
+
+  // よりファンファーレ風のメロディ（明るい3和音）
+  const root = 660;
+  const steps = [0, 4, 7, 12]; // メジャー3和音 + オクターブ
+  steps.forEach((semitone, index) => {
+    const freq = root * 2 ** (semitone / 12);
+    const tone = renderTone({
+      durationMs: 100,
+      startFreq: freq,
+      endFreq: freq * 1.12,
+      waveform: "square",
+      volume: 0.52,
+      curve: "easeInOut",
+    });
+    applyEnvelope(tone, { attackMs: 4, decayMs: 60, sustainLevel: 0.3, releaseMs: 40 });
+    applyBitCrush(tone, 4);
+    mixInto(buffer, tone, msToSamples(60 * index));
+  });
+
+  // 高音域のスパークル（より明るく）
+  const sparkle = renderTone({
+    durationMs: 220,
+    startFreq: 1400,
+    endFreq: 1800,
+    waveform: "triangle",
+    volume: 0.42,
+    curve: "exp",
+    vibratoHz: 8,
+    vibratoDepth: 0.15,
+  });
+  applyEnvelope(sparkle, { attackMs: 8, decayMs: 100, sustainLevel: 0.4, releaseMs: 120 });
+  applyBitCrush(sparkle, 5);
+  mixInto(buffer, sparkle, msToSamples(180));
+
+  // 短いノイズバースト
+  const noise = renderNoise({ durationMs: 180, color: "pink", volume: 0.16 });
+  applyHighPass(noise, 2000);
+  applyEnvelope(noise, { attackMs: 10, decayMs: 80, sustainLevel: 0.15, releaseMs: 90 });
+  applyBitCrush(noise, 6);
+  mixInto(buffer, noise, msToSamples(50));
+
+  // より強いデレイで空間感を追加
+  applyDelay(buffer, { delayMs: 150, gain: 0.32, repeats: 2, decay: 0.58 });
+
+  return normalize(buffer, 0.85);
+}
+
+function createShield() {
+  const duration = 680;
+  const buffer = createBuffer(duration);
+
+  // より長めのチャイムベース（リバーブ強化）
   const pad = renderTone({
     durationMs: duration,
-    startFreq: 320,
-    endFreq: 360,
+    startFreq: 360,
+    endFreq: 400,
     waveform: "square",
-    volume: 0.28,
+    volume: 0.32,
     curve: "easeInOut",
-    vibratoHz: 5,
-    vibratoDepth: 0.2,
+    vibratoHz: 4.5,
+    vibratoDepth: 0.22,
   });
-  applyEnvelope(pad, { attackMs: 22, decayMs: 200, sustainLevel: 0.35, releaseMs: 200 });
-  applyBitCrush(pad, 8);
+  applyEnvelope(pad, { attackMs: 25, decayMs: 220, sustainLevel: 0.4, releaseMs: 220 });
+  applyBitCrush(pad, 5);
   mixInto(buffer, pad, 0);
 
-  const hits = [0, 140, 280];
+  // より明るいチャイムヒット（メロディ要素）
+  const hits = [0, 160, 320];
   hits.forEach((offset, index) => {
+    const freq = 1100 + index * 120;
     const ping = renderTone({
-      durationMs: 150,
-      startFreq: 1020,
-      endFreq: 1180,
+      durationMs: 160,
+      startFreq: freq,
+      endFreq: freq * 1.15,
       waveform: "triangle",
-      volume: 0.34 - index * 0.04,
+      volume: 0.42 - index * 0.05,
       curve: "exp",
     });
-    applyEnvelope(ping, { attackMs: 4, decayMs: 90, sustainLevel: 0.25, releaseMs: 70 });
+    applyEnvelope(ping, { attackMs: 3, decayMs: 100, sustainLevel: 0.3, releaseMs: 80 });
+    applyBitCrush(ping, 5);
     mixInto(buffer, ping, msToSamples(offset));
   });
 
-  const shimmer = renderNoise({ durationMs: 320, color: "white", volume: 0.18 });
-  applyHighPass(shimmer, 2200);
-  applyEnvelope(shimmer, { attackMs: 10, decayMs: 160, sustainLevel: 0.12, releaseMs: 100 });
-  mixInto(buffer, shimmer, msToSamples(30));
+  // より明るいシマー（高音域強調）
+  const shimmer = renderNoise({ durationMs: 380, color: "white", volume: 0.20 });
+  applyHighPass(shimmer, 2500);
+  applyEnvelope(shimmer, { attackMs: 12, decayMs: 180, sustainLevel: 0.18, releaseMs: 120 });
+  applyBitCrush(shimmer, 6);
+  mixInto(buffer, shimmer, msToSamples(40));
 
-  applyDelay(buffer, { delayMs: 160, gain: 0.2, repeats: 2, decay: 0.55 });
+  // より強いリバーブ効果
+  applyDelay(buffer, { delayMs: 180, gain: 0.28, repeats: 3, decay: 0.52 });
 
-  return normalize(buffer, 0.8);
+  return normalize(buffer, 0.82);
 }
 
 function createDeny() {
-  const duration = 320;
+  const duration = 280;
   const buffer = createBuffer(duration);
 
+  // より低く強い音（bitcrush強化で8bit風）
   const wah = renderTone({
-    durationMs: 220,
-    startFreq: 520,
-    endFreq: 180,
+    durationMs: 180,
+    startFreq: 480,
+    endFreq: 160,
     waveform: "square",
-    volume: 0.52,
+    volume: 0.62,
     curve: "exp",
   });
-  applyEnvelope(wah, { attackMs: 0, decayMs: 170, sustainLevel: 0.18, releaseMs: 60 });
-  applyBitCrush(wah, 6);
+  applyEnvelope(wah, { attackMs: 0, decayMs: 140, sustainLevel: 0.2, releaseMs: 50 });
+  applyBitCrush(wah, 3);
   mixInto(buffer, wah, 0);
 
+  // より強い低音バンプ
   const bump = renderTone({
-    durationMs: 200,
-    startFreq: 140,
-    endFreq: 110,
-    waveform: "sine",
-    volume: 0.42,
+    durationMs: 160,
+    startFreq: 160,
+    endFreq: 120,
+    waveform: "square",
+    volume: 0.52,
     curve: "log",
   });
-  applyEnvelope(bump, { attackMs: 10, decayMs: 150, sustainLevel: 0.22, releaseMs: 60 });
-  mixInto(buffer, bump, msToSamples(40));
+  applyEnvelope(bump, { attackMs: 8, decayMs: 120, sustainLevel: 0.25, releaseMs: 50 });
+  applyBitCrush(bump, 4);
+  mixInto(buffer, bump, msToSamples(30));
 
-  const rasp = renderNoise({ durationMs: 140, color: "pink", volume: 0.26 });
-  applyHighPass(rasp, 900);
-  applyEnvelope(rasp, { attackMs: 0, decayMs: 90, sustainLevel: 0.08, releaseMs: 40 });
-  mixInto(buffer, rasp, msToSamples(30));
+  // より強いノイズラスプ
+  const rasp = renderNoise({ durationMs: 120, color: "pink", volume: 0.32 });
+  applyHighPass(rasp, 800);
+  applyEnvelope(rasp, { attackMs: 0, decayMs: 70, sustainLevel: 0.1, releaseMs: 35 });
+  applyBitCrush(rasp, 5);
+  mixInto(buffer, rasp, msToSamples(20));
 
+  // 短い下降音
   const slap = renderTone({
-    durationMs: 80,
-    startFreq: 980,
-    endFreq: 620,
-    waveform: "triangle",
-    volume: 0.28,
+    durationMs: 60,
+    startFreq: 900,
+    endFreq: 500,
+    waveform: "square",
+    volume: 0.35,
     curve: "exp",
   });
-  applyEnvelope(slap, { attackMs: 0, decayMs: 60, sustainLevel: 0, releaseMs: 20 });
-  mixInto(buffer, slap, msToSamples(160));
+  applyEnvelope(slap, { attackMs: 0, decayMs: 45, sustainLevel: 0, releaseMs: 15 });
+  applyBitCrush(slap, 4);
+  mixInto(buffer, slap, msToSamples(140));
 
-  return normalize(buffer, 0.78);
+  // 短いデレイでエコー効果
+  applyDelay(buffer, { delayMs: 100, gain: 0.26, repeats: 1, decay: 0.6 });
+
+  return normalize(buffer, 0.80);
 }
 
 function createTurnChime() {
-  const duration = 540;
+  const duration = 600;
   const buffer = createBuffer(duration);
 
+  // よりメロディアスなチャイム（明るいアルペジオ、高音域強調）
   const sequence = renderArpeggio({
-    rootFreq: 520,
-    semitoneOffsets: [0, 7, 12, 19],
-    noteDurationMs: 130,
-    gapMs: 20,
+    rootFreq: 600,
+    semitoneOffsets: [0, 4, 7, 12, 16],
+    noteDurationMs: 110,
+    gapMs: 15,
     waveform: "square",
-    volume: 0.38,
+    volume: 0.48,
     curve: "easeInOut",
   });
   mixInto(buffer, sequence, 0);
 
+  // より明るい対位旋律
   const answer = renderArpeggio({
-    rootFreq: 520 * 2 ** (5 / 12),
-    semitoneOffsets: [-12, -7, -5, 0],
-    noteDurationMs: 120,
-    gapMs: 30,
+    rootFreq: 600 * 2 ** (7 / 12),
+    semitoneOffsets: [-5, 0, 4, 7, 12],
+    noteDurationMs: 100,
+    gapMs: 20,
     waveform: "triangle",
-    volume: 0.26,
+    volume: 0.32,
     curve: "easeInOut",
   });
-  mixInto(buffer, answer, msToSamples(120));
+  mixInto(buffer, answer, msToSamples(100));
 
-  const shimmer = renderNoise({ durationMs: 380, color: "white", volume: 0.16 });
-  applyHighPass(shimmer, 1800);
-  applyEnvelope(shimmer, { attackMs: 18, decayMs: 160, sustainLevel: 0.18, releaseMs: 120 });
-  mixInto(buffer, shimmer, msToSamples(40));
+  // より明るいシマー（高音域強調）
+  const shimmer = renderNoise({ durationMs: 420, color: "white", volume: 0.20 });
+  applyHighPass(shimmer, 2200);
+  applyEnvelope(shimmer, { attackMs: 15, decayMs: 180, sustainLevel: 0.22, releaseMs: 140 });
+  applyBitCrush(shimmer, 6);
+  mixInto(buffer, shimmer, msToSamples(50));
 
-  applyDelay(buffer, { delayMs: 180, gain: 0.25, repeats: 1, decay: 0.55 });
+  // より強いデレイで空間感を追加
+  applyDelay(buffer, { delayMs: 200, gain: 0.32, repeats: 2, decay: 0.58 });
 
-  return normalize(buffer, 0.82);
+  return normalize(buffer, 0.85);
 }
 
 function createWin() {
-  const duration = 1000;
+  const duration = 1200;
   const buffer = createBuffer(duration);
 
-  const fanfare = renderArpeggio({
-    rootFreq: 520,
-    semitoneOffsets: [0, 7, 12, 16, 19],
-    noteDurationMs: 160,
-    gapMs: 30,
+  // より華やかなファンファーレ（複数メロディ層）
+  const fanfare1 = renderArpeggio({
+    rootFreq: 600,
+    semitoneOffsets: [0, 4, 7, 12, 16, 19],
+    noteDurationMs: 140,
+    gapMs: 25,
     waveform: "square",
-    volume: 0.45,
+    volume: 0.52,
     curve: "easeInOut",
   });
-  mixInto(buffer, fanfare, 0);
+  mixInto(buffer, fanfare1, 0);
 
-  const sparkle = renderNoise({ durationMs: 620, color: "white", volume: 0.16 });
-  applyHighPass(sparkle, 2100);
-  applyEnvelope(sparkle, { attackMs: 24, decayMs: 200, sustainLevel: 0.22, releaseMs: 200 });
-  mixInto(buffer, sparkle, msToSamples(20));
+  // 2つ目のファンファーレ層（ハーモニー）
+  const fanfare2 = renderArpeggio({
+    rootFreq: 600 * 2 ** (7 / 12),
+    semitoneOffsets: [-5, 0, 4, 9, 12, 16],
+    noteDurationMs: 140,
+    gapMs: 25,
+    waveform: "square",
+    volume: 0.38,
+    curve: "easeInOut",
+  });
+  mixInto(buffer, fanfare2, msToSamples(50));
 
+  // より明るいスパークル（高音域強調）
+  const sparkle = renderNoise({ durationMs: 720, color: "white", volume: 0.20 });
+  applyHighPass(sparkle, 2400);
+  applyEnvelope(sparkle, { attackMs: 20, decayMs: 240, sustainLevel: 0.28, releaseMs: 240 });
+  applyBitCrush(sparkle, 6);
+  mixInto(buffer, sparkle, msToSamples(30));
+
+  // より長いテール（ベースライン）
   const tail = renderTone({
     durationMs: duration,
-    startFreq: 260,
-    endFreq: 340,
+    startFreq: 300,
+    endFreq: 380,
     waveform: "triangle",
-    volume: 0.24,
+    volume: 0.28,
     curve: "easeInOut",
-    vibratoHz: 4,
-    vibratoDepth: 0.18,
+    vibratoHz: 3.5,
+    vibratoDepth: 0.20,
   });
-  applyEnvelope(tail, { attackMs: 50, decayMs: 220, sustainLevel: 0.38, releaseMs: 260 });
+  applyEnvelope(tail, { attackMs: 60, decayMs: 260, sustainLevel: 0.42, releaseMs: 300 });
+  applyBitCrush(tail, 5);
   mixInto(buffer, tail, 0);
 
-  const twinkles = [0, 160, 320];
+  // より明るいツインクル（複数層）
+  const twinkles = [0, 180, 360, 540];
   twinkles.forEach((offset, index) => {
     const ping = renderTone({
-      durationMs: 120,
-      startFreq: 1180 + index * 80,
-      endFreq: 1500 + index * 60,
+      durationMs: 140,
+      startFreq: 1400 + index * 100,
+      endFreq: 1800 + index * 80,
       waveform: "triangle",
-      volume: 0.32 - index * 0.05,
+      volume: 0.38 - index * 0.04,
       curve: "exp",
     });
-    applyEnvelope(ping, { attackMs: 6, decayMs: 80, sustainLevel: 0.25, releaseMs: 70 });
+    applyEnvelope(ping, { attackMs: 5, decayMs: 90, sustainLevel: 0.3, releaseMs: 80 });
+    applyBitCrush(ping, 5);
     mixInto(buffer, ping, msToSamples(offset));
   });
 
-  applyDelay(buffer, { delayMs: 180, gain: 0.22, repeats: 2, decay: 0.55 });
+  // より強いデレイ/リバーブで華やかさを追加
+  applyDelay(buffer, { delayMs: 200, gain: 0.32, repeats: 3, decay: 0.55 });
 
-  return normalize(buffer, 0.8);
+  return normalize(buffer, 0.85);
 }
 
 function createLose() {
-  const duration = 760;
+  const duration = 680;
   const buffer = createBuffer(duration);
 
+  // より劇的な下降音（bitcrush強化）
   const slide = renderTone({
-    durationMs: 420,
-    startFreq: 420,
-    endFreq: 180,
-    waveform: "triangle",
-    volume: 0.34,
+    durationMs: 380,
+    startFreq: 400,
+    endFreq: 150,
+    waveform: "square",
+    volume: 0.42,
     curve: "exp",
     vibratoHz: 2.5,
-    vibratoDepth: 0.2,
+    vibratoDepth: 0.22,
   });
-  applyEnvelope(slide, { attackMs: 30, decayMs: 200, sustainLevel: 0.3, releaseMs: 220 });
+  applyEnvelope(slide, { attackMs: 25, decayMs: 180, sustainLevel: 0.32, releaseMs: 200 });
+  applyBitCrush(slide, 3);
   mixInto(buffer, slide, 0);
 
+  // より低く長いため息
   const sigh = renderTone({
     durationMs: duration,
-    startFreq: 160,
+    startFreq: 180,
     endFreq: 140,
-    waveform: "sine",
-    volume: 0.26,
+    waveform: "square",
+    volume: 0.32,
     curve: "linear",
   });
-  applyEnvelope(sigh, { attackMs: 60, decayMs: 220, sustainLevel: 0.28, releaseMs: 260 });
+  applyEnvelope(sigh, { attackMs: 50, decayMs: 200, sustainLevel: 0.3, releaseMs: 240 });
+  applyBitCrush(sigh, 4);
   mixInto(buffer, sigh, 0);
 
+  // より強いウォブル（bitcrush強化）
   const wobble = renderTone({
-    durationMs: 260,
-    startFreq: 280,
+    durationMs: 240,
+    startFreq: 300,
     endFreq: 200,
     waveform: "square",
-    volume: 0.22,
+    volume: 0.28,
     curve: "exp",
   });
-  applyEnvelope(wobble, { attackMs: 10, decayMs: 160, sustainLevel: 0.18, releaseMs: 120 });
-  applyBitCrush(wobble, 7);
-  mixInto(buffer, wobble, msToSamples(180));
+  applyEnvelope(wobble, { attackMs: 8, decayMs: 140, sustainLevel: 0.2, releaseMs: 110 });
+  applyBitCrush(wobble, 3);
+  mixInto(buffer, wobble, msToSamples(160));
 
-  const puff = renderNoise({ durationMs: 180, color: "pink", volume: 0.2 });
-  applyHighPass(puff, 700);
-  applyEnvelope(puff, { attackMs: 20, decayMs: 100, sustainLevel: 0.08, releaseMs: 80 });
-  mixInto(buffer, puff, msToSamples(60));
+  // より低いノイズ
+  const puff = renderNoise({ durationMs: 160, color: "pink", volume: 0.24 });
+  applyHighPass(puff, 600);
+  applyEnvelope(puff, { attackMs: 15, decayMs: 90, sustainLevel: 0.1, releaseMs: 70 });
+  applyBitCrush(puff, 5);
+  mixInto(buffer, puff, msToSamples(50));
 
+  // より劇的な下降アルペジオ
   const sighDown = renderArpeggio({
-    rootFreq: 330,
-    semitoneOffsets: [0, -4, -7],
-    noteDurationMs: 160,
-    gapMs: 40,
-    waveform: "triangle",
-    volume: 0.24,
+    rootFreq: 380,
+    semitoneOffsets: [0, -3, -7, -12],
+    noteDurationMs: 140,
+    gapMs: 35,
+    waveform: "square",
+    volume: 0.28,
     curve: "linear",
   });
-  mixInto(buffer, sighDown, msToSamples(140));
+  applyBitCrush(sighDown, 4);
+  mixInto(buffer, sighDown, msToSamples(120));
 
-  return normalize(buffer, 0.76);
+  // 短いデレイでエコー効果
+  applyDelay(buffer, { delayMs: 150, gain: 0.24, repeats: 1, decay: 0.62 });
+
+  return normalize(buffer, 0.78);
 }
 
 const sounds = [

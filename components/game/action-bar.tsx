@@ -34,6 +34,7 @@ export function ActionBar() {
   } = useGameContext();
 
   const [hintVisible, setHintVisible] = useState(false);
+  const [gameInfoVisible, setGameInfoVisible] = useState(false);
   const [dockPosition, setDockPosition] = useState<"bottom" | "left">("left");
   const isDockedLeft = dockPosition === "left";
 
@@ -172,6 +173,13 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-7 w-full justify-start px-2 text-xs"
+                    onClick={() => setGameInfoVisible((prev) => !prev)}
+                  >
+                    {gameInfoVisible ? "ゲーム概要を隠す" : "ゲーム概要"}
+                  </Button>
                 </div>
               </>
             ) : (
@@ -229,6 +237,13 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => setGameInfoVisible((prev) => !prev)}
+                  >
+                    {gameInfoVisible ? "ゲーム概要を隠す" : "ゲーム概要"}
+                  </Button>
                 </div>
               </>
             )}
@@ -243,11 +258,34 @@ export function ActionBar() {
           </div>
         )}
 
+          {gameInfoVisible && (
+            <div
+              className={cn(
+                "space-y-2 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)]",
+                isDockedLeft && "px-3 py-2 text-xs"
+              )}
+            >
+              <p className={cn("font-heading text-[var(--color-accent-light)]", isDockedLeft ? "text-sm" : "text-lg")}>Love Letter Reverie</p>
+              <ul
+                className={cn(
+                  "list-disc space-y-1 leading-relaxed pl-5",
+                  isDockedLeft && "pl-4"
+                )}
+              >
+                <li>各ターンで山札から1枚引き、手札2枚のうち1枚を公開して効果を解決します。</li>
+                <li>効果で相手を脱落させるか、自分が脱落しないように立ち回ります。</li>
+                <li>山札が尽きるか1人だけ残るとラウンド終了。生存者の中で最も高ランクのカードが勝利します。</li>
+              </ul>
+            </div>
+          )}
+
           {hintVisible && cardDefinition && (
-            <div className={cn(
-              "rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)]",
-              isDockedLeft && "px-3 py-2"
-            )}>
+            <div
+              className={cn(
+                "rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)]",
+                isDockedLeft && "px-3 py-2"
+              )}
+            >
               <p className={cn("font-heading text-[var(--color-accent-light)]", isDockedLeft ? "text-sm" : "text-lg")}>{cardDefinition.name}</p>
               <p className={cn("mt-1", isDockedLeft && "text-xs")}>{cardDefinition.description}</p>
             </div>
@@ -310,10 +348,37 @@ export function ActionBar() {
                 type="number"
                 min={2}
                 max={8}
-                value={guessedRank ?? ""}
+                step={1}
+                value={guessedRank !== null && guessedRank !== undefined ? String(guessedRank) : ""}
                 onChange={(event) => {
-                  const value = event.target.value;
-                  setGuessedRank(value ? Number(value) : null);
+                  const value = event.target.value.trim();
+                  if (value === "") {
+                    setGuessedRank(null);
+                    return;
+                  }
+                  const numValue = Number(value);
+                  if (!isNaN(numValue)) {
+                    setGuessedRank(numValue);
+                  }
+                }}
+                onBlur={(event) => {
+                  const value = event.target.value.trim();
+                  if (value === "") {
+                    setGuessedRank(null);
+                  } else {
+                    const numValue = Number(value);
+                    if (!isNaN(numValue)) {
+                      if (numValue < 2) {
+                        setGuessedRank(null);
+                      } else if (numValue > 8) {
+                        setGuessedRank(8);
+                      } else {
+                        setGuessedRank(Math.floor(numValue));
+                      }
+                    } else {
+                      setGuessedRank(null);
+                    }
+                  }
                 }}
                 className={cn(isDockedLeft ? "h-8 w-full" : "h-9 w-28")}
               />

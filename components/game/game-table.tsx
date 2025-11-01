@@ -6,7 +6,7 @@ import { useState } from "react";
 import { CardSymbol } from "@/components/icons/card-symbol";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { CARD_DEFINITIONS, ORDERED_CARD_IDS } from "@/lib/game/cards";
 import type { CardId } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,17 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
 
   const cardDefinition = topDiscard ? CARD_DEFINITIONS[topDiscard] : undefined;
   const discardKey = cardDefinition ? `${cardDefinition.id}-${discardPile.length}` : "empty";
+
+  const discardCounts = discardPile.reduce<Partial<Record<CardId, number>>>((acc, card) => {
+    acc[card] = (acc[card] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const discardSummary = ORDERED_CARD_IDS.filter((cardId) => discardCounts[cardId])
+    .map((cardId) => ({
+      definition: CARD_DEFINITIONS[cardId],
+      count: discardCounts[cardId] ?? 0,
+    }));
 
   return (
     <div className="relative flex h-full w-full items-center justify-center">
@@ -76,27 +87,33 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
                 <h4 className="font-heading text-lg text-[var(--color-accent-light)]">捨て札履歴</h4>
                 <ScrollArea className="mt-3 h-48">
                   <div className="space-y-2 pr-3 text-sm text-[var(--color-text-muted)]">
-                    {[...discardPile].reverse().map((card, index) => {
-                      const def = CARD_DEFINITIONS[card];
-                      return (
+                    {discardSummary.length > 0 ? (
+                      discardSummary.map(({ definition, count }) => (
                         <div
-                          key={`${card}-${index}`}
+                          key={definition.id}
                           className="flex items-center justify-between rounded-lg border border-[rgba(215,178,110,0.2)] bg-[rgba(12,32,30,0.7)] px-3 py-2"
                         >
                           <div className="flex items-center gap-2">
                             <span className="font-heading text-lg text-[var(--color-accent-light)]">
-                              {def.rank}
+                              {definition.rank}
                             </span>
-                            <div>
-                              <p className="text-sm text-[var(--color-accent-light)]">{def.name}</p>
-                              <p className="text-xs text-[var(--color-text-muted)] truncate">
-                                {def.description}
-                              </p>
-                            </div>
+                            <span className="font-heading text-sm text-[var(--color-accent-light)]">
+                              {definition.name}
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-2 text-[var(--color-text-muted)]">
+                            <span className="font-heading text-base text-[var(--color-accent-light)]">
+                              x{count}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-[0.2em]">
+                              {count}/{definition.copies}
+                            </span>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))
+                    ) : (
+                      <p className="text-xs text-[var(--color-text-muted)]">公開された捨て札はありません。</p>
+                    )}
                   </div>
                 </ScrollArea>
               </PopoverContent>

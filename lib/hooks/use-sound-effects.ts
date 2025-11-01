@@ -38,7 +38,7 @@ export function useSoundEffects(defaultVolume = 0.4) {
   }, []);
 
   const play = useCallback(
-    (key: SoundKey, options?: { volume?: number }) => {
+    (key: SoundKey, options?: { volume?: number; pitchVariation?: boolean }) => {
       if (muted) return;
       const registry = registryRef.current;
       let howl = registry.get(key);
@@ -50,9 +50,22 @@ export function useSoundEffects(defaultVolume = 0.4) {
         });
         registry.set(key, howl);
       }
+      
+      // ピッチバリエーション: デフォルトで有効（±5%のランダムな変化）
+      let rate = 1.0;
+      if (options?.pitchVariation !== false) {
+        rate = 0.95 + Math.random() * 0.1; // 0.95〜1.05の範囲
+      }
+      
+      // 再生前に設定を適用
       howl.volume(options?.volume ?? volume);
       howl.stop();
-      howl.play();
+      
+      // 再生を開始し、再生IDを取得してrateを設定
+      const soundId = howl.play();
+      if (soundId !== undefined) {
+        howl.rate(rate, soundId);
+      }
     },
     [muted, volume],
   );

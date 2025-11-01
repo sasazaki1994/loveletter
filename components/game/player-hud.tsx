@@ -13,7 +13,6 @@ interface PlayerHUDProps {
   selected?: boolean;
   disabled?: boolean;
   targetReason?: string;
-  drawPileCount?: number;
 }
 
 export function PlayerHUD({
@@ -25,15 +24,11 @@ export function PlayerHUD({
   selected,
   disabled,
   targetReason,
-  drawPileCount,
 }: PlayerHUDProps) {
   const topDiscard = player.discardPile[player.discardPile.length - 1];
   const topCardDefinition = topDiscard ? CARD_DEFINITIONS[topDiscard] : undefined;
 
   const isDisabled = !selectable || isSelf || player.isEliminated || disabled;
-
-  const visibleDiscards = player.discardPile.slice(-4);
-  const hiddenDiscardCount = player.discardPile.length - visibleDiscards.length;
 
   return (
     <button
@@ -59,67 +54,13 @@ export function PlayerHUD({
             </p>
             {player.isBot && <Badge variant="outline">BOT</Badge>}
           </div>
-          <p className="text-xs text-[var(--color-text-muted)]">
-            座席 {player.seat + 1} • 手札 {player.handCount} 枚
-          </p>
+          <p className="text-xs text-[var(--color-text-muted)]">座席 {player.seat + 1}</p>
         </div>
         <div className="flex gap-2">
           {player.shield && <Badge variant="shield">防御中</Badge>}
           {player.isEliminated && <Badge variant="danger">脱落</Badge>}
           {isActive && <Badge variant="default">手番</Badge>}
         </div>
-      </div>
-      <div className="mt-2 grid gap-3 sm:grid-cols-2">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-muted)]">Discard</p>
-          <div className="mt-1 flex min-h-[2.5rem] items-center">
-            {visibleDiscards.length > 0 ? (
-              <div className="flex items-end">
-                {visibleDiscards.map((card, index) => {
-                  const def = CARD_DEFINITIONS[card];
-                  return (
-                    <div
-                      key={`${card}-${index}`}
-                      className="relative -ml-6 flex h-12 w-8 items-center justify-center rounded-xl border border-[rgba(215,178,110,0.4)] bg-gradient-to-br from-[rgba(34,70,65,0.95)] via-[rgba(24,54,50,0.95)] to-[rgba(16,36,33,0.98)] text-[var(--color-accent-light)] shadow-[0_10px_22px_rgba(0,0,0,0.45)] first:ml-0"
-                      title={def ? `${def.name} (${def.rank})` : undefined}
-                    >
-                      {def ? (
-                        <span className="font-heading text-lg" aria-hidden>
-                          {def.rank}
-                        </span>
-                      ) : (
-                        <span className="text-xs">?</span>
-                      )}
-                    </div>
-                  );
-                })}
-                {hiddenDiscardCount > 0 && (
-                  <span className="ml-2 text-xs text-[var(--color-text-muted)]">+{hiddenDiscardCount}</span>
-                )}
-              </div>
-            ) : (
-              <span className="text-xs text-[var(--color-text-muted)]">捨て札なし</span>
-            )}
-          </div>
-        </div>
-        {typeof drawPileCount === "number" && (
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-muted)]">Draw</p>
-            <div className="mt-1 flex min-h-[2.5rem] items-center gap-2">
-              <div className="relative h-12 w-9">
-                {[0, 1, 2].map((layer) => (
-                  <span
-                    key={`draw-layer-${layer}`}
-                    className="absolute bottom-0 left-0 h-10 w-7 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.85)] shadow-[0_10px_22px_rgba(0,0,0,0.45)]"
-                    style={{ transform: `translate(${layer * 6}px, ${layer * -4}px)` }}
-                    aria-hidden="true"
-                  />
-                ))}
-              </div>
-              <span className="text-xs text-[var(--color-text-muted)]">残り {drawPileCount} 枚</span>
-            </div>
-          </div>
-        )}
       </div>
       {topCardDefinition ? (
         <div className="mt-2 flex items-center gap-3 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.55)] px-3 py-2 text-xs">

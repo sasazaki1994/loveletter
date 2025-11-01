@@ -4,7 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardDefinition, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
-import { useGamePolling } from "@/lib/hooks/use-game-polling";
+import { useBackgroundMusic } from "@/lib/hooks/use-background-music";
+import { useGameStream } from "@/lib/hooks/use-game-stream";
 import { useSoundEffects, type SoundKey } from "@/lib/hooks/use-sound-effects";
 
 interface GameProviderProps {
@@ -56,7 +57,7 @@ const GameContext = createContext<GameContextValue | undefined>(undefined);
 const ACTION_TIMEOUT_MS = 6500;
 
 export function GameProvider({ roomId, playerId, children }: GameProviderProps) {
-  const { state, loading, error, refetch, lastUpdated } = useGamePolling({
+  const { state, loading, error, refetch, lastUpdated } = useGameStream({
     roomId,
     playerId,
   });
@@ -70,6 +71,8 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
   const prevStateRef = useRef<ClientGameState | null>(null);
 
   const { play: playSound, muted, toggleMute, volume, setVolume } = useSoundEffects(0.4);
+
+  useBackgroundMusic(!muted, volume, { volumeMultiplier: 0.45 });
 
   const selfId = state?.self?.id ?? playerId;
   const isMyTurn = Boolean(selfId && state?.activePlayerId === selfId && state.phase === "choose_card");
@@ -180,8 +183,15 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     }
   }, [isMyTurn, state?.activePlayerId, state?.phase]);
 
+  const prevCardDefinitionRef = useRef<CardDefinition | undefined>(undefined);
+
   useEffect(() => {
-    setGuessedRank(null);
+    // カード定義が実際に変更された場合のみ、推測ランクをリセット
+    if (prevCardDefinitionRef.current?.id !== cardDefinition?.id) {
+      setGuessedRank(null);
+      prevCardDefinitionRef.current = cardDefinition;
+    }
+
     if (!cardDefinition) {
       setSelectedTarget(null);
       return;
