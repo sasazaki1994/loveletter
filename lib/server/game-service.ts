@@ -813,11 +813,34 @@ async function concludeRound(
   winnerIds: string[],
   reason: string,
 ) {
+  // deck_exhausted時は生存プレイヤーの最終手札を記録
+  let finalHands: Record<string, CardId[]> | undefined;
+  if (reason === "deck_exhausted") {
+    const allPlayers = await tx
+      .select()
+      .from(players)
+      .where(eq(players.roomId, game.roomId));
+    
+    const survivors = allPlayers.filter((p) => !p.isEliminated && p.role === "player");
+    
+    const handRows = await tx
+      .select()
+      .from(hands)
+      .where(
+        and(eq(hands.gameId, game.id), inArray(hands.playerId, survivors.map((p) => p.id))),
+      );
+    
+    finalHands = {};
+    for (const handRow of handRows) {
+      finalHands[handRow.playerId] = handRow.cards as CardId[];
+    }
+  }
+
   await tx
     .update(games)
     .set({
       phase: "finished",
-      result: { winnerIds, reason },
+      result: finalHands ? { winnerIds, reason, finalHands } : { winnerIds, reason },
       updatedAt: new Date(),
     })
     .where(eq(games.id, game.id));

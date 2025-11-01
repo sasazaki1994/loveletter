@@ -76,7 +76,14 @@ export const games = pgTable("games", {
   activePlayerId: uuid("active_player_id").references(() => players.id),
   awaitingPlayerId: uuid("awaiting_player_id").references(() => players.id),
   result: jsonb("result")
-    .$type<{ winnerIds: string[]; reason: string } | null>()
+    .$type<
+      | {
+          winnerIds: string[];
+          reason: string;
+          finalHands?: Record<string, string[]>;
+        }
+      | null
+    >()
     .default(null),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

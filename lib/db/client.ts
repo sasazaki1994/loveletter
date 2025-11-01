@@ -1,9 +1,6 @@
-// ws のネイティブ拡張読み込みを避け、JS実装に固定（Next.js のビルド互換性対策）
-if (typeof process !== "undefined") {
-  process.env.WS_NO_BUFFER_UTIL = process.env.WS_NO_BUFFER_UTIL || "1";
-}
-import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import ws from "ws";
 import * as schema from "@/drizzle/schema";
 
 type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
@@ -32,26 +29,18 @@ function createDb(): DrizzleDb {
   }
   
   const databaseUrl = getDatabaseUrl();
-  const pool = new Pool({ connectionString: databaseUrl, ssl: getPgSsl() });
-  const dbInstance = drizzle(pool, {
-    schema,
-    logger: process.env.NODE_ENV === "development",
-  });
+  // Neon WebSocket 接続の最適化（Node.js で WS を使用）
+  neonConfig.webSocketConstructor = (globalThis as any).WebSocket ?? (ws as unknown as typeof WebSocket);
+  neonConfig.useSecureWebSocket = true;
+  neonConfig.pipelineConnect = "password";
+  const pool = new Pool({ connectionString: databaseUrl });
+  const dbInstance = drizzle(pool, { schema, logger: process.env.NODE_ENV === "development" });
   
   if (process.env.NODE_ENV !== "production") {
     globalThis.__drizzleDb__ = dbInstance;
   }
   
   return dbInstance;
-}
-
-function getPgSsl(): false | { rejectUnauthorized: boolean } {
-  const url = getDatabaseUrl();
-  // Neon/Cloud PG 環境では SSL が必要。ローカルでは不要な場合がある。
-  if (/neon\.tech|vercel-storage|aws|gcp|azure/i.test(url)) {
-    return { rejectUnauthorized: false };
-  }
-  return false;
 }
 
 // 実行時にのみデータベース接続を初期化するためのプロキシ

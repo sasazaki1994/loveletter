@@ -105,6 +105,7 @@ export interface GameState {
   result?: {
     winnerIds: PlayerId[];
     reason: string;
+    finalHands?: Record<PlayerId, CardId[]>;
   } | null;
 }
 

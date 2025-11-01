@@ -11,24 +11,42 @@ export function ResultDialog() {
   const { state, refetch } = useGameContext();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [dismissedResultId, setDismissedResultId] = useState<string | null>(null);
 
   useEffect(() => {
     if (state?.result) {
-      // リザルトが設定されてから1秒後にダイアログを表示
+      // 既に閉じたリザルトの場合は再表示しない
+      const resultId = `${state.id}-${state.result.winnerIds.join(',')}-${state.result.reason}`;
+      if (resultId === dismissedResultId) {
+        return;
+      }
+
+      // deck_exhausted時は手札公開アニメーション完了を待つため3秒後、それ以外は1秒後
+      const delay = state.result.reason === "deck_exhausted" ? 3000 : 1000;
       const timer = setTimeout(() => {
         setOpen(true);
-      }, 1000);
+      }, delay);
 
       return () => clearTimeout(timer);
     } else {
       setOpen(false);
+      setDismissedResultId(null);
     }
-  }, [state?.result]);
+  }, [state?.result, state?.id, dismissedResultId]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen && state?.result) {
+      // ダイアログを閉じた時、このリザルトIDを記憶
+      const resultId = `${state.id}-${state.result.winnerIds.join(',')}-${state.result.reason}`;
+      setDismissedResultId(resultId);
+    }
+  };
   const winners = useMemo(() => {
     if (!state?.players) return [];
     const winnerIds = state.result?.winnerIds ?? [];
     return state.players.filter((player) => winnerIds.includes(player.id));
-  }, [state]);
+  }, [state?.players, state?.result?.winnerIds]);
 
   const placements = useMemo(() => {
     if (!state?.players || !state?.logs) return [];
@@ -48,22 +66,31 @@ export function ResultDialog() {
     for (const log of sortedLogs) {
       // 「脱落しました」または「自滅しました」のメッセージを検出
       if (log.message.includes('脱落しました') || log.message.includes('自滅しました')) {
-        // メッセージからプレイヤー名を抽出してプレイヤーIDに変換
-        for (const player of state.players) {
-          if (log.message.includes(player.nickname) && !processedIds.has(player.id)) {
-            // 勝者でない場合のみ追加
-            if (!winnerSet.has(player.id)) {
-              eliminationOrder.push(player.id);
-              processedIds.add(player.id);
-            }
-          }
-        }
-        // actorIdが脱落したプレイヤーの場合（自滅など）
+        // actorIdを優先的に使用（より正確）
         if (log.actorId && !processedIds.has(log.actorId) && !winnerSet.has(log.actorId)) {
           const player = playerMap.get(log.actorId);
           if (player && player.isEliminated) {
             eliminationOrder.push(log.actorId);
             processedIds.add(log.actorId);
+            continue; // actorIdで処理できた場合は次のログへ
+          }
+        }
+        
+        // actorIdがない場合のみメッセージからプレイヤー名を抽出
+        // より正確にマッチングするため、「が」や「は」の直前の名前を検出
+        for (const player of state.players) {
+          const patterns = [
+            `${player.nickname}が脱落`,
+            `${player.nickname}は脱落`,
+            `${player.nickname}が自滅`,
+            `${player.nickname}は自滅`
+          ];
+          const matched = patterns.some(pattern => log.message.includes(pattern));
+          
+          if (matched && !processedIds.has(player.id) && !winnerSet.has(player.id)) {
+            eliminationOrder.push(player.id);
+            processedIds.add(player.id);
+            break; // 1つのログで1人のプレイヤーのみ処理
           }
         }
       }
@@ -71,11 +98,14 @@ export function ResultDialog() {
 
     // ログに記録されていない脱落プレイヤーを追加（念のため）
     // processedIdsを使用して重複を防ぐ
-    for (const player of state.players) {
-      if (player.isEliminated && !winnerSet.has(player.id) && !processedIds.has(player.id)) {
-        eliminationOrder.push(player.id);
-        processedIds.add(player.id);
-      }
+    const unloggedEliminated = state.players.filter(
+      (p) => p.isEliminated && !winnerSet.has(p.id) && !processedIds.has(p.id)
+    );
+    // seat順でソートしてから追加（同位を防ぐため）
+    unloggedEliminated.sort((a, b) => a.seat - b.seat);
+    for (const player of unloggedEliminated) {
+      eliminationOrder.push(player.id);
+      processedIds.add(player.id);
     }
 
     // すべての脱落プレイヤーIDのセットを作成（重複チェック用）
@@ -85,30 +115,35 @@ export function ResultDialog() {
     const winners = state.players.filter((p) => winnerSet.has(p.id));
     
     // 脱落順で順位付け（早い順から下位へ）
-    // 1位: 勝者
-    // 2位: 生存者（脱落していない非勝者） - 通常は存在しないが念のため
-    // 3位以降: 脱落した人（早い脱落が下位）
+    // 1位: 勝者（seat順で順位付け）
+    // 2位以降: 生存者（脱落していない非勝者） - 通常は存在しないが念のため
+    // その後: 脱落した人（早い脱落が下位）
     const placements: Array<{ place: number; players: typeof state.players }> = [];
     
     let currentPlace = 1;
     
-    // 1位: 勝者
+    // 1位: 勝者（seat順で個別に順位付けして同位を防ぐ）
     if (winners.length > 0) {
-      placements.push({ place: currentPlace, players: winners });
-      currentPlace += 1;
+      const sortedWinners = [...winners].sort((a, b) => a.seat - b.seat);
+      for (const winner of sortedWinners) {
+        placements.push({ place: currentPlace, players: [winner] });
+        currentPlace += 1;
+      }
     }
 
-    // 2位: まだ脱落していない非勝者（生存者）
-    // eliminationOrderに含まれていないことを確認
+    // 生存者（脱落していない非勝者）をseat順で個別に順位付け
     const survivors = state.players.filter(
       (p) => !p.isEliminated && !winnerSet.has(p.id) && !allEliminatedIds.has(p.id)
     );
     if (survivors.length > 0) {
-      placements.push({ place: currentPlace, players: survivors });
-      currentPlace += 1;
+      const sortedSurvivors = [...survivors].sort((a, b) => a.seat - b.seat);
+      for (const survivor of sortedSurvivors) {
+        placements.push({ place: currentPlace, players: [survivor] });
+        currentPlace += 1;
+      }
     }
 
-    // 3位以降: 脱落したプレイヤーを脱落順（早い順）で配置
+    // 脱落したプレイヤーを脱落順（早い順）で配置
     // 重複を防ぐためにprocessedIdsを使用
     const processedEliminatedIds = new Set<string>();
     for (const eliminatedId of eliminationOrder) {
@@ -127,10 +162,10 @@ export function ResultDialog() {
     }
 
     return placements;
-  }, [state]);
+  }, [state?.players, state?.logs, state?.result?.winnerIds]);
 
   return (
-    <Dialog open={open}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="text-3xl">ラウンド終了</DialogTitle>

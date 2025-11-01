@@ -7,6 +7,7 @@ import { ActionBar } from "@/components/game/action-bar";
 import { CardEffectLayer, type CardEffectEvent } from "@/components/game/card-effect-layer";
 import { GameTable } from "@/components/game/game-table";
 import { HandCard } from "@/components/game/hand-card";
+import { HandRevealOverlay } from "@/components/game/hand-reveal-overlay";
 import { LogPanel } from "@/components/game/log-panel";
 import { PlayerHUD } from "@/components/game/player-hud";
 import { ResultDialog } from "@/components/game/result-dialog";
@@ -51,6 +52,8 @@ export function GameBoard() {
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const [effectEvents, setEffectEvents] = useState<CardEffectEvent[]>([]);
   const prevStateRef = useRef<ClientGameState | null>(null);
+  const [showHandReveal, setShowHandReveal] = useState(false);
+  const [handRevealComplete, setHandRevealComplete] = useState(false);
   const hand = useMemo(() => state?.hand ?? state?.self?.hand ?? [], [state?.hand, state?.self?.hand]);
   const orderedPlayers = useMemo(() => {
     if (!state) return [];
@@ -374,6 +377,22 @@ export function GameBoard() {
     prevStateRef.current = state;
   }, [generateEventId, pushEffectEvent, resolveEffectType, state]);
 
+  // deck_exhausted時の手札公開を検出
+  useEffect(() => {
+    if (!state) return;
+    
+    if (state.result?.reason === "deck_exhausted" && state.result.finalHands && !handRevealComplete) {
+      setShowHandReveal(true);
+    } else {
+      setShowHandReveal(false);
+    }
+  }, [state, handRevealComplete]);
+
+  const handleHandRevealComplete = useCallback(() => {
+    setShowHandReveal(false);
+    setHandRevealComplete(true);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isMyTurn) return;
@@ -489,6 +508,15 @@ export function GameBoard() {
                   getSeatPosition={getSeatPosition}
                   onEventComplete={handleEventComplete}
                 />
+                {showHandReveal && state?.result?.finalHands && (
+                  <HandRevealOverlay
+                    finalHands={state.result.finalHands}
+                    players={orderedPlayers}
+                    tableSize={tableSize}
+                    getSeatPosition={getSeatPosition}
+                    onComplete={handleHandRevealComplete}
+                  />
+                )}
                 {orderedPlayers.map((player) => (
                   <div key={player.id} className="absolute pointer-events-auto z-10" style={getHudPlacementStyle(player.seat)}>
                     <PlayerHUD

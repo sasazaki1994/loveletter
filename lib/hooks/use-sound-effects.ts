@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type SoundKey =
   | "card_draw"
   | "card_place"
+  | "card_flip"
+  | "card_shuffle"
   | "confirm"
   | "shield"
   | "deny"
@@ -13,26 +15,92 @@ type SoundKey =
   | "win"
   | "lose";
 
-const SOUND_MANIFEST: Record<SoundKey, string> = {
-  card_draw: "/sounds/card_draw.wav",
-  card_place: "/sounds/card_place.wav",
-  confirm: "/sounds/confirm.wav",
-  shield: "/sounds/shield.wav",
-  deny: "/sounds/deny.wav",
-  turn_chime: "/sounds/turn_chime.wav",
-  win: "/sounds/win.wav",
-  lose: "/sounds/lose.wav",
+interface SoundVariant {
+  sources: string[];
+  allowPitchVariation?: boolean;
+}
+
+const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
+  card_draw: [
+    {
+      sources: ["/sounds/card_draw.mp3", "/sounds/card_draw.wav"],
+      allowPitchVariation: false,
+    },
+  ],
+  card_place: [
+    {
+      sources: ["/sounds/card_place.mp3", "/sounds/card_place.wav"],
+      allowPitchVariation: false,
+    },
+  ],
+  card_flip: [
+    {
+      sources: ["/sounds/card_flip_1.mp3"],
+      allowPitchVariation: false,
+    },
+    {
+      sources: ["/sounds/card_flip_2.mp3"],
+      allowPitchVariation: false,
+    },
+    {
+      sources: ["/sounds/card_flip_3.mp3"],
+      allowPitchVariation: false,
+    },
+  ],
+  card_shuffle: [
+    {
+      sources: ["/sounds/card_shuffle_1.mp3"],
+      allowPitchVariation: false,
+    },
+    {
+      sources: ["/sounds/card_shuffle_2.mp3"],
+      allowPitchVariation: false,
+    },
+  ],
+  confirm: [
+    {
+      sources: ["/sounds/confirm.wav"],
+      allowPitchVariation: false,
+    },
+  ],
+  shield: [
+    {
+      sources: ["/sounds/shield.wav"],
+    },
+  ],
+  deny: [
+    {
+      sources: ["/sounds/deny.wav"],
+    },
+  ],
+  turn_chime: [
+    {
+      sources: ["/sounds/turn_chime.wav"],
+    },
+  ],
+  win: [
+    {
+      sources: ["/sounds/win.wav"],
+    },
+  ],
+  lose: [
+    {
+      sources: ["/sounds/lose.wav"],
+    },
+  ],
 };
 
 export function useSoundEffects(defaultVolume = 0.4) {
   const [volume, setVolume] = useState(defaultVolume);
   const [muted, setMuted] = useState(false);
-  const registryRef = useRef<Map<SoundKey, Howl>>(new Map());
+  const registryRef = useRef<Map<SoundKey, Howl[]>>(new Map());
 
   useEffect(() => {
     const registry = registryRef.current;
     return () => {
-      registry.forEach((howl) => howl.unload());
+      registry.forEach((howls) => {
+        howls.forEach((howl) => howl.unload());
+      });
       registry.clear();
     };
   }, []);
@@ -41,27 +109,38 @@ export function useSoundEffects(defaultVolume = 0.4) {
     (key: SoundKey, options?: { volume?: number; pitchVariation?: boolean }) => {
       if (muted) return;
       const registry = registryRef.current;
-      let howl = registry.get(key);
-      if (!howl) {
-        howl = new Howl({
-          src: [SOUND_MANIFEST[key]],
-          volume,
-          preload: true,
-        });
-        registry.set(key, howl);
+      let howls = registry.get(key);
+      const variants = SOUND_MANIFEST[key];
+      if (!variants || variants.length === 0) {
+        console.warn(`[Sound] Missing manifest entry for key: ${key}`);
+        return;
       }
-      
-      // ピッチバリエーション: デフォルトで有効（±5%のランダムな変化）
+      if (!howls) {
+        howls = variants.map((variant) =>
+          new Howl({
+            src: variant.sources,
+            volume,
+            preload: true,
+          }),
+        );
+        registry.set(key, howls);
+      }
+
+      const index = howls.length > 1 ? Math.floor(Math.random() * howls.length) : 0;
+      const howl = howls[index];
+      const variant = variants[index];
+
+      const allowPitchVariation = options?.pitchVariation ?? variant.allowPitchVariation ?? true;
+
       let rate = 1.0;
-      if (options?.pitchVariation !== false) {
-        rate = 0.95 + Math.random() * 0.1; // 0.95〜1.05の範囲
+      if (allowPitchVariation) {
+        rate = 0.95 + Math.random() * 0.1;
       }
-      
-      // 再生前に設定を適用
-      howl.volume(options?.volume ?? volume);
+
+      const resolvedVolume = options?.volume ?? volume;
+      howl.volume(resolvedVolume);
       howl.stop();
-      
-      // 再生を開始し、再生IDを取得してrateを設定
+
       const soundId = howl.play();
       if (soundId !== undefined) {
         howl.rate(rate, soundId);

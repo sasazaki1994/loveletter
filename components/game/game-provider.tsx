@@ -169,6 +169,12 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       if (!wasEliminated && nowEliminated) {
         playSound("lose");
       }
+    } else if (state && !prev) {
+      // ゲーム開始時：初回の手札配布音を再生
+      const handCount = state.self?.hand?.length ?? state.hand?.length ?? 0;
+      if (handCount > 0) {
+        playSound("card_draw");
+      }
     }
     if (state) {
       prevStateRef.current = state;
@@ -226,6 +232,17 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     const definition = CARD_DEFINITIONS[selectedCard];
     if (!definition) return;
 
+    // クライアント側ガード: Vizier 同時所持中は Arbiter/Legate を使用不可
+    const currentHand = (state.self?.hand ?? state.hand ?? []) as CardId[];
+    const holdsVizier = currentHand.includes("vizier");
+    if (holdsVizier && (selectedCard === "arbiter" || selectedCard === "legate")) {
+      setActionError(
+        "Vizier を同時に所持しているため、このカードは使用できません。Vizier を捨ててください。",
+      );
+      playSound("deny");
+      return;
+    }
+
     const requiresTargetSelection = definition.target === "opponent" || definition.target === "any";
     if (definition.requiresGuess && (!guessedRank || guessedRank === 1) && !noAvailableTargets) {
       return;
@@ -259,13 +276,16 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
         }),
       });
 
-      const payload = (await response.json().catch(() => ({}))) as {
-        success?: boolean;
-        message?: string;
-      };
-
+      let parsed: unknown = undefined;
+      try {
+        parsed = await response.clone().json();
+      } catch {
+        parsed = undefined;
+      }
+      const payload = (parsed ?? {}) as { success?: boolean; message?: string; error?: string; detail?: string };
       if (!response.ok || payload.success === false) {
-        throw new Error(payload.message ?? "アクションに失敗しました");
+        const serverMessage = payload.message ?? payload.error ?? payload.detail ?? `HTTP ${response.status} ${response.statusText}`;
+        throw new Error(serverMessage);
       }
 
       playSound("card_place");
