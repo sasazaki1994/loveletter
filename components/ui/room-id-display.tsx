@@ -65,7 +65,6 @@ export function RoomIdDisplay({
         {showCopyButton && (
           <Button
             variant="ghost"
-            size="sm"
             onClick={handleCopy}
             disabled={copying}
             className="h-6 w-6 p-0"
@@ -96,7 +95,6 @@ export function RoomIdDisplay({
         {showCopyButton && (
           <Button
             variant="ghost"
-            size="sm"
             onClick={handleCopy}
             disabled={copying}
             className="h-7 w-7 p-0 shrink-0"
