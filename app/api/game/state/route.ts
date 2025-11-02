@@ -3,6 +3,10 @@ export const dynamic = "force-dynamic";
 import { z } from "zod";
 
 import { fetchGameState } from "@/lib/server/game-service";
+import { extractPlayerAuth, verifyToken } from "@/lib/server/auth";
+import { players } from "@/drizzle/schema";
+import { db } from "@/lib/db/client";
+import { and, eq } from "drizzle-orm";
 import {
   getStateCache,
   setStateCache,
@@ -23,6 +27,27 @@ export async function GET(request: NextRequest) {
 
     const now = Date.now();
     const clientTag = request.headers.get("if-none-match");
+
+    let perspectiveId: string | undefined = undefined;
+    if (parsed.playerId) {
+      const row = (
+        await db
+          .select()
+          .from(players)
+          .where(and(eq(players.id, parsed.playerId), eq(players.roomId, parsed.roomId)))
+      )[0];
+      if (row) {
+        if (!row.authTokenHash) {
+          // Legacy (bot room): allow perspective without token
+          perspectiveId = parsed.playerId;
+        } else {
+          const { playerId, playerToken } = extractPlayerAuth(request);
+          if (playerId === parsed.playerId && playerToken && verifyToken(playerToken, row.authTokenHash)) {
+            perspectiveId = playerId;
+          }
+        }
+      }
+    }
     
     // プレイヤー別キャッシュをチェック
     const cached = getStateCache(parsed.roomId, parsed.playerId, now);
@@ -41,7 +66,7 @@ export async function GET(request: NextRequest) {
     // キャッシュミス時はDBから取得
     const { state, etag, lastUpdated } = await fetchGameState(
       parsed.roomId,
-      parsed.playerId,
+      perspectiveId,
     );
 
     // プレイヤー別状態をキャッシュ

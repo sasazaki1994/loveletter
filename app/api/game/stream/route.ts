@@ -11,6 +11,10 @@ import {
 } from "@/lib/server/game-state-cache";
 import { subscribeRoomUpdates } from "@/lib/server/game-update-events";
 import type { ClientGameState } from "@/lib/game/types";
+import { extractPlayerAuth, verifyToken } from "@/lib/server/auth";
+import { players } from "@/drizzle/schema";
+import { db } from "@/lib/db/client";
+import { and, eq } from "drizzle-orm";
 
 const querySchema = z.object({
   roomId: z.string().uuid(),
@@ -28,6 +32,25 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
     const parsed = querySchema.parse(params);
+    let effectivePlayerId: string | undefined = undefined;
+    if (parsed.playerId) {
+      const row = (
+        await db
+          .select()
+          .from(players)
+          .where(and(eq(players.id, parsed.playerId), eq(players.roomId, parsed.roomId)))
+      )[0];
+      if (row) {
+        if (!row.authTokenHash) {
+          effectivePlayerId = parsed.playerId;
+        } else {
+          const { playerId, playerToken } = extractPlayerAuth(request);
+          if (playerId === parsed.playerId && playerToken && verifyToken(playerToken, row.authTokenHash)) {
+            effectivePlayerId = playerId;
+          }
+        }
+      }
+    }
 
     // SSEストリームを作成
     const stream = new ReadableStream({
@@ -48,7 +71,7 @@ export async function GET(request: NextRequest) {
             const now = Date.now();
             
             // キャッシュから取得を試みる
-            const cached = getStateCache(parsed.roomId, parsed.playerId, now);
+            const cached = getStateCache(parsed.roomId, effectivePlayerId, now);
             
             let state: ClientGameState | null;
             let etag: string;
@@ -60,7 +83,7 @@ export async function GET(request: NextRequest) {
               lastUpdated = cached.lastUpdated;
             } else {
               // キャッシュミス時はDBから取得
-              const result = await fetchGameState(parsed.roomId, parsed.playerId);
+              const result = await fetchGameState(parsed.roomId, effectivePlayerId);
               state = result.state;
               etag = result.etag;
               lastUpdated = result.lastUpdated;
@@ -69,7 +92,7 @@ export async function GET(request: NextRequest) {
               setStateCache(
                 parsed.roomId,
                 { etag, state, lastUpdated },
-                parsed.playerId,
+                effectivePlayerId,
                 now,
               );
 

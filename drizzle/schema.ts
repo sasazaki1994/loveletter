@@ -30,6 +30,7 @@ export const gamePhaseEnum = pgEnum("game_phase", [
 
 export const rooms = pgTable("rooms", {
   id: uuid("id").primaryKey().defaultRandom(),
+  shortId: text("short_id").notNull().unique(),
   status: roomStatusEnum("status").notNull().default("waiting"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -54,6 +55,7 @@ export const players = pgTable("players", {
     .notNull()
     .defaultNow(),
   avatarSeed: text("avatar_seed"),
+  authTokenHash: text("auth_token_hash"),
 });
 
 export const games = pgTable("games", {

@@ -1,22 +1,30 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createRoomWithBot } from "@/lib/server/game-service";
-import type { CardId } from "@/lib/game/types";
+import { createHumanRoom } from "@/lib/server/game-service";
+import { getClientIp } from "@/lib/server/auth";
+import { rateLimit } from "@/lib/server/rate-limit";
 
 const createRoomSchema = z.object({
   nickname: z.string().min(1).max(24),
-  variants: z.array(z.string()).optional(),
 });
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: 10 req / 30s per IP
+    const ip = getClientIp(request as any);
+    const r = rateLimit(`create-human:${ip}`, 10, 30_000);
+    if (!r.ok) {
+      return NextResponse.json(
+        { error: "しばらくしてからお試しください。" },
+        { status: 429, headers: { "Retry-After": Math.ceil((r.resetAt - Date.now()) / 1000).toString() } },
+      );
+    }
+
     const body = await request.json();
     const parsed = createRoomSchema.parse(body);
 
-    // variants は CardId[] として扱う（無効IDはサーバ側で無視）
-    const variantIds = (parsed.variants ?? []) as CardId[];
-    const result = await createRoomWithBot(parsed.nickname.trim(), variantIds);
+    const result = await createHumanRoom(parsed.nickname.trim());
 
     return NextResponse.json(result, {
       status: 200,
@@ -25,25 +33,25 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("createRoom error", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "ニックネームが不正です。" },
         { status: 400 },
       );
     }
-    
-    // 開発環境では詳細なエラーメッセージを返す
     const isDev = process.env.NODE_ENV === "development";
     const errorMessage = error instanceof Error ? error.message : String(error);
-    
     return NextResponse.json(
-      { 
+      {
         error: "ルーム作成に失敗しました。",
-        ...(isDev && { detail: errorMessage, stack: error instanceof Error ? error.stack : undefined })
+        ...(isDev && {
+          detail: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+        }),
       },
       { status: 500 },
     );
   }
 }
+
 

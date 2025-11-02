@@ -6,6 +6,8 @@ interface PlayerSession {
   roomId: string;
   playerId: string;
   nickname: string;
+  playerToken?: string;
+  shortId?: string;
 }
 
 const STORAGE_KEY = "llr:session";

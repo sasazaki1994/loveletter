@@ -8,6 +8,10 @@ type SoundKey =
   | "card_place"
   | "card_flip"
   | "card_shuffle"
+  | "rank1"
+  | "swap"
+  | "peek"
+  | "swords"
   | "confirm"
   | "shield"
   | "deny"
@@ -23,13 +27,13 @@ interface SoundVariant {
 const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
   card_draw: [
     {
-      sources: ["/sounds/card_draw.mp3", "/sounds/card_draw.wav"],
+      sources: ["/sounds/card_draw.mp3"],
       allowPitchVariation: false,
     },
   ],
   card_place: [
     {
-      sources: ["/sounds/card_place.mp3", "/sounds/card_place.wav"],
+      sources: ["/sounds/card_place.mp3"],
       allowPitchVariation: false,
     },
   ],
@@ -57,6 +61,30 @@ const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
       allowPitchVariation: false,
     },
   ],
+  rank1: [
+    {
+      sources: ["/sounds/hit_2.mp3"],
+      allowPitchVariation: false,
+    },
+  ],
+  swap: [
+    {
+      sources: ["/sounds/warp.mp3"],
+      allowPitchVariation: false,
+    },
+  ],
+  peek: [
+    {
+      sources: ["/sounds/recall_past.mp3"],
+      allowPitchVariation: false,
+    },
+  ],
+  swords: [
+    {
+      sources: ["/sounds/sword_slash_2.mp3"],
+      allowPitchVariation: false,
+    },
+  ],
   confirm: [
     {
       sources: ["/sounds/confirm.wav"],
@@ -65,7 +93,7 @@ const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
   ],
   shield: [
     {
-      sources: ["/sounds/shield.wav"],
+      sources: ["/sounds/shield_block.mp3", "/sounds/shield.wav"],
     },
   ],
   deny: [
@@ -85,7 +113,8 @@ const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
   ],
   lose: [
     {
-      sources: ["/sounds/lose.wav"],
+      sources: ["/sounds/fall_thud.mp3"],
+      allowPitchVariation: false,
     },
   ],
 };

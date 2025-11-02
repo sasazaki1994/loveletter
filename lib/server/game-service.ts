@@ -4,7 +4,11 @@ import { and, desc, eq, inArray, lt } from "drizzle-orm";
 
 import { db, type DbClient } from "@/lib/db/client";
 import { buildFullDeck, draw, shuffleDeck } from "@/lib/game/deck";
+import { CARD_POOL } from "@/lib/game/cards";
+import type { VariantConfig } from "@/lib/game/variants";
+import { generateOpaqueToken, hashToken } from "@/lib/server/auth";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { generateShortRoomId } from "@/lib/utils/room-id";
 import type {
   CardId,
   ClientGameState,
@@ -68,11 +72,50 @@ export async function cleanupStaleActiveRooms(maxAgeMinutes = 60) {
   return { deletedRooms: ids.length } as const;
 }
 
-export async function createRoomWithBot(nickname: string) {
+export async function cleanupStaleWaitingRooms(maxAgeMinutes = 15) {
+  const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
+
+  const stale = await db
+    .select({ roomId: rooms.id })
+    .from(rooms)
+    .where(and(eq(rooms.status, "waiting"), lt(rooms.createdAt, cutoff)));
+
+  const ids = stale.map((r) => r.roomId);
+  if (ids.length === 0) return { deletedRooms: 0 } as const;
+
+  await db.transaction(async (tx) => {
+    await tx.delete(players).where(inArray(players.roomId, ids));
+    await tx.delete(rooms).where(inArray(rooms.id, ids));
+  });
+
+  return { deletedRooms: ids.length } as const;
+}
+
+/**
+ * 一意な短いルームIDを生成（重複チェック付き）
+ */
+async function generateUniqueShortId(tx: TransactionClient, maxRetries = 10): Promise<string> {
+  for (let i = 0; i < maxRetries; i++) {
+    const shortId = generateShortRoomId();
+    const existing = await tx
+      .select()
+      .from(rooms)
+      .where(eq(rooms.shortId, shortId))
+      .limit(1);
+    
+    if (existing.length === 0) {
+      return shortId;
+    }
+  }
+  throw new Error("短いルームIDの生成に失敗しました");
+}
+
+export async function createRoomWithBot(nickname: string, variantIds?: CardId[]) {
   return db.transaction(async (tx) => {
+    const shortId = await generateUniqueShortId(tx);
     const [room] = await tx
       .insert(rooms)
-      .values({})
+      .values({ shortId })
       .returning();
 
     const hostAvatar = randomAvatarSeed();
@@ -99,7 +142,13 @@ export async function createRoomWithBot(nickname: string) {
 
     const botRows = await tx.insert(players).values(botValues).returning();
 
-    const setup = await setupNewGame(tx, room.id, [host, ...botRows].sort((a, b) => a.seat - b.seat));
+    const variantConfig: VariantConfig = buildVariantConfigFromIds(variantIds ?? []);
+    const setup = await setupNewGame(
+      tx,
+      room.id,
+      [host, ...botRows].sort((a, b) => a.seat - b.seat),
+      variantConfig,
+    );
 
     await tx
       .update(rooms)
@@ -113,6 +162,145 @@ export async function createRoomWithBot(nickname: string) {
       botIds: botRows.map((bot) => bot.id),
       gameId: setup.game.id,
     };
+  });
+}
+
+export async function createHumanRoom(nickname: string) {
+  return db.transaction(async (tx) => {
+    const shortId = await generateUniqueShortId(tx);
+    const [room] = await tx
+      .insert(rooms)
+      .values({ status: "waiting", shortId })
+      .returning();
+
+    const avatarSeed = randomAvatarSeed();
+    const token = generateOpaqueToken(32);
+    const tokenHash = hashToken(token);
+
+    const [host] = await tx
+      .insert(players)
+      .values({
+        roomId: room.id,
+        nickname,
+        seat: 0,
+        role: "player" as PlayerRole,
+        isBot: false,
+        avatarSeed,
+        authTokenHash: tokenHash,
+      })
+      .returning();
+
+    return {
+      roomId: room.id,
+      shortId: room.shortId,
+      playerId: host.id,
+      playerToken: token,
+      status: "waiting" as const,
+    };
+  });
+}
+
+/**
+ * ルームID（UUIDまたは短いID）からルームを取得
+ */
+async function findRoomByIdentifier(tx: TransactionClient, identifier: string) {
+  // UUID形式かどうかチェック
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  if (uuidPattern.test(identifier)) {
+    // UUIDで検索
+    const roomRows = await tx.select().from(rooms).where(eq(rooms.id, identifier));
+    return roomRows[0] ?? null;
+  } else {
+    // 短いIDで検索（大文字に変換）
+    const normalized = identifier.trim().toUpperCase();
+    const roomRows = await tx.select().from(rooms).where(eq(rooms.shortId, normalized));
+    return roomRows[0] ?? null;
+  }
+}
+
+export async function joinRoomAsPlayer(roomId: string, nickname: string) {
+  return db.transaction(async (tx) => {
+    const room = await findRoomByIdentifier(tx, roomId);
+    if (!room) {
+      throw new Error("ルームが見つかりません");
+    }
+    if (room.status !== "waiting") {
+      throw new Error("このルームは参加を受け付けていません");
+    }
+
+    const existingPlayers = await tx
+      .select()
+      .from(players)
+      .where(eq(players.roomId, room.id));
+    if (existingPlayers.length >= 4) {
+      throw new Error("満席です");
+    }
+
+    const taken = existingPlayers.map((p) => p.seat);
+    let seat = 0;
+    for (let i = 0; i < 4; i += 1) {
+      if (!taken.includes(i)) {
+        seat = i;
+        break;
+      }
+    }
+
+    const avatarSeed = randomAvatarSeed();
+    const token = generateOpaqueToken(32);
+    const tokenHash = hashToken(token);
+
+    const [player] = await tx
+      .insert(players)
+      .values({
+        roomId: room.id,
+        nickname,
+        seat,
+        role: "player" as PlayerRole,
+        isBot: false,
+        avatarSeed,
+        authTokenHash: tokenHash,
+      })
+      .returning();
+
+    return {
+      roomId: room.id,
+      shortId: room.shortId,
+      playerId: player.id,
+      playerToken: token,
+      seat,
+    } as const;
+  });
+}
+
+export async function startHumanGame(roomId: string, hostId: string) {
+  return db.transaction(async (tx) => {
+    const roomRows = await tx.select().from(rooms).where(eq(rooms.id, roomId));
+    const room = roomRows[0];
+    if (!room) throw new Error("ルームが見つかりません");
+    if (room.status !== "waiting") throw new Error("すでに開始済みです");
+
+    const playerRows = await tx
+      .select()
+      .from(players)
+      .where(eq(players.roomId, roomId));
+    if (playerRows.length < 2) throw new Error("開始には2人以上が必要です");
+
+    const host = playerRows.find((p) => p.id === hostId);
+    if (!host || host.seat !== 0) throw new Error("ホストのみ開始できます");
+
+    const ordered = playerRows
+      .filter((p) => p.role === "player")
+      .sort((a, b) => a.seat - b.seat);
+
+    const setup = await setupNewGame(tx, roomId, ordered);
+
+    await tx
+      .update(rooms)
+      .set({ status: "active", updatedAt: new Date() })
+      .where(eq(rooms.id, roomId));
+
+    return { gameId: setup.game.id } as const;
   });
 }
 
@@ -348,6 +536,19 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
       };
     }
 
+    // 強制使用ルール: Marquise (7) を所持し、手札合計が12以上のときは Marquise を優先
+    const holdsMarquise = currentHand.cards.includes("marquise");
+    if (holdsMarquise && cardId !== "marquise") {
+      const handRanks = currentHand.cards.map((cid) => CARD_DEFINITIONS[cid as CardId].rank);
+      const totalRank = handRanks.reduce((a, b) => a + b, 0);
+      if (totalRank >= 12) {
+        return {
+          success: false,
+          message: "手札合計が12以上のため、Marquise を先に使用する必要があります。",
+        };
+      }
+    }
+
     const updatedHand = [...currentHand.cards];
     updatedHand.splice(cardIndex, 1);
 
@@ -408,6 +609,39 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
             });
         }
         break;
+      case "guess_reveal": {
+        if (!hasSelectableTarget || !targetPlayer || guessedRank === undefined) {
+          logMessage += noEffectMessage || "。推測できる対象がいません。";
+        } else {
+          const targetHandRow = await getHand(tx, game.id, targetPlayer.id);
+          if (!targetHandRow || targetHandRow.cards.length === 0) {
+            logMessage += "。相手の手札が存在せず効果は発動しませんでした。";
+            break;
+          }
+          const targetCard = targetHandRow.cards[0] as CardId;
+          const targetRank = CARD_DEFINITIONS[targetCard].rank;
+          const targetName = CARD_DEFINITIONS[targetCard].name;
+          if (targetRank === guessedRank) {
+            logMessage += `。推測が命中し、${targetPlayer.nickname} は手札を公開しました（${targetName}）。`;
+          } else {
+            const selfHand = await getHand(tx, game.id, actingPlayer.id);
+            const selfTop = selfHand?.cards?.[0] as CardId | undefined;
+            const selfName = selfTop ? CARD_DEFINITIONS[selfTop].name : undefined;
+            logMessage += selfName
+              ? `。推測は外れました。${actingPlayer.nickname} は手札を公開しました（${selfName}）。`
+              : "。推測は外れました。";
+          }
+          await tx
+            .insert(actions)
+            .values({
+              gameId: game.id,
+              actorId: actingPlayer.id,
+              type: "guess",
+              payload: { targetId, guessedRank },
+            });
+        }
+        break;
+      }
       case "peek":
         if (!hasSelectableTarget || !targetPlayer) {
           logMessage += noEffectMessage || "。対象がいないため効果は発動しませんでした。";
@@ -471,7 +705,11 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
           logMessage += noEffectMessage || "。対象がいないため効果は発動しませんでした。";
         } else {
           await swapHands(tx, game.id, actingPlayer.id, targetPlayer.id);
-          logMessage += `。${targetPlayer.nickname} と手札を交換しました。`;
+          if (cardId === "ambush") {
+            logMessage += `。${targetPlayer.nickname} の手札を確認し、決断を下しました。`;
+          } else {
+            logMessage += `。${targetPlayer.nickname} と手札を交換しました。`;
+          }
         }
         break;
       case "conditional_discard":
@@ -560,9 +798,10 @@ async function setupNewGame(
   tx: TransactionClient,
   roomId: string,
   playerRows: typeof players.$inferSelect[],
+  variants?: VariantConfig,
 ) {
   const seed = randomUUID();
-  const deck = shuffleDeck(buildFullDeck(), seed);
+  const deck = shuffleDeck(buildFullDeck(variants), seed);
 
   const { card: burnCard, deck: deckAfterBurn } = draw(deck);
 
@@ -1117,5 +1356,18 @@ function findNextSeat(taken: number[]) {
     if (!taken.includes(i)) return i;
   }
   return 0;
+}
+
+function buildVariantConfigFromIds(ids: CardId[]): VariantConfig {
+  const config: VariantConfig = {};
+  for (const id of ids) {
+    const def = CARD_DEFINITIONS[id];
+    if (!def) continue;
+    const r = def.rank;
+    if (r >= 1 && r <= 7 && config[r as 1 | 2 | 3 | 4 | 5 | 6 | 7] === undefined) {
+      config[r as 1 | 2 | 3 | 4 | 5 | 6 | 7] = id;
+    }
+  }
+  return config;
 }
 

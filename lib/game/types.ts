@@ -10,10 +10,18 @@ export type CardId =
   | "legate"
   | "arbiter"
   | "vizier"
-  | "emissary";
+  | "emissary"
+  // Variants (optional swap-ins)
+  | "feint"
+  | "insight"
+  | "standoff"
+  | "wager"
+  | "ambush"
+  | "marquise";
 
 export type CardEffectType =
   | "guess_eliminate"
+  | "guess_reveal"
   | "peek"
   | "compare"
   | "shield"

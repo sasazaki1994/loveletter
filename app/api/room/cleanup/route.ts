@@ -3,10 +3,11 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { cleanupStaleActiveRooms } from "@/lib/server/game-service";
+import { cleanupStaleActiveRooms, cleanupStaleWaitingRooms } from "@/lib/server/game-service";
 
 const querySchema = z.object({
-  minutes: z.coerce.number().int().positive().max(10080).optional(), // up to 7 days
+  minutes: z.coerce.number().int().positive().max(10080).optional(), // active/finished cleanup window (default 60)
+  waitingMinutes: z.coerce.number().int().positive().max(1440).optional(), // waiting cleanup window (default 15)
 });
 
 export async function POST(request: NextRequest) {
@@ -15,11 +16,20 @@ export async function POST(request: NextRequest) {
     const params = Object.fromEntries(url.searchParams.entries());
     const parsed = querySchema.parse(params);
     const minutes = parsed.minutes ?? 60;
+    const waitingMinutes = parsed.waitingMinutes ?? 15;
 
-    const { deletedRooms } = await cleanupStaleActiveRooms(minutes);
+    const [activeResult, waitingResult] = await Promise.all([
+      cleanupStaleActiveRooms(minutes),
+      cleanupStaleWaitingRooms(waitingMinutes),
+    ]);
 
     return NextResponse.json(
-      { deletedRooms, minutes },
+      {
+        deletedActiveRooms: activeResult.deletedRooms,
+        deletedWaitingRooms: waitingResult.deletedRooms,
+        minutes,
+        waitingMinutes,
+      },
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ClientGameState, PollingResponse } from "@/lib/game/types";
+import { usePlayerSession } from "@/lib/client/session";
 
 interface UseGamePollingOptions {
   roomId: string;
@@ -41,6 +42,7 @@ export function useGamePolling({
   playerId,
   interval = 1200,
 }: UseGamePollingOptions): UseGamePollingResult {
+  const { session } = usePlayerSession();
   const BOT_POLL_INTERVAL = 350;
   const [state, setState] = useState<ClientGameState | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -79,13 +81,14 @@ export function useGamePolling({
     try {
       const params = new URLSearchParams({ roomId });
       if (playerId) params.set("playerId", playerId);
+      const headers: Record<string, string> = {};
+      if (etagRef.current) headers["If-None-Match"] = etagRef.current;
+      if (playerId && session?.playerToken) {
+        headers["X-Player-Id"] = playerId;
+        headers["X-Player-Token"] = session.playerToken;
+      }
       const response = await fetch(`/api/game/state?${params.toString()}`, {
-        headers:
-          etagRef.current
-            ? {
-                "If-None-Match": etagRef.current,
-              }
-            : undefined,
+        headers,
         signal: controller.signal,
         cache: "no-store",
       });
@@ -179,7 +182,7 @@ export function useGamePolling({
         setLoading(false);
       }
     }
-  }, [playerId, roomId]);
+  }, [playerId, roomId, session?.playerToken]);
 
   useEffect(() => {
     fetchState(false);

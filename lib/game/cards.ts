@@ -91,6 +91,75 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
     icon: "flame",
     target: "self",
   },
+  // --- Optional swap-ins (disabled by default via deck builder) ---
+  feint: {
+    id: "feint",
+    name: "Feint of Whispers",
+    rank: 1,
+    copies: 1, // replaces 1 of 5
+    effectType: "guess_reveal",
+    description:
+      "相手の手札を数値で推測。的中: 相手は手札を公開（捨てない）。外れ: あなたが手札を公開。",
+    icon: "mask",
+    target: "opponent",
+    requiresGuess: true,
+    cannotTargetShielded: true,
+  },
+  insight: {
+    id: "insight",
+    name: "Insight of Veils",
+    rank: 2,
+    copies: 1, // replaces 1 of 2
+    effectType: "peek", // NOTE: placeholder effect type; deck toggle is off by default
+    description: "山札の上から2枚を見る。1枚を上、1枚を下に置く。",
+    icon: "eye",
+    target: "none",
+  },
+  standoff: {
+    id: "standoff",
+    name: "Standoff at Court",
+    rank: 3,
+    copies: 1, // replaces 1 of 2
+    effectType: "compare",
+    description: "互いに公開し、小さい値の側が捨てる。同値なら効果なし。",
+    icon: "swords",
+    target: "opponent",
+    cannotTargetShielded: true,
+  },
+  wager: {
+    id: "wager",
+    name: "Wager of Masks",
+    rank: 4,
+    copies: 1, // replaces 1 of 2
+    effectType: "guess_reveal",
+    description:
+      "相手の手札を数値で推測。的中: 相手は手札を公開（捨てない）。外れ: あなたが手札を公開。",
+    icon: "mask",
+    target: "opponent",
+    requiresGuess: true,
+    cannotTargetShielded: true,
+  },
+  ambush: {
+    id: "ambush",
+    name: "Ambush of Mirrors",
+    rank: 6,
+    copies: 1, // replaces 1 of 1
+    effectType: "swap_hands",
+    description: "対象の手札を密かに見て、入れ替えるかどうかを選べる（公開しない）。",
+    icon: "balance",
+    target: "opponent",
+    cannotTargetShielded: true,
+  },
+  marquise: {
+    id: "marquise",
+    name: "Marquise of Poise",
+    rank: 7,
+    copies: 1, // replaces 1 of 1
+    effectType: "conditional_discard",
+    description: "手札の合計が12以上なら、このカードを優先して使用しなければならない。",
+    icon: "crown",
+    target: "none",
+  },
 };
 
 export const ORDERED_CARD_IDS = Object.keys(

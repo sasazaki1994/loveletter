@@ -1,14 +1,10 @@
-import { CARD_DEFINITIONS, ORDERED_CARD_IDS } from "./cards";
+import { CARD_DEFINITIONS } from "./cards";
+import { buildDeckWithVariants, DEFAULT_VARIANT_CONFIG, type VariantConfig } from "./variants";
 import type { CardId } from "./types";
 
-export function buildFullDeck(): CardId[] {
-  const deck: CardId[] = [];
-  for (const cardId of ORDERED_CARD_IDS) {
-    const { copies } = CARD_DEFINITIONS[cardId];
-    for (let i = 0; i < copies; i += 1) {
-      deck.push(cardId);
-    }
-  }
+export function buildFullDeck(config?: VariantConfig): CardId[] {
+  // ベース構成にバリアント置換を適用
+  const deck = buildDeckWithVariants(config ?? DEFAULT_VARIANT_CONFIG);
   return deck;
 }
 

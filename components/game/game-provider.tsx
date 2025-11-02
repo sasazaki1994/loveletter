@@ -7,6 +7,7 @@ import type { CardDefinition, CardId, ClientGameState, PlayerId } from "@/lib/ga
 import { useBackgroundMusic } from "@/lib/hooks/use-background-music";
 import { useGameStream } from "@/lib/hooks/use-game-stream";
 import { useSoundEffects, type SoundKey } from "@/lib/hooks/use-sound-effects";
+import { usePlayerSession } from "@/lib/client/session";
 
 interface GameProviderProps {
   roomId: string;
@@ -23,6 +24,8 @@ export interface TargetOption {
 }
 
 interface GameContextValue {
+  roomId: string;
+  shortId?: string;
   state: ClientGameState | null;
   loading: boolean;
   error: string | null;
@@ -61,6 +64,8 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     roomId,
     playerId,
   });
+  const { session } = usePlayerSession();
+  const shortId = session?.shortId;
   const [selectedCard, setSelectedCard] = useState<CardId | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<PlayerId | null>(null);
   const [guessedRank, setGuessedRank] = useState<number | null>(null);
@@ -148,7 +153,10 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
         const latest = state.logs[state.logs.length - 1];
         if (latest?.icon) {
           if (latest.icon === "shield") playSound("shield");
-          else if (latest.icon === "mask" || latest.icon === "swords") playSound("confirm");
+          else if (latest.icon === "mask") playSound("rank1");
+          else if (latest.icon === "eye") playSound("peek");
+          else if (latest.icon === "balance") playSound("swap");
+          else if (latest.icon === "swords") playSound("swords");
           else if (latest.icon === "flame") playSound("deny");
           else if (latest.icon === "crown")
             playSound(prev.self?.id === selfId ? "win" : "confirm");
@@ -259,9 +267,13 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     try {
       setActing(true);
       setActionError(null);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (selfId) headers["X-Player-Id"] = selfId;
+      if (session?.playerToken) headers["X-Player-Token"] = session.playerToken;
+
       const response = await fetch("/api/game/action", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         signal: controller.signal,
         body: JSON.stringify({
           gameId: state.id,
@@ -307,10 +319,12 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       clearTimeout(timeoutId);
       setActing(false);
     }
-  }, [acting, cancelSelection, guessedRank, noAvailableTargets, playSound, refetch, selectedCard, selectedTarget, selfId, state]);
+  }, [acting, cancelSelection, guessedRank, noAvailableTargets, playSound, refetch, selectedCard, selectedTarget, selfId, state, session?.playerToken]);
 
   const value = useMemo<GameContextValue>(
     () => ({
+      roomId,
+      shortId,
       state,
       loading,
       error,
@@ -340,6 +354,8 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       clearActionError,
     }),
     [
+      roomId,
+      shortId,
       acting,
       cancelSelection,
       error,

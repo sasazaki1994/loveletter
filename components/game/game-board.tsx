@@ -15,9 +15,11 @@ import { TurnBanner } from "@/components/game/turn-banner";
 import { useGameContext } from "@/components/game/game-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RoomIdDisplay } from "@/components/ui/room-id-display";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
-import { AlertCircle, RefreshCw, X } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, Users, X } from "lucide-react";
 
 const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
   0: { x: 0, y: 0.82 },
@@ -32,6 +34,8 @@ type PlayerSnapshot = ClientGameState["players"][number] | NonNullable<ClientGam
 
 export function GameBoard() {
   const {
+    roomId,
+    shortId,
     state,
     selectedCard,
     setSelectedCard,
@@ -59,6 +63,10 @@ export function GameBoard() {
     if (!state) return [];
     return state.players.slice().sort((a, b) => a.seat - b.seat);
   }, [state]);
+
+  const isBotGame = useMemo(() => {
+    return Boolean(state?.players?.some((p) => p.isBot));
+  }, [state?.players]);
 
   const selfSeat = useMemo(() => {
     if (!state) return 0;
@@ -428,12 +436,49 @@ export function GameBoard() {
     };
   }, [cancelSelection, hand, isMyTurn, playCard, selectedCard, setSelectedCard]);
 
+  // 待機中（ゲーム未開始）の場合は待機画面を表示
+  if (!state && !loading) {
+    return (
+      <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-12">
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Users className="h-6 w-6 text-[var(--color-accent-light)]" />
+                ルーム待機中
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-sm text-[var(--color-text-muted)]">
+                他のプレイヤーの参加を待っています。ホストがゲームを開始すると、自動的に開始されます。
+              </p>
+              {!isBotGame && <RoomIdDisplay roomId={shortId ?? roomId} />}
+              {loading && (
+                <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-text-muted)]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  状態を確認中...
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto">
       <div className="pointer-events-none fixed right-4 top-6 z-30 flex w-[calc(100vw-2.5rem)] max-w-sm flex-col gap-4 sm:right-6">
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
       </div>
+      
+      {/* ルームID表示（ボット戦では非表示） */}
+      {!isBotGame && (
+        <div className="pointer-events-auto fixed left-4 top-6 z-30 sm:left-6">
+          <RoomIdDisplay roomId={shortId ?? roomId} variant="compact" />
+        </div>
+      )}
       
       {/* エラー通知バナー */}
       <AnimatePresence>

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 
 import { CardSymbol } from "@/components/icons/card-symbol";
+import { CardArt } from "@/components/game/card-art";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CARD_DEFINITIONS, ORDERED_CARD_IDS } from "@/lib/game/cards";
@@ -70,11 +71,15 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
                 >
                   {cardDefinition ? (
                     <div className="flex h-full flex-col justify-between">
-                      <div className="flex items-center justify-between text-[var(--color-accent-light)]">
+                      <div className="absolute inset-0 overflow-hidden rounded-[18px]">
+                        <CardArt cardId={cardDefinition.id} alt={`${cardDefinition.name} (${cardDefinition.rank})`} className="opacity-95" />
+                        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0)_0%,rgba(0,0,0,0.4)_55%,rgba(0,0,0,0.72)_100%)]" />
+                      </div>
+                      <div className="relative z-10 flex items-center justify-between text-[var(--color-accent-light)]">
                         <span className="font-heading text-3xl">{cardDefinition.rank}</span>
                         <CardSymbol icon={cardDefinition.icon} size={28} />
                       </div>
-                      <span className="font-heading text-base text-[var(--color-accent-light)]">
+                      <span className="relative z-10 font-heading text-base text-[var(--color-accent-light)]">
                         {cardDefinition.name}
                       </span>
                     </div>

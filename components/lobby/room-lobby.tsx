@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { usePlayerSession } from "@/lib/client/session";
 import { CARD_POOL } from "@/lib/game/cards";
 
@@ -18,6 +20,25 @@ export function RoomLobby() {
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+
+  // Multiplayer UI state
+  const [mpNickname, setMpNickname] = useState("");
+  const [joinRoomId, setJoinRoomId] = useState("");
+  const [mpError, setMpError] = useState<string | null>(null);
+  const [mpLoading, setMpLoading] = useState(false);
+  const [rooms, setRooms] = useState<Array<{ id: string; shortId?: string; status: string; createdAt: string; playerCount: number }>>([]);
+  const [showRoomCreatedDialog, setShowRoomCreatedDialog] = useState(false);
+  const [createdRoomId, setCreatedRoomId] = useState<string | null>(null);
+  const [showRooms, setShowRooms] = useState(false);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+  const [variants, setVariants] = useState<Record<string, boolean>>({
+    feint: false,
+    insight: false,
+    standoff: false,
+    wager: false,
+    ambush: false,
+    marquise: false,
+  });
 
   const sortedCards = useMemo(
     () => [...CARD_POOL].sort((a, b) => a.rank - b.rank),
@@ -32,10 +53,11 @@ export function RoomLobby() {
     setCreateError(null);
     setCreateLoading(true);
     try {
+      const enabledVariants = Object.keys(variants).filter((k) => variants[k]);
       const response = await fetch("/api/room/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname: nickname.trim() }),
+        body: JSON.stringify({ nickname: nickname.trim(), variants: enabledVariants }),
       });
       const payload = (await response.json()) as {
         roomId?: string;
@@ -63,6 +85,140 @@ export function RoomLobby() {
       setCreateError((error as Error).message ?? "ルーム作成に失敗しました");
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const handleCreateHumanRoom = async () => {
+    if (!mpNickname.trim()) {
+      setMpError("ニックネームを入力してください");
+      return;
+    }
+    setMpError(null);
+    setMpLoading(true);
+    try {
+      const response = await fetch("/api/room/create-human", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname: mpNickname.trim() }),
+      });
+      const payload = (await response.json()) as {
+        roomId?: string;
+        shortId?: string;
+        playerId?: string;
+        playerToken?: string;
+        error?: string;
+        detail?: string;
+      };
+      if (!response.ok) {
+        const errorMsg = payload.error ?? "作成に失敗しました";
+        const detailMsg = payload.detail ? ` (${payload.detail})` : "";
+        throw new Error(errorMsg + detailMsg);
+      }
+      if (!payload.roomId || !payload.playerId || !payload.playerToken) {
+        throw new Error("無効なレスポンスです。");
+      }
+      setSession({
+        roomId: payload.roomId,
+        playerId: payload.playerId,
+        nickname: mpNickname.trim(),
+        playerToken: payload.playerToken,
+        shortId: payload.shortId,
+      });
+      // ルームIDを表示するダイアログを表示（短いIDを優先）
+      setCreatedRoomId(payload.shortId ?? payload.roomId);
+      setShowRoomCreatedDialog(true);
+    } catch (error) {
+      setMpError((error as Error).message ?? "ルーム作成に失敗しました");
+    } finally {
+      setMpLoading(false);
+    }
+  };
+
+  const handleJoinRoom = async () => {
+    if (!mpNickname.trim() || !joinRoomId.trim()) {
+      setMpError("ルームIDとニックネームを入力してください");
+      return;
+    }
+    setMpError(null);
+    setMpLoading(true);
+    try {
+      const response = await fetch("/api/room/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: joinRoomId.trim(), nickname: mpNickname.trim() }),
+      });
+      const payload = (await response.json()) as {
+        roomId?: string;
+        shortId?: string;
+        playerId?: string;
+        playerToken?: string;
+        seat?: number;
+        error?: string;
+        detail?: string;
+      };
+      if (!response.ok) {
+        const errorMsg = payload.error ?? "参加に失敗しました";
+        const detailMsg = payload.detail ? ` (${payload.detail})` : "";
+        throw new Error(errorMsg + detailMsg);
+      }
+      if (!payload.roomId || !payload.playerId || !payload.playerToken) {
+        throw new Error("無効なレスポンスです。");
+      }
+      setSession({
+        roomId: payload.roomId,
+        playerId: payload.playerId,
+        nickname: mpNickname.trim(),
+        playerToken: payload.playerToken,
+        shortId: payload.shortId,
+      });
+      router.push(`/game/${payload.roomId}`);
+    } catch (error) {
+      setMpError((error as Error).message ?? "参加に失敗しました");
+    } finally {
+      setMpLoading(false);
+    }
+  };
+
+  const handleStartRoom = async () => {
+    if (!session?.roomId || !session.playerId || !session.playerToken) return;
+    setMpLoading(true);
+    try {
+      const response = await fetch("/api/room/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Player-Id": session.playerId,
+          "X-Player-Token": session.playerToken,
+        },
+        body: JSON.stringify({ roomId: session.roomId }),
+      });
+      const payload = (await response.json()) as { gameId?: string; error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "開始に失敗しました");
+      }
+      router.push(`/game/${session.roomId}`);
+    } catch (error) {
+      setMpError((error as Error).message ?? "開始に失敗しました");
+    } finally {
+      setMpLoading(false);
+    }
+  };
+
+  const handleLoadRooms = async () => {
+    if (showRooms) {
+      setShowRooms(false);
+      return;
+    }
+    setRoomsLoading(true);
+    try {
+      const response = await fetch("/api/room/list");
+      const data = await response.json();
+      setRooms(Array.isArray(data) ? data : []);
+      setShowRooms(true);
+    } catch (error) {
+      setMpError("ルーム一覧の取得に失敗しました");
+    } finally {
+      setRoomsLoading(false);
     }
   };
 
@@ -189,14 +345,109 @@ export function RoomLobby() {
                 <p className="text-sm text-[var(--color-warn-light)]">{createError}</p>
               )}
             </div>
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                差し替えオプション（各ランク1枚）
+              </label>
+              <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-muted)]">
+                {[
+                  { id: "feint", label: "Rank1: Feint (推測→公開)" },
+                  { id: "insight", label: "Rank2: Insight (山札2枚操作)" },
+                  { id: "standoff", label: "Rank3: Standoff (公開比較)" },
+                  { id: "wager", label: "Rank4: Wager (推測→公開)" },
+                  { id: "ambush", label: "Rank6: Ambush (密やかな交換)" },
+                  { id: "marquise", label: "Rank7: Marquise (合計12以上は強制)" },
+                ].map((opt) => (
+                  <label key={opt.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={variants[opt.id] ?? false}
+                      onChange={(e) =>
+                        setVariants((prev) => ({ ...prev, [opt.id]: e.target.checked }))
+                      }
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <Button onClick={handleCreateRoom} disabled={createLoading} className="w-full">
               {createLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bot対戦を開始"}
             </Button>
+            <div className="h-px bg-[rgba(215,178,110,0.25)]" />
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">マルチ用ニックネーム</label>
+                <Input
+                  value={mpNickname}
+                  onChange={(e) => setMpNickname(e.target.value)}
+                  placeholder="例: Velvet Strategist"
+                  maxLength={24}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Button onClick={handleCreateHumanRoom} disabled={mpLoading} className="w-full">
+                  {mpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "マルチ部屋を作成"}
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={joinRoomId}
+                    onChange={(e) => setJoinRoomId(e.target.value)}
+                    placeholder="Room ID を入力"
+                  />
+                  <Button onClick={handleJoinRoom} disabled={mpLoading}>参加</Button>
+                </div>
+              </div>
+              {mpError && <p className="text-sm text-[var(--color-warn-light)]">{mpError}</p>}
+              {session?.roomId && session?.playerToken && (
+                <Button variant="outline" onClick={handleStartRoom} disabled={mpLoading} className="w-full">
+                  {mpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "この部屋でゲーム開始 (ホスト)"}
+                </Button>
+              )}
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">公開ルーム</label>
+                <Button
+                  variant="outline"
+                  className="h-8 px-3 text-xs"
+                  onClick={handleLoadRooms}
+                  disabled={roomsLoading}
+                >
+                  {roomsLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : showRooms ? (
+                    "非表示"
+                  ) : (
+                    "表示"
+                  )}
+                </Button>
+              </div>
+              {showRooms && (
+                <div className="grid gap-2">
+                  {rooms.length === 0 && (
+                    <p className="text-sm text-[var(--color-text-muted)]">現在参加可能なルームはありません。</p>
+                  )}
+                {rooms.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between rounded border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-3 py-2 text-sm">
+                    <span className="truncate">Room {r.shortId ?? r.id.slice(0, 8)} · {r.status} · {r.playerCount} 人</span>
+                    <Button
+                      variant="ghost"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => setJoinRoomId(r.shortId ?? r.id)}
+                    >
+                      参加準備
+                    </Button>
+                  </div>
+                ))}
+                </div>
+              )}
+            </div>
             {session && (
               <div className="rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(13,32,30,0.7)] p-4 text-sm text-[var(--color-text-muted)]">
                 <p>既存のセッションがあります。</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-[var(--color-accent-light)]">
-                  <span>Room: {session.roomId}</span>
+                  <span>Room: {session.shortId ?? session.roomId}</span>
                   <span>Player: {session.nickname}</span>
                   <Button
                     variant="outline"
@@ -211,6 +462,43 @@ export function RoomLobby() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ルーム作成成功ダイアログ */}
+      <Dialog open={showRoomCreatedDialog} onOpenChange={setShowRoomCreatedDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ルームが作成されました</DialogTitle>
+            <DialogDescription>
+              他のプレイヤーを招待するために、ルームIDを共有してください。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {createdRoomId && <RoomIdDisplay roomId={createdRoomId} />}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRoomCreatedDialog(false);
+                }}
+                className="flex-1"
+              >
+                閉じる
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowRoomCreatedDialog(false);
+                  if (createdRoomId) {
+                    router.push(`/game/${createdRoomId}`);
+                  }
+                }}
+                className="flex-1"
+              >
+                ゲームページへ
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

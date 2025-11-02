@@ -4,6 +4,11 @@ import { z } from "zod";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardId } from "@/lib/game/types";
 import { handleGameAction } from "@/lib/server/game-service";
+import { extractPlayerAuth, getClientIp, verifyToken } from "@/lib/server/auth";
+import { rateLimit } from "@/lib/server/rate-limit";
+import { db } from "@/lib/db/client";
+import { players } from "@/drizzle/schema";
+import { and, eq } from "drizzle-orm";
 
 const cardIdValues = Object.keys(CARD_DEFINITIONS) as [CardId, ...CardId[]];
 
@@ -26,8 +31,42 @@ const actionSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request as any);
+    const r = rateLimit(`action:${ip}`, 120, 60_000);
+    if (!r.ok) {
+      return NextResponse.json(
+        { success: false, message: "しばらくしてからお試しください。" },
+        { status: 429, headers: { "Retry-After": Math.ceil((r.resetAt - Date.now()) / 1000).toString() } },
+      );
+    }
+
     const body = await request.json();
     const parsed = actionSchema.parse(body);
+
+    const { playerId, playerToken } = extractPlayerAuth(request);
+    if (!playerId || playerId !== parsed.playerId) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+    const row = (
+      await db
+        .select()
+        .from(players)
+        .where(and(eq(players.id, playerId), eq(players.roomId, parsed.roomId)))
+    )[0];
+    if (row?.authTokenHash) {
+      if (!playerToken || !verifyToken(playerToken, row.authTokenHash)) {
+        return NextResponse.json(
+          { success: false, message: "Unauthorized" },
+          { status: 401 },
+        );
+      }
+    } else {
+      // Legacy mode (Bot room): allow when no authTokenHash is set
+      // no-op
+    }
 
     const result = await handleGameAction(parsed);
 

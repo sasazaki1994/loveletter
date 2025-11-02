@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 
 import { CardSymbol } from "@/components/icons/card-symbol";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { CardArt } from "@/components/game/card-art";
 import type { CardId } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +42,13 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
       aria-pressed={selected}
       aria-label={ariaLabel ?? `${definition.name} (${definition.rank})`}
     >
-      <div className="flex items-center justify-between text-[var(--color-accent-light)]">
+      {/* 背景アート */}
+      <div className="absolute inset-0 overflow-hidden rounded-[22px]">
+        <CardArt cardId={definition.id} alt={`${definition.name} (${definition.rank})`} className="opacity-95" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0)_0%,rgba(0,0,0,0.35)_40%,rgba(0,0,0,0.6)_100%)]" />
+      </div>
+
+      <div className="relative z-10 flex items-center justify-between text-[var(--color-accent-light)]">
         <span className="font-heading text-3xl drop-shadow" aria-hidden>
           {definition.rank}
         </span>
@@ -50,10 +57,10 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
           {definition.name.split(" ")[0]}
         </span>
       </div>
-      <div className="mt-4 flex items-center justify-center">
+      <div className="relative z-10 mt-4 flex items-center justify-center">
         <CardSymbol icon={definition.icon} size={38} className="text-[var(--color-accent-light)]" />
       </div>
-      <p className="mt-4 max-h-20 overflow-hidden text-xs leading-relaxed text-[var(--color-text-muted)]">
+      <p className="relative z-10 mt-4 max-h-20 overflow-hidden text-xs leading-relaxed text-[var(--color-text-muted)]">
         {definition.description}
       </p>
     </motion.button>

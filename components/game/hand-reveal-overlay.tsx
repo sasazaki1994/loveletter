@@ -4,6 +4,7 @@ import { useEffect, useMemo, type CSSProperties } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { CARD_DEFINITIONS } from '@/lib/game/cards';
+import { CardArt } from '@/components/game/card-art';
 import type { CardId, PlayerId } from '@/lib/game/types';
 
 const DISPLAY_DURATION_MS = 2500;
@@ -123,9 +124,13 @@ function PlayerHandReveal({ playerId, nickname, hand, position }: PlayerHandReve
                   transformStyle: 'preserve-3d',
                 }}
               >
-                <div className="flex h-[5rem] w-[3.5rem] flex-col items-center justify-center gap-1 rounded-xl border border-[rgba(140,210,198,0.45)] bg-[rgba(12,36,34,0.92)] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+                <div className="relative flex h-[5rem] w-[3.5rem] flex-col items-center justify-center gap-1 rounded-xl border border-[rgba(140,210,198,0.45)] bg-[rgba(12,36,34,0.92)] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+                  <div className="absolute inset-0 overflow-hidden rounded-xl">
+                    <CardArt cardId={definition.id} alt={`${definition.name} (${definition.rank})`} />
+                    <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.05)_0%,rgba(0,0,0,0.4)_65%,rgba(0,0,0,0.65)_100%)]" />
+                  </div>
                   <motion.div
-                    className="flex flex-col items-center"
+                    className="relative z-10 flex flex-col items-center"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 + index * 0.1, duration: 0.3 }}

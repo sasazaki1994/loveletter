@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="768" viewBox="0 0 512 768">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#254e47"/>
+      <stop offset="1" stop-color="#143a34"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="768" rx="48" fill="url(#g)"/>
+  <g fill="#d7b26e" font-family="serif" text-anchor="middle">
+    <text x="256" y="400" font-size="56">ORACLE</text>
+  </g>
+</svg>
+
