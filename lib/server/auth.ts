@@ -53,7 +53,6 @@ export function getClientIp(req: Request | NextRequest): string {
   const headers = req.headers ?? new Headers();
   const fwd = headers.get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0]!.trim();
-  // @ts-expect-error - NextRequest may have ip
   const direct = (req as any).ip as string | undefined;
   return direct ?? "unknown";
 }
