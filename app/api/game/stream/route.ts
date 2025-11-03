@@ -4,11 +4,7 @@ export const runtime = "nodejs";
 import { z } from "zod";
 
 import { fetchGameState } from "@/lib/server/game-service";
-import {
-  getStateCache,
-  setStateCache,
-  setCommonStateCache,
-} from "@/lib/server/game-state-cache";
+// メモリキャッシュはマルチインスタンスで不整合を生むため、SSEでは使用しない
 import { subscribeRoomUpdates } from "@/lib/server/game-update-events";
 import type { ClientGameState } from "@/lib/game/types";
 import { extractPlayerAuth, verifyToken } from "@/lib/server/auth";
@@ -69,45 +65,11 @@ export async function GET(request: NextRequest) {
 
           try {
             const now = Date.now();
-            
-            // キャッシュから取得を試みる
-            const cached = getStateCache(parsed.roomId, effectivePlayerId, now);
-            
-            let state: ClientGameState | null;
-            let etag: string;
-            let lastUpdated: string | null;
-
-            if (cached && cached.etag) {
-              state = cached.state;
-              etag = cached.etag;
-              lastUpdated = cached.lastUpdated;
-            } else {
-              // キャッシュミス時はDBから取得
-              const result = await fetchGameState(parsed.roomId, effectivePlayerId);
-              state = result.state;
-              etag = result.etag;
-              lastUpdated = result.lastUpdated;
-
-              // キャッシュに保存
-              setStateCache(
-                parsed.roomId,
-                { etag, state, lastUpdated },
-                effectivePlayerId,
-                now,
-              );
-
-              if (state) {
-                setCommonStateCache(
-                  parsed.roomId,
-                  {
-                    gameId: state.id,
-                    updatedAt: lastUpdated ?? new Date().toISOString(),
-                    etag: `common:${etag}`,
-                  },
-                  now,
-                );
-              }
-            }
+            // 常にDBから最新状態を取得
+            const result = await fetchGameState(parsed.roomId, effectivePlayerId);
+            const state: ClientGameState | null = result.state;
+            const etag: string = result.etag;
+            const lastUpdated: string | null = result.lastUpdated;
 
             // 状態が変更された場合のみ送信
             if (lastEtag !== etag) {

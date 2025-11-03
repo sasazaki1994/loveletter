@@ -7,12 +7,7 @@ import { extractPlayerAuth, verifyToken } from "@/lib/server/auth";
 import { players } from "@/drizzle/schema";
 import { db } from "@/lib/db/client";
 import { and, eq } from "drizzle-orm";
-import {
-  getStateCache,
-  setStateCache,
-  getCommonStateCache,
-  setCommonStateCache,
-} from "@/lib/server/game-state-cache";
+// メモリキャッシュはマルチインスタンスで不整合を生むため、このエンドポイントでは使用しない
 
 const querySchema = z.object({
   roomId: z.string().uuid(),
@@ -25,7 +20,6 @@ export async function GET(request: NextRequest) {
     const params = Object.fromEntries(url.searchParams.entries());
     const parsed = querySchema.parse(params);
 
-    const now = Date.now();
     const clientTag = request.headers.get("if-none-match");
 
     let perspectiveId: string | undefined = undefined;
@@ -49,50 +43,11 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // プレイヤー別キャッシュをチェック
-    const cached = getStateCache(parsed.roomId, parsed.playerId, now);
-
-    if (cached && clientTag && clientTag === cached.etag) {
-      return new NextResponse(null, {
-        status: 304,
-        headers: {
-          ETag: cached.etag,
-          "Cache-Control": "no-store, must-revalidate",
-          "X-Cache": "HIT",
-        },
-      });
-    }
-
-    // キャッシュミス時はDBから取得
+    // DBから最新状態を取得
     const { state, etag, lastUpdated } = await fetchGameState(
       parsed.roomId,
       perspectiveId,
     );
-
-    // プレイヤー別状態をキャッシュ
-    setStateCache(
-      parsed.roomId,
-      {
-        etag,
-        state,
-        lastUpdated,
-      },
-      parsed.playerId,
-      now,
-    );
-
-    // 共通状態もキャッシュ（将来的な最適化のため）
-    if (state) {
-      setCommonStateCache(
-        parsed.roomId,
-        {
-          gameId: state.id,
-          updatedAt: lastUpdated ?? new Date().toISOString(),
-          etag: `common:${etag}`,
-        },
-        now,
-      );
-    }
 
     return NextResponse.json(
       { state, lastUpdated },
@@ -101,7 +56,7 @@ export async function GET(request: NextRequest) {
         headers: {
           ETag: etag,
           "Cache-Control": "no-store, must-revalidate",
-          "X-Cache": "MISS",
+          "X-Cache": "BYPASS",
         },
       },
     );
