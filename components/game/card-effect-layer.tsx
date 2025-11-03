@@ -8,7 +8,7 @@ import { CARD_DEFINITIONS } from '@/lib/game/cards';
 import type { CardEffectType, CardId, CardIconId, PlayerId } from '@/lib/game/types';
 
 const BASE_DISPLAY_DURATION_MS = 2200;
-const EFFECT_DURATION_SCALE = 2.5;
+const EFFECT_DURATION_SCALE = 1.6;
 
 // エフェクトタイプごとの表示時間（ミリ秒）
 function getDisplayDuration(effectType: CardEffectType, hasResult: boolean): number {

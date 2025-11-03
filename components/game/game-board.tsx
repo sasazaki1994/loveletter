@@ -56,6 +56,7 @@ export function GameBoard() {
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const [effectEvents, setEffectEvents] = useState<CardEffectEvent[]>([]);
   const prevStateRef = useRef<ClientGameState | null>(null);
+  const processedActionIdsRef = useRef<Set<string>>(new Set());
   const [showHandReveal, setShowHandReveal] = useState(false);
   const [handRevealComplete, setHandRevealComplete] = useState(false);
   const hand = useMemo(() => state?.hand ?? state?.self?.hand ?? [], [state?.hand, state?.self?.hand]);
@@ -295,6 +296,21 @@ export function GameBoard() {
       const currentDiscardLength = state.discardPile.length;
 
       if (currentDiscardLength > prevDiscardLength) {
+        // 同一アクションの重複演出を抑止（lastAction.id 去重）
+        const lastActionId = state.lastAction?.id;
+        if (lastActionId) {
+          const seen = processedActionIdsRef.current;
+          if (seen.has(lastActionId)) {
+            prevStateRef.current = state;
+            return;
+          }
+          // 直近50件まで保持
+          if (seen.size > 50) {
+            const first = seen.values().next().value as string | undefined;
+            if (first) seen.delete(first);
+          }
+          seen.add(lastActionId);
+        }
         const newCards = state.discardPile.slice(prevDiscardLength) as CardId[];
         const playedCardId = newCards[0];
         if (playedCardId) {

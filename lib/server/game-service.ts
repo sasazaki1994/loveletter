@@ -481,8 +481,28 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
       return { success: false, message: "手札情報が見つかりません。" };
     }
 
-    const cardIndex = currentHand.cards.findIndex((c) => c === cardId);
+    let cardIndex = currentHand.cards.findIndex((c) => c === cardId);
     if (cardIndex < 0) {
+      // 冪等ガード: 直近の同一内容の play_card が既に処理済みなら成功として返す
+      const [lastAction] = await tx
+        .select()
+        .from(actions)
+        .where(eq(actions.gameId, game.id))
+        .orderBy(desc(actions.createdAt))
+        .limit(1);
+      const lastPayload = (lastAction?.payload ?? {}) as {
+        cardId?: CardId;
+        targetId?: string | null;
+        guessedRank?: number | null;
+      };
+      const sameActor = lastAction?.actorId === action.playerId;
+      const sameType = lastAction?.type === "play_card";
+      const sameCard = lastPayload.cardId === cardId;
+      const sameTarget = (lastPayload.targetId ?? undefined) === (targetId ?? undefined);
+      const sameGuess = (lastPayload.guessedRank ?? undefined) === (guessedRank ?? undefined);
+      if (sameActor && sameType && sameCard && sameTarget && sameGuess) {
+        return { success: true } as const;
+      }
       return { success: false, message: "指定カードが手札にありません。" };
     }
 
