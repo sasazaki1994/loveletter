@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, type CSSProperties } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import { CardSymbol } from '@/components/icons/card-symbol';
 import { CARD_DEFINITIONS } from '@/lib/game/cards';
@@ -81,10 +81,11 @@ interface CardEffectLayerProps {
 }
 
 export function CardEffectLayer({ events, tableSize, getSeatPosition, onEventComplete }: CardEffectLayerProps) {
+  const cappedEvents = events.length > 5 ? events.slice(-5) : events;
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
       <AnimatePresence initial={false}>
-        {events.map((event) => (
+        {cappedEvents.map((event) => (
           <EffectItem
             key={event.id}
             event={event}
@@ -106,6 +107,7 @@ interface EffectItemProps {
 }
 
 function EffectItem({ event, tableSize, getSeatPosition, onEventComplete }: EffectItemProps) {
+  const prefersReducedMotion = useReducedMotion();
   // エフェクトが結果を持っているかどうかを判定
   const hasResult = useMemo(() => {
     switch (event.effectType) {
@@ -120,13 +122,15 @@ function EffectItem({ event, tableSize, getSeatPosition, onEventComplete }: Effe
       default:
         return true;
     }
-  }, [event]);
+  }, [event.effectType, event.metadata, event.eliminatedSeats]);
 
   useEffect(() => {
-    const duration = getDisplayDuration(event.effectType, hasResult);
+    const duration = Math.round(
+      getDisplayDuration(event.effectType, hasResult) * (prefersReducedMotion ? 0.6 : 1),
+    );
     const timer = window.setTimeout(() => onEventComplete(event.id), duration);
     return () => window.clearTimeout(timer);
-  }, [event.id, event.effectType, hasResult, onEventComplete]);
+  }, [event.id, event.effectType, hasResult, onEventComplete, prefersReducedMotion]);
 
   const actorPos = useMemo(() => resolveSeatPosition(event.actorSeat, getSeatPosition), [event.actorSeat, getSeatPosition]);
   const targetPos = useMemo(() => resolveSeatPosition(event.targetSeat, getSeatPosition), [event.targetSeat, getSeatPosition]);
@@ -155,6 +159,7 @@ function EffectItem({ event, tableSize, getSeatPosition, onEventComplete }: Effe
         eliminatedPositions,
         tableSize,
         definition,
+        reducedMotion: !!prefersReducedMotion,
       })}
     </motion.div>
   );
@@ -167,6 +172,7 @@ function renderEffectVisual({
   eliminatedPositions,
   tableSize,
   definition,
+  reducedMotion,
 }: {
   event: CardEffectEvent;
   actorPos: SeatPosition | null;
@@ -174,6 +180,7 @@ function renderEffectVisual({
   eliminatedPositions: SeatPosition[];
   tableSize: { width: number; height: number };
   definition?: (typeof CARD_DEFINITIONS)[CardId];
+  reducedMotion: boolean;
 }) {
   const icon = definition?.icon;
 
@@ -181,17 +188,17 @@ function renderEffectVisual({
     case 'guess_eliminate':
       return renderGuessEffect(event, targetPos, actorPos, icon);
     case 'peek':
-      return renderPeekEffect(event, targetPos, actorPos, icon);
+      return renderPeekEffect(event, targetPos, actorPos, icon, reducedMotion);
     case 'compare':
       return renderCompareEffect(event, actorPos, targetPos, eliminatedPositions, tableSize, icon);
     case 'shield':
-      return renderShieldEffect(actorPos, icon);
+      return renderShieldEffect(actorPos, icon, reducedMotion);
     case 'force_discard':
       return renderForceDiscardEffect(event, targetPos, icon);
     case 'swap_hands':
-      return renderSwapEffect(actorPos, targetPos, icon, tableSize);
+      return renderSwapEffect(actorPos, targetPos, icon, tableSize, reducedMotion);
     case 'conditional_discard':
-      return renderConditionalDiscardEffect(actorPos, icon);
+      return renderConditionalDiscardEffect(actorPos, icon, reducedMotion);
     case 'self_eliminate':
       return renderSelfEliminateEffect(actorPos, eliminatedPositions, icon);
     default:
@@ -289,6 +296,7 @@ function renderPeekEffect(
   targetPos: SeatPosition | null,
   actorPos: SeatPosition | null,
   icon?: CardIconId,
+  reducedMotion?: boolean,
 ) {
   if (!targetPos) return null;
   const peekMeta = event.metadata?.peek;
@@ -309,8 +317,8 @@ function renderPeekEffect(
           <motion.div
             className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-[rgba(90,170,160,0.22)] via-transparent to-[rgba(20,60,55,0.55)]"
             initial={{ opacity: 0.35 }}
-            animate={{ opacity: [0.35, 0.6, 0.3] }}
-            transition={{ duration: 1.4, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
+            animate={reducedMotion ? undefined : { opacity: [0.35, 0.6, 0.3] }}
+            transition={reducedMotion ? undefined : { duration: 1.4, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
           />
           <div className="relative text-[var(--color-accent-light)]">
             <div className="flex items-center justify-center gap-2">
@@ -440,7 +448,7 @@ function renderCompareEffect(
   );
 }
 
-function renderShieldEffect(actorPos: SeatPosition | null, icon?: CardIconId) {
+function renderShieldEffect(actorPos: SeatPosition | null, icon?: CardIconId, reducedMotion?: boolean) {
   if (!actorPos) return null;
   return (
     <motion.div
@@ -454,13 +462,13 @@ function renderShieldEffect(actorPos: SeatPosition | null, icon?: CardIconId) {
       <div className="relative h-[6.75rem] w-[6.75rem] rounded-full border border-[rgba(140,220,210,0.5)] bg-[rgba(15,36,34,0.65)] shadow-[0_0_34px_rgba(110,200,190,0.35)]">
         <motion.div
           className="pointer-events-none absolute inset-4 rounded-full border border-[rgba(110,200,190,0.35)]"
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 3.8, ease: 'linear' }}
+          animate={reducedMotion ? undefined : { rotate: 360 }}
+          transition={reducedMotion ? undefined : { repeat: Infinity, duration: 3.8, ease: 'linear' }}
         />
         <motion.div
           className="pointer-events-none absolute inset-1 rounded-full border border-[rgba(180,235,226,0.22)]"
-          animate={{ rotate: -360 }}
-          transition={{ repeat: Infinity, duration: 5.4, ease: 'linear' }}
+          animate={reducedMotion ? undefined : { rotate: -360 }}
+          transition={reducedMotion ? undefined : { repeat: Infinity, duration: 5.4, ease: 'linear' }}
         />
         {icon && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -533,6 +541,7 @@ function renderSwapEffect(
   targetPos: SeatPosition | null,
   icon: CardIconId | undefined,
   tableSize: { width: number; height: number },
+  reducedMotion?: boolean,
 ) {
   if (!actorPos || !targetPos) return null;
   const midpoint = midpointBetween(actorPos, targetPos, tableSize);
@@ -551,8 +560,8 @@ function renderSwapEffect(
         >
           <motion.div
             className="relative h-[6.25rem] w-[6.25rem] rounded-full border border-[rgba(255,205,150,0.4)] bg-[rgba(30,18,12,0.55)]"
-            animate={{ rotate: index === 0 ? 360 : -360 }}
-            transition={{ repeat: Infinity, duration: 3.2, ease: 'linear' }}
+            animate={reducedMotion ? undefined : { rotate: index === 0 ? 360 : -360 }}
+            transition={reducedMotion ? undefined : { repeat: Infinity, duration: 3.2, ease: 'linear' }}
           >
             <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[rgba(110,200,190,0.35)]" />
             <div className="absolute inset-2 flex items-center justify-center">
@@ -583,7 +592,7 @@ function renderSwapEffect(
   );
 }
 
-function renderConditionalDiscardEffect(actorPos: SeatPosition | null, icon?: CardIconId) {
+function renderConditionalDiscardEffect(actorPos: SeatPosition | null, icon?: CardIconId, reducedMotion?: boolean) {
   if (!actorPos) return null;
   return (
     <motion.div
@@ -597,8 +606,8 @@ function renderConditionalDiscardEffect(actorPos: SeatPosition | null, icon?: Ca
       <div className="relative h-[6.5rem] w-[6.5rem] rounded-full border border-[rgba(255,210,170,0.32)] bg-[rgba(30,20,16,0.55)]">
         <motion.div
           className="pointer-events-none absolute inset-3 rounded-full bg-[rgba(255,210,170,0.28)] blur-lg"
-          animate={{ opacity: [0.4, 0.22, 0.48] }}
-          transition={{ duration: 1.2, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
+          animate={reducedMotion ? undefined : { opacity: [0.4, 0.22, 0.48] }}
+          transition={reducedMotion ? undefined : { duration: 1.2, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
         />
         {icon && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -666,7 +675,8 @@ function resolveSeatPosition(
   getSeatPosition: (seat: number) => SeatPosition,
 ): SeatPosition | null {
   if (typeof seat !== 'number') return null;
-  return getSeatPosition(seat);
+  const pos = getSeatPosition(seat);
+  return pos && pos.valid ? pos : null;
 }
 
 function positionStyle(pos: SeatPosition): CSSProperties {

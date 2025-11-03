@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useGameContext } from "@/components/game/game-provider";
+import { CARD_DEFINITIONS } from "@/lib/game/cards";
 
 export function ResultDialog() {
   const { state, refetch } = useGameContext();
@@ -117,6 +118,7 @@ export function ResultDialog() {
 
     const winnerSet = new Set(state.result?.winnerIds ?? []);
     const playerMap = new Map(state.players.map((p) => [p.id, p]));
+    const finalHands: Record<string, string[]> | undefined = (state.result as any)?.finalHands;
 
     // ログから脱落順を判定
     const eliminationOrder: string[] = [];
@@ -195,12 +197,24 @@ export function ResultDialog() {
       }
     }
 
-    // 生存者（脱落していない非勝者）をseat順で個別に順位付け
+    // 生存者（脱落していない非勝者）を順位付け
     const survivors = state.players.filter(
       (p) => !p.isEliminated && !winnerSet.has(p.id) && !allEliminatedIds.has(p.id)
     );
     if (survivors.length > 0) {
-      const sortedSurvivors = [...survivors].sort((a, b) => a.seat - b.seat);
+      // 山札尽きの場合はfinalHandsのランクで降順ソート、それ以外はseat順
+      const reason = state.result?.reason;
+      const sortedSurvivors = [...survivors].sort((a, b) => {
+        if (reason === "deck_exhausted" && finalHands) {
+          const aCards = finalHands[a.id] ?? [];
+          const bCards = finalHands[b.id] ?? [];
+          const aRank = aCards.length > 0 ? CARD_DEFINITIONS[aCards[0] as keyof typeof CARD_DEFINITIONS]?.rank ?? 0 : 0;
+          const bRank = bCards.length > 0 ? CARD_DEFINITIONS[bCards[0] as keyof typeof CARD_DEFINITIONS]?.rank ?? 0 : 0;
+          if (bRank !== aRank) return bRank - aRank; // 高ランクを先に
+          return a.seat - b.seat;
+        }
+        return a.seat - b.seat;
+      });
       for (const survivor of sortedSurvivors) {
         placements.push({ place: currentPlace, players: [survivor] });
         currentPlace += 1;

@@ -22,6 +22,7 @@ type SoundKey =
 interface SoundVariant {
   sources: string[];
   allowPitchVariation?: boolean;
+  defaultInterrupt?: boolean;
 }
 
 const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
@@ -35,6 +36,7 @@ const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
     {
       sources: ["/sounds/card_place.mp3"],
       allowPitchVariation: false,
+      defaultInterrupt: true,
     },
   ],
   card_flip: [
@@ -89,6 +91,7 @@ const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
     {
       sources: ["/sounds/confirm.wav"],
       allowPitchVariation: false,
+      defaultInterrupt: true,
     },
   ],
   shield: [
@@ -104,6 +107,7 @@ const SOUND_MANIFEST: Record<SoundKey, SoundVariant[]> = {
   turn_chime: [
     {
       sources: ["/sounds/turn_chime.wav"],
+      defaultInterrupt: true,
     },
   ],
   win: [
@@ -134,8 +138,19 @@ export function useSoundEffects(defaultVolume = 0.4) {
     };
   }, []);
 
+  // ミュート状態の変更を既存のHowlインスタンスへ即時反映
+  useEffect(() => {
+    const registry = registryRef.current;
+    registry.forEach((howls) => {
+      howls.forEach((howl) => howl.mute(muted));
+    });
+  }, [muted]);
+
   const play = useCallback(
-    (key: SoundKey, options?: { volume?: number; pitchVariation?: boolean }) => {
+    (
+      key: SoundKey,
+      options?: { volume?: number; pitchVariation?: boolean; interrupt?: boolean },
+    ) => {
       if (muted) return;
       const registry = registryRef.current;
       let howls = registry.get(key);
@@ -167,8 +182,11 @@ export function useSoundEffects(defaultVolume = 0.4) {
       }
 
       const resolvedVolume = options?.volume ?? volume;
+      const resolvedInterrupt = options?.interrupt ?? variant.defaultInterrupt ?? false;
       howl.volume(resolvedVolume);
-      howl.stop();
+      if (resolvedInterrupt) {
+        howl.stop();
+      }
 
       const soundId = howl.play();
       if (soundId !== undefined) {

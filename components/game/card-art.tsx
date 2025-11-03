@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useCallback, useMemo, useState } from 'react';
+import { CARD_DEFINITIONS } from '@/lib/game/cards';
 
 import type { CardId } from '@/lib/game/types';
 
@@ -20,15 +21,24 @@ interface CardArtProps {
  * 5) data-uri の最終フォールバック
  */
 export function CardArt({ cardId, alt = '', className }: CardArtProps) {
-  const candidates = useMemo(
-    () => [
+  const candidates = useMemo(() => {
+    const name = CARD_DEFINITIONS[cardId]?.name ?? '';
+    const encodedName = name ? encodeURIComponent(name) : '';
+
+    return [
+      // id ベース優先
       `/cards/${cardId}.svg`,
       `/cards/${cardId}.webp`,
+      `/cards/${cardId}.png`,
+      // 表示名ベース（ユーザー提供資産のファイル名に合わせる）
+      ...(encodedName
+        ? [`/cards/${encodedName}.svg`, `/cards/${encodedName}.webp`, `/cards/${encodedName}.png`]
+        : []),
+      // プレースホルダ
       `/cards/placeholder.svg`,
       `/cards/placeholder.webp`,
-    ],
-    [cardId],
-  );
+    ];
+  }, [cardId]);
 
   const finalFallback = useMemo(() => {
     const svg = encodeURIComponent(

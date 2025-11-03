@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CardIconId } from "@/lib/game/types";
 
 interface CardSymbolProps {
@@ -58,10 +59,12 @@ const ICON_PATHS: Record<CardIconId, JSX.Element> = {
   ),
 };
 
-export function CardSymbol({ icon, size = 28, className }: CardSymbolProps) {
+export const CardSymbol = memo(function CardSymbol({ icon, size = 28, className }: CardSymbolProps) {
   return (
     <svg
       aria-hidden="true"
+      focusable="false"
+      data-icon={icon}
       viewBox="0 0 24 24"
       width={size}
       height={size}
@@ -70,5 +73,5 @@ export function CardSymbol({ icon, size = 28, className }: CardSymbolProps) {
       {ICON_PATHS[icon]}
     </svg>
   );
-}
+});
 
