@@ -407,8 +407,8 @@ function renderCompareEffect(
         exit={{ scale: 0.7, opacity: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
       >
-        <div className="flex items-center gap-2 rounded-full border border-[rgba(255,212,160,0.42)] bg-[rgba(30,18,12,0.72)] px-4 py-1.5 text-sm font-semibold tracking-[0.32em] text-[var(--color-accent-light)]">
-          VS
+        <div className="flex items-center gap-2 rounded-full border border-[rgba(255,212,160,0.42)] bg-[rgba(30,18,12,0.72)] px-3.5 py-1.5 text-[var(--color-accent-light)]">
+          <CardSymbol icon="swords" size={22} className="text-[var(--color-accent-light)]" />
         </div>
       </motion.div>
       {icon && (
