@@ -13,19 +13,19 @@ interface CardArtProps {
 
 /**
  * カード背景アート。優先順で複数パスを試行:
- * 1) /cards/{cardId}.webp
- * 2) /cards/{cardId}.svg
- * 3) /cards/placeholder.webp
- * 4) /cards/placeholder.svg
+ * 1) /cards/{cardId}.svg
+ * 2) /cards/{cardId}.webp
+ * 3) /cards/placeholder.svg
+ * 4) /cards/placeholder.webp
  * 5) data-uri の最終フォールバック
  */
 export function CardArt({ cardId, alt = '', className }: CardArtProps) {
   const candidates = useMemo(
     () => [
-      `/cards/${cardId}.webp`,
       `/cards/${cardId}.svg`,
-      `/cards/placeholder.webp`,
+      `/cards/${cardId}.webp`,
       `/cards/placeholder.svg`,
+      `/cards/placeholder.webp`,
     ],
     [cardId],
   );

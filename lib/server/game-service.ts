@@ -927,11 +927,14 @@ async function advanceTurn(
   await beginTurn(tx, freshGame, nextPlayer);
 }
 
-const BOT_THINK_TIME_MS = 2500;
+const BOT_THINK_TIME_MS = 4000; // base think time for bots
+const BOT_THINK_JITTER_RATIO = 0.4; // +/-20% around base (0.8x - 1.2x)
 
 async function executeBotTurn(roomId: string) {
   // Add thinking delay so bot turns are not instantaneous
-  await new Promise<void>((resolve) => setTimeout(resolve, BOT_THINK_TIME_MS));
+  const jitterMultiplier = 1 - BOT_THINK_JITTER_RATIO / 2 + Math.random() * BOT_THINK_JITTER_RATIO;
+  const thinkDelay = Math.max(0, Math.round(BOT_THINK_TIME_MS * jitterMultiplier));
+  await new Promise<void>((resolve) => setTimeout(resolve, thinkDelay));
   const botAction = await db.transaction(async (tx) => {
     const [game] = await tx
       .select()
