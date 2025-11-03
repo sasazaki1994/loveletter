@@ -8,25 +8,31 @@ import { CARD_DEFINITIONS } from '@/lib/game/cards';
 import type { CardEffectType, CardId, CardIconId, PlayerId } from '@/lib/game/types';
 
 const BASE_DISPLAY_DURATION_MS = 2200;
+const EFFECT_DURATION_SCALE = 2.5;
 
 // エフェクトタイプごとの表示時間（ミリ秒）
 function getDisplayDuration(effectType: CardEffectType, hasResult: boolean): number {
+  let base = BASE_DISPLAY_DURATION_MS;
   switch (effectType) {
     case 'peek':
-      // peekエフェクトは情報が重要なので長めに表示
-      return hasResult ? 4500 : 3500;
+      base = hasResult ? 4500 : 3500;
+      break;
     case 'guess_eliminate':
-      // 推測エフェクトも結果が重要
-      return 3500;
+      base = 3500;
+      break;
     case 'compare':
-      return 3500;
+      base = 3500;
+      break;
     case 'force_discard':
-      return 3000;
+      base = 3000;
+      break;
     case 'swap_hands':
-      return 3000;
+      base = 3000;
+      break;
     default:
-      return BASE_DISPLAY_DURATION_MS;
+      base = BASE_DISPLAY_DURATION_MS;
   }
+  return Math.round(base * EFFECT_DURATION_SCALE);
 }
 
 interface SeatPosition {

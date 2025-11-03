@@ -927,7 +927,11 @@ async function advanceTurn(
   await beginTurn(tx, freshGame, nextPlayer);
 }
 
+const BOT_THINK_TIME_MS = 2500;
+
 async function executeBotTurn(roomId: string) {
+  // Add thinking delay so bot turns are not instantaneous
+  await new Promise<void>((resolve) => setTimeout(resolve, BOT_THINK_TIME_MS));
   const botAction = await db.transaction(async (tx) => {
     const [game] = await tx
       .select()

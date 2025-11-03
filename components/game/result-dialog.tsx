@@ -12,27 +12,91 @@ export function ResultDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [dismissedResultId, setDismissedResultId] = useState<string | null>(null);
+  const [scheduledId, setScheduledId] = useState<string | null>(null);
+  const [firstSeenAt, setFirstSeenAt] = useState<number | null>(null);
 
   useEffect(() => {
-    if (state?.result) {
-      // 既に閉じたリザルトの場合は再表示しない
-      const resultId = `${state.id}-${state.result.winnerIds.join(',')}-${state.result.reason}`;
-      if (resultId === dismissedResultId) {
-        return;
-      }
-
-      // deck_exhausted時は手札公開アニメーション完了を待つため3秒後、それ以外は1秒後
-      const delay = state.result.reason === "deck_exhausted" ? 3000 : 1000;
-      const timer = setTimeout(() => {
-        setOpen(true);
-      }, delay);
-
-      return () => clearTimeout(timer);
-    } else {
+    if (!state?.result) {
       setOpen(false);
       setDismissedResultId(null);
+      setScheduledId(null);
+      setFirstSeenAt(null);
+      return;
     }
-  }, [state?.result, state?.id, dismissedResultId]);
+
+    // 既に閉じたリザルトの場合は再表示しない
+    const resultId = `${state.id}-${state.result.winnerIds.join(',')}-${state.result.reason}`;
+    if (resultId === dismissedResultId) {
+      return;
+    }
+
+    // 同一リザルトに対して重複スケジュールを避ける
+    if (scheduledId === resultId) {
+      return;
+    }
+    setScheduledId(resultId);
+    setFirstSeenAt(Date.now());
+
+    // deck_exhausted は手札公開完了イベントで即時表示、保険でフォールバックタイマー
+    if (state.result.reason === "deck_exhausted") {
+      let fallbackTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+        setOpen(true);
+      }, 5000);
+
+      const onRevealComplete = (e: Event) => {
+        try {
+          const detail = (e as CustomEvent<{ gameId?: string }>).detail;
+          if (!detail || detail.gameId !== state.id) return;
+          if (fallbackTimer) {
+            clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+          }
+          setOpen(true);
+        } catch {
+          // ignore
+        }
+      };
+
+      window.addEventListener("hand_reveal_complete", onRevealComplete as EventListener);
+      return () => {
+        window.removeEventListener("hand_reveal_complete", onRevealComplete as EventListener);
+        if (fallbackTimer) clearTimeout(fallbackTimer);
+      };
+    }
+
+    // それ以外は軽い遅延後に表示
+    const timer = setTimeout(() => setOpen(true), 1000);
+    return () => clearTimeout(timer);
+  }, [state?.result, state?.id, dismissedResultId, scheduledId]);
+
+  // 最終フォールバック: 結果検出から一定時間たっても開かない場合は強制的に開く
+  useEffect(() => {
+    if (!state?.result || open || !firstSeenAt) return;
+    let rafId: number | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const check = () => {
+      const elapsed = Date.now() - firstSeenAt;
+      if (elapsed >= 8000) {
+        setOpen(true);
+        if (timeoutId) clearTimeout(timeoutId);
+        if (rafId) cancelAnimationFrame(rafId);
+        return;
+      }
+      rafId = requestAnimationFrame(check);
+    };
+
+    // 8秒のハードタイマーもセット
+    timeoutId = setTimeout(() => {
+      setOpen(true);
+    }, 8500);
+
+    rafId = requestAnimationFrame(check);
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [firstSeenAt, open, state?.result]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);

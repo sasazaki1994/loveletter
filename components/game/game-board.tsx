@@ -399,7 +399,17 @@ export function GameBoard() {
   const handleHandRevealComplete = useCallback(() => {
     setShowHandReveal(false);
     setHandRevealComplete(true);
-  }, []);
+    try {
+      // 手札公開の完了を全体に通知（ResultDialogが正確なタイミングで開くため）
+      window.dispatchEvent(
+        new CustomEvent("hand_reveal_complete", {
+          detail: { gameId: state?.id },
+        }),
+      );
+    } catch {
+      // no-op (SSRやwindow未定義の保護)
+    }
+  }, [state?.id]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

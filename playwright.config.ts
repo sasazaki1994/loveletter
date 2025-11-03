@@ -11,7 +11,7 @@ export default defineConfig({
     screenshot: 'off',
     video: 'off',
     viewport: { width: 1400, height: 900 },
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3100',
     ignoreHTTPSErrors: true,
   },
   projects: [
@@ -21,8 +21,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
+    command: 'pnpm dev --port 3100',
+    url: 'http://localhost:3100',
     reuseExistingServer: true,
     timeout: 1000 * 60 * 2,
     stdout: 'pipe',
