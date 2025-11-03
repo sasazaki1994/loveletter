@@ -439,8 +439,8 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
   let success = false as boolean;
   let runBotAfterCommit = false as boolean;
   try {
-    ({ success, runBotAfterCommit } = await db.transaction(async (tx) => {
-    let runBotAfterCommit = false;
+    const txResult = await db.transaction(async (tx) => {
+      let runBotAfterCommit = false;
 
     const [game] = await tx
       .select()
@@ -810,8 +810,10 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
       }
     }
 
-    return { success: true, runBotAfterCommit } as const;
-  }));
+      return { success: true, runBotAfterCommit } as const;
+    });
+    success = !!txResult.success;
+    runBotAfterCommit = !!(txResult as { runBotAfterCommit?: boolean }).runBotAfterCommit;
   } catch (error) {
     console.error("[handlePlayCard] transaction failed", error);
     return { success: false, message: "カード処理中にエラーが発生しました。" };
