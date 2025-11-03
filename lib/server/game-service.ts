@@ -436,7 +436,10 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
     return { success: false, message: "cardId が必要です。" };
   }
 
-  const { success, runBotAfterCommit } = await db.transaction(async (tx) => {
+  let success = false as boolean;
+  let runBotAfterCommit = false as boolean;
+  try {
+    ({ success, runBotAfterCommit } = await db.transaction(async (tx) => {
     let runBotAfterCommit = false;
 
     const [game] = await tx
@@ -716,6 +719,15 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
           }
           if (discardResult.discardedCard) {
             discardPile.push(discardResult.discardedCard);
+            // 記録: 強制捨てで対象が捨てたカードを actions に残す（クライアント側の捨て札反映用）
+            await tx
+              .insert(actions)
+              .values({
+                gameId: game.id,
+                actorId: actingPlayer.id,
+                type: "force_discard",
+                payload: { targetId: targetPlayer.id, cardId: discardResult.discardedCard },
+              });
           }
           logMessage += `。${targetPlayer.nickname} の手札を捨てさせました。`;
         }
@@ -799,7 +811,11 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
     }
 
     return { success: true, runBotAfterCommit } as const;
-  });
+  }));
+  } catch (error) {
+    console.error("[handlePlayCard] transaction failed", error);
+    return { success: false, message: "カード処理中にエラーが発生しました。" };
+  }
 
   if (success) {
     invalidateStateCache(action.roomId);
@@ -1263,6 +1279,16 @@ function mapToClientState(
         const list = discardMap.get(action.actorId) ?? [];
         list.push(playedCard);
         discardMap.set(action.actorId, list);
+      }
+    }
+    if (action.type === "force_discard") {
+      const payload = action.payload as { targetId?: string; cardId?: CardId } | null;
+      const tId = payload?.targetId;
+      const discarded = payload?.cardId as CardId | undefined;
+      if (tId && discarded) {
+        const list = discardMap.get(tId) ?? [];
+        list.push(discarded);
+        discardMap.set(tId, list);
       }
     }
   }
