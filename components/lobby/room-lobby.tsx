@@ -487,9 +487,8 @@ export function RoomLobby() {
               <Button
                 onClick={() => {
                   setShowRoomCreatedDialog(false);
-                  if (createdRoomId) {
-                    router.push(`/game/${createdRoomId}`);
-                  }
+                  // ゲームページへの遷移は必ず UUID の roomId を使用（短いIDは共有用）
+                  router.push(`/game/${session?.roomId ?? createdRoomId ?? ""}`);
                 }}
                 className="flex-1"
               >
