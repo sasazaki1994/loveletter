@@ -55,7 +55,8 @@ export function CardArt({ cardId, alt = '', className }: CardArtProps) {
   const handleError = useCallback(() => {
     setIndex((prev) => {
       if (prev + 1 < candidates.length) return prev + 1;
-      return prev; // 末尾に到達
+      // 末尾に到達: data-uri フォールバックを使うため length に進める
+      return candidates.length;
     });
   }, [candidates.length]);
 
