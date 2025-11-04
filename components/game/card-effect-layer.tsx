@@ -419,18 +419,6 @@ function renderCompareEffect(
           <CardSymbol icon="swords" size={22} className="text-[var(--color-accent-light)]" />
         </div>
       </motion.div>
-      {icon && (
-        <motion.div
-          className="absolute -translate-x-1/2 -translate-y-1/2"
-          style={positionStyle({ ...midpoint, y: midpoint.y + 42 })}
-          initial={{ opacity: 0, scale: 0.75 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.75 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-        >
-          <CardSymbol icon={icon} size={24} className="text-[var(--color-accent-light)]" />
-        </motion.div>
-      )}
       {eliminatedPositions.map((pos, index) => (
         <motion.div
           key={`compare-elim-${index}`}

@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { useGameEffects } from "@/components/game/game-effects-provider";
 
 import { ActionBar } from "@/components/game/action-bar";
 import { CardEffectLayer, type CardEffectEvent } from "@/components/game/card-effect-layer";
+import { CARD_FX_PRESETS } from "@/components/game/card-fx-presets";
 import { GameTable } from "@/components/game/game-table";
 import { HandCard } from "@/components/game/hand-card";
 import { HandRevealOverlay } from "@/components/game/hand-reveal-overlay";
@@ -53,6 +55,7 @@ export function GameBoard() {
   } = useGameContext();
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
+  const fx = useGameEffects();
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const [effectEvents, setEffectEvents] = useState<CardEffectEvent[]>([]);
   const prevStateRef = useRef<ClientGameState | null>(null);
@@ -393,13 +396,80 @@ export function GameBoard() {
             }
 
             pushEffectEvent(event);
+
+            // エフェクト連動（ヒットストップ/シェイク/パーティクル）
+            try {
+              const rect = tableContainerRef.current?.getBoundingClientRect();
+              const toViewport = (seat?: number) => {
+                if (!rect || typeof seat !== "number") return null;
+                const pos = getSeatPosition(seat);
+                if (!pos.valid) return null;
+                return { x: rect.left + pos.x, y: rect.top + pos.y };
+              };
+
+              const actorPt = toViewport(actor?.seat);
+              const targetPt = toViewport(target?.seat);
+              const midpoint = actorPt && targetPt ? { x: (actorPt.x + targetPt.x) / 2, y: (actorPt.y + targetPt.y) / 2 } : targetPt ?? actorPt ?? (rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : { x: window.innerWidth / 2, y: window.innerHeight / 2 });
+
+              (async () => {
+                const preset = CARD_FX_PRESETS[playedCardId as keyof typeof CARD_FX_PRESETS];
+                switch (resolvedEffectType) {
+                  case "guess_eliminate": {
+                    await fx.triggerHitstop({ holdMs: preset?.hitstop?.holdMs ?? 90, flash: preset?.hitstop?.flash ?? true });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 14, durationMs: 180 });
+                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 22, hue: preset?.particles?.hue ?? 45, origin: targetPt });
+                    break;
+                  }
+                  case "peek": {
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 6, durationMs: 140 });
+                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 14, hue: preset?.particles?.hue ?? 190, origin: targetPt });
+                    break;
+                  }
+                  case "compare": {
+                    await fx.triggerHitstop({ holdMs: preset?.hitstop?.holdMs ?? 80, flash: preset?.hitstop?.flash ?? true });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 12, durationMs: 180 });
+                    if (midpoint) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 24, hue: preset?.particles?.hue ?? 35, origin: midpoint });
+                    break;
+                  }
+                  case "shield": {
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 8, durationMs: 160 });
+                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "dust", count: preset?.particles?.count ?? 18, hue: preset?.particles?.hue ?? 160, origin: actorPt });
+                    break;
+                  }
+                  case "force_discard": {
+                    await fx.triggerHitstop({ holdMs: preset?.hitstop?.holdMs ?? 90, flash: preset?.hitstop?.flash ?? false });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 12, durationMs: 180 });
+                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 20, hue: preset?.particles?.hue ?? 25, origin: targetPt });
+                    break;
+                  }
+                  case "swap_hands": {
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 10, durationMs: 180 });
+                    if (midpoint) fx.emitParticles({ kind: preset?.particles?.kind ?? "confetti", count: preset?.particles?.count ?? 26, hue: preset?.particles?.hue ?? 45, origin: midpoint });
+                    break;
+                  }
+                  case "conditional_discard": {
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 6, durationMs: 140 });
+                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "dust", count: preset?.particles?.count ?? 14, hue: preset?.particles?.hue ?? 280, origin: actorPt });
+                    break;
+                  }
+                  case "self_eliminate": {
+                    await fx.triggerHitstop({ holdMs: preset?.hitstop?.holdMs ?? 110, flash: preset?.hitstop?.flash ?? true });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 16, durationMs: 200 });
+                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 28, hue: preset?.particles?.hue ?? 5, origin: actorPt });
+                    break;
+                  }
+                  default:
+                    break;
+                }
+              })();
+            } catch {}
           }
         }
       }
     }
 
     prevStateRef.current = state;
-  }, [generateEventId, pushEffectEvent, resolveEffectType, state]);
+  }, [fx, generateEventId, getSeatPosition, pushEffectEvent, resolveEffectType, state]);
 
   // deck_exhausted時の手札公開を検出
   useEffect(() => {
@@ -494,7 +564,7 @@ export function GameBoard() {
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto">
-      <div className="pointer-events-none fixed right-4 top-6 z-30 flex w-[calc(100vw-2.5rem)] max-w-sm flex-col gap-4 sm:right-6">
+      <div className="pointer-events-none fixed left-4 top-24 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6">
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
       </div>
@@ -616,7 +686,7 @@ export function GameBoard() {
                 <span className="text-xs text-[var(--color-text-muted)]">ターン待機中...</span>
               )}
             </div>
-            <div className="mt-3 flex min-h-[5.5rem] flex-wrap justify-center gap-4">
+          <div className="mt-1 flex min-h-[5.5rem] flex-wrap justify-center gap-4">
               {hand && hand.length > 0 ? (
                 <LayoutGroup id="player-hand">
                   <AnimatePresence initial={false}>

@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { createRoomWithBot } from "@/lib/server/game-service";
 import type { CardId } from "@/lib/game/types";
+import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import type { TestDeckOverrides } from "@/lib/game/deck";
 
 const createRoomSchema = z.object({
   nickname: z.string().min(1).max(24),
@@ -16,7 +18,28 @@ export async function POST(request: Request) {
 
     // variants は CardId[] として扱う（無効IDはサーバ側で無視）
     const variantIds = (parsed.variants ?? []) as CardId[];
-    const result = await createRoomWithBot(parsed.nickname.trim(), variantIds);
+    // テスト用のオプション（開発/テストのみ有効）: ?test=1&seed=...&deck=sentinel,oracle,...
+    const url = new URL(request.url);
+    const isProd = process.env.NODE_ENV === "production";
+    let overrides: TestDeckOverrides | undefined;
+    if (!isProd && url.searchParams.get("test") === "1") {
+      const seed = url.searchParams.get("seed")?.trim() || undefined;
+      const deckParam = url.searchParams.get("deck")?.trim();
+      let fixedDeck: CardId[] | undefined;
+      if (deckParam) {
+        const parts = deckParam.split(/[\s,]+/).filter(Boolean);
+        const valid: CardId[] = [];
+        for (const token of parts) {
+          if ((CARD_DEFINITIONS as any)[token]) {
+            valid.push(token as CardId);
+          }
+        }
+        if (valid.length > 0) fixedDeck = valid;
+      }
+      overrides = { seed, fixedDeck };
+    }
+
+    const result = await createRoomWithBot(parsed.nickname.trim(), variantIds, overrides);
 
     return NextResponse.json(result, {
       status: 200,

@@ -66,7 +66,7 @@ export function ActionBar() {
   const containerClasses = cn(
     "fixed z-30",
     isDockedLeft
-      ? "inset-y-0 left-0 w-full max-w-[20rem] bg-gradient-to-r from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-4 py-4 shadow-[24px_0_60px_rgba(0,0,0,0.45)]"
+      ? "inset-y-0 right-0 w-full max-w-[20rem] bg-gradient-to-l from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-4 py-4 shadow-[-24px_0_60px_rgba(0,0,0,0.45)]"
       : "inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-6 py-4 shadow-[0_-24px_60px_rgba(0,0,0,0.45)]",
   );
 
@@ -82,7 +82,7 @@ export function ActionBar() {
 
   const innerClasses = cn(
     "flex flex-col",
-    isDockedLeft ? "h-full justify-between gap-4" : "mx-auto w-full max-w-5xl gap-3",
+    isDockedLeft ? "h-full gap-3" : "mx-auto w-full max-w-5xl gap-3",
   );
 
   const infoRowClasses = cn(
@@ -385,7 +385,7 @@ export function ActionBar() {
             </div>
           )}
 
-          <div className={cn("flex gap-2", isDockedLeft ? "w-full flex-col pt-2" : "ml-auto gap-3")}>
+          <div className={cn("flex gap-2", isDockedLeft ? "w-full flex-col pt-0" : "ml-auto gap-3")}>
             <Button 
               variant="ghost" 
               className={cn(isDockedLeft ? "w-full h-9 justify-center" : "px-4")} 

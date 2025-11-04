@@ -15,6 +15,7 @@ const ICON_LABELS: Record<string, string> = {
   balance: "交換",
   crown: "勝利",
   flame: "崩落",
+  target: "指名",
   info: "情報",
   alert: "警告",
 };

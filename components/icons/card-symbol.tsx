@@ -1,5 +1,15 @@
 import { memo } from "react";
 import type { CardIconId } from "@/lib/game/types";
+import {
+  IconMask,
+  IconEye,
+  IconSwords,
+  IconShield,
+  IconFeather,
+  IconScale,
+  IconCrown,
+  IconFlame,
+} from "@tabler/icons-react";
 
 interface CardSymbolProps {
   icon: CardIconId;
@@ -7,71 +17,50 @@ interface CardSymbolProps {
   className?: string;
 }
 
-const ICON_PATHS: Record<CardIconId, JSX.Element> = {
-  mask: (
-    <path
-      d="M6 4c2.4 1.4 5.6 1.4 8 0 2-.9 4-.2 4 2.2C18 9.5 15.5 12 12.2 12c-.9 0-1.6-.3-2.2-.8-.6.5-1.3.8-2.2.8C4.5 12 2 9.5 2 6.2 2 3.8 4 3.1 6 4Zm-.9 2.2c-.8 0-1.2.6-1.1 1.1.1.8 1.3 2.1 3 2.1 1 0 1.5-.5 1.9-1-.5-1.2-1.9-2.2-3.8-2.2Zm9.8 0c-1.9 0-3.2 1-3.8 2.2.4.5.9 1 1.9 1 1.7 0 2.9-1.3 3-2.1.1-.5-.3-1.1-1.1-1.1Z"
-      fill="currentColor"
-    />
-  ),
-  eye: (
-    <path
-      d="M12 4c4.2 0 7.9 2.5 10 6-2.1 3.5-5.8 6-10 6s-7.9-2.5-10-6c2.1-3.5 5.8-6 10-6Zm0 2.4c-2.1 0-3.7 1.7-3.7 3.6 0 2 1.6 3.6 3.7 3.6s3.7-1.6 3.7-3.6c0-1.9-1.6-3.6-3.7-3.6Zm0 2.1c.9 0 1.6.7 1.6 1.5 0 .9-.7 1.6-1.6 1.6a1.6 1.6 0 0 1 0-3.1Z"
-      fill="currentColor"
-    />
-  ),
-  swords: (
-    <path
-      d="M6.1 3 3 6.1l6.9 6.9-.8.8L3 6.9 1.6 8.3 9.6 16.3 11 15l6.3 6.3 2.1-2.1-6.3-6.3 1.3-1.3 8 8 1.4-1.4-8-8 1.5-1.5L15.9 3 12 6.9 8.1 3 6.8 4.3 9.7 7.2 8.3 8.6 5.4 5.7 6.1 5l2.9 2.9 1.4-1.4L6.1 3Z"
-      fill="currentColor"
-    />
-  ),
-  shield: (
-    <path
-      d="M12 2c2.7 1.8 5.7 2.5 9 2.6 0 6.1-2.5 10.9-9 13.4-6.5-2.5-9-7.3-9-13.4C6.3 4.5 9.3 3.8 12 2Zm0 3.2c-1.9.9-3.9 1.4-6 1.6.3 4.2 2.1 7.2 6 8.8 3.9-1.6 5.7-4.6 6-8.8-2.1-.2-4.1-.7-6-1.6Zm-2 3.4 2.1 2.1 3-3 1.3 1.3-4.2 4.2-3.4-3.4 1.2-1.2Z"
-      fill="currentColor"
-    />
-  ),
-  quill: (
-    <path
-      d="M20.5 3.5c-4.4-1-9 1.1-12.6 4.7-3.3 3.3-4.9 7-3.6 10.4l4.9-4.9c1.1.2 2.3-.1 3.2-1l3.1-3.1c.9-.9 1.2-2.1 1-3.2l3.6-3.6c.2.2.3.5.4.7Zm-5 4.3-3.1 3.1c-.6.6-1.4.8-2.1.6l5.3-5.3c.2.7 0 1.5-.5 2.1ZM3 21l5.1-1.1 1.7-1.7-3.4-3.4L3 21Z"
-      fill="currentColor"
-    />
-  ),
-  balance: (
-    <path
-      d="m19 5 3 7h-2c-.4 2.6-2.6 4.5-5.1 4.5-2.5 0-4.7-1.9-5.1-4.5h-2l3-7h1.2A5 5 0 0 0 17 2h2v1.5h-2a3.6 3.6 0 0 1-3.4 2.8h4.4Zm-3 7.5c1.2 0 2.1-.9 2.1-2H14c0 1.1.9 2 2 2Zm-9-9L10 11H8c-.4 2.6-2.6 4.5-5.1 4.5C0.4 15.5-1.8 13.6-2.2 11H-4l3-7h1.2A5 5 0 0 1 6.5 2h2v1.5h-2a3.6 3.6 0 0 0-3.4 2.8h4.4Zm-3 7.5c1.2 0 2.1-.9 2.1-2H2c0 1.1.9 2 2 2Z"
-      fill="currentColor"
-      transform="translate(4 2)"
-    />
-  ),
-  crown: (
-    <path
-      d="M4 19h16l-1-7-4 3-2.9-8.6h-.2L9 15 5 12l-1 7Zm8-13a2 2 0 1 0-1.99-2A2 2 0 0 0 12 6Zm6 4a2 2 0 1 0-2-2 2 2 0 0 0 2 2Zm-12 0a2 2 0 1 0-2-2 2 2 0 0 0 2 2Z"
-      fill="currentColor"
-    />
-  ),
-  flame: (
-    <path
-      d="M12.1 2c1.9 2.4 3.9 4.3 3.9 7.1 0 1.2-.4 2.4-1.3 3.5.8-.4 1.5-.9 2.1-1.5 1.1 1.5 1.7 3.1 1.7 4.7 0 3.3-2.5 6.2-6.3 6.2-3.8 0-6.2-2.9-6.2-6.2 0-2.6 1.5-4.6 3.4-6.6.2.9.6 1.8 1.3 2.6-.3-.9-.4-1.8-.4-2.7 0-2 1-3.5 2-5.1l-.2-.3Z"
-      fill="currentColor"
-    />
-  ),
+const IconTargetGlyph = (props: { size?: number; className?: string; stroke?: string; strokeWidth?: number }) => {
+  const size = props.size ?? 28;
+  const stroke = props.stroke ?? "currentColor";
+  const strokeWidth = props.strokeWidth ?? 1.8;
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={props.className}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3" />
+      <line x1="12" y1="3" x2="12" y2="6" />
+      <line x1="12" y1="18" x2="12" y2="21" />
+      <line x1="3" y1="12" x2="6" y2="12" />
+      <line x1="18" y1="12" x2="21" y2="12" />
+    </svg>
+  );
+};
+
+const ICON_COMPONENTS: Record<CardIconId, (props: { size?: number; className?: string; stroke?: string; strokeWidth?: number }) => JSX.Element> = {
+  mask: (props) => <IconMask {...props} />,
+  eye: (props) => <IconEye {...props} />,
+  swords: (props) => <IconSwords {...props} />,
+  shield: (props) => <IconShield {...props} />,
+  quill: (props) => <IconFeather {...props} />,
+  balance: (props) => <IconScale {...props} />,
+  crown: (props) => <IconCrown {...props} />,
+  flame: (props) => <IconFlame {...props} />,
+  target: (props) => <IconTargetGlyph {...props} />,
 };
 
 export const CardSymbol = memo(function CardSymbol({ icon, size = 28, className }: CardSymbolProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      data-icon={icon}
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      className={className}
-    >
-      {ICON_PATHS[icon]}
-    </svg>
-  );
+  const Component = ICON_COMPONENTS[icon];
+  // 太めのストロークで暗色背景でも視認性を担保
+  return <Component size={size} className={className} stroke="currentColor" strokeWidth={1.8} />;
 });
 

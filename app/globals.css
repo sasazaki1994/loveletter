@@ -84,3 +84,15 @@ a {
     transform: translateY(0);
   }
 }
+
+@keyframes flash {
+  0% {
+    opacity: 0.0;
+  }
+  10% {
+    opacity: 1.0;
+  }
+  100% {
+    opacity: 0.0;
+  }
+}

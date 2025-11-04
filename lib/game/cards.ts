@@ -3,20 +3,20 @@ import { CardDefinition } from "./types";
 export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   sentinel: {
     id: "sentinel",
-    name: "Guard",
+    name: "Sentinel",
     rank: 1,
     copies: 5,
     effectType: "guess_eliminate",
     description:
       "指名した相手の手札を数値で推測し、的中したら脱落させる。Sentinel 自身の数字は推測不可。",
-    icon: "mask",
+    icon: "target",
     target: "opponent",
     requiresGuess: true,
     cannotTargetShielded: true,
   },
   oracle: {
     id: "oracle",
-    name: "Priest",
+    name: "Oracle",
     rank: 2,
     copies: 2,
     effectType: "peek",
@@ -27,7 +27,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   duelist: {
     id: "duelist",
-    name: "Baron",
+    name: "Duelist",
     rank: 3,
     copies: 2,
     effectType: "compare",
@@ -39,7 +39,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   warder: {
     id: "warder",
-    name: "Handmaid",
+    name: "Warder",
     rank: 4,
     copies: 2,
     effectType: "shield",
@@ -49,7 +49,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   legate: {
     id: "legate",
-    name: "Prince",
+    name: "Legate",
     rank: 5,
     copies: 2,
     effectType: "force_discard",
@@ -60,7 +60,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   arbiter: {
     id: "arbiter",
-    name: "King",
+    name: "Arbiter",
     rank: 6,
     copies: 1,
     effectType: "swap_hands",
@@ -71,7 +71,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   vizier: {
     id: "vizier",
-    name: "Countess",
+    name: "Vizier",
     rank: 7,
     copies: 1,
     effectType: "conditional_discard",
@@ -83,7 +83,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   emissary: {
     id: "emissary",
-    name: "Princess",
+    name: "Emissary",
     rank: 8,
     copies: 1,
     effectType: "self_eliminate",

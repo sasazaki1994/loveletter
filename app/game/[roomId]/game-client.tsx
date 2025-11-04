@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { GameBoard } from "@/components/game/game-board";
+import { GameEffectsProvider } from "@/components/game/game-effects-provider";
 import { GameProvider } from "@/components/game/game-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,7 +70,9 @@ export function GameClient({ roomId }: GameClientProps) {
 
   return (
     <GameProvider roomId={roomId} playerId={activeSession.playerId}>
-      <GameBoard />
+      <GameEffectsProvider>
+        <GameBoard />
+      </GameEffectsProvider>
     </GameProvider>
   );
 }

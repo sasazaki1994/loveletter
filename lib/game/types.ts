@@ -52,7 +52,8 @@ export type CardIconId =
   | "quill"
   | "balance"
   | "crown"
-  | "flame";
+  | "flame"
+  | "target";
 
 export type CardTargetOption =
   | "self"

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
 
 import { db, type DbClient } from "@/lib/db/client";
-import { buildFullDeck, draw, shuffleDeck } from "@/lib/game/deck";
+import { buildFullDeck, draw, shuffleDeck, getTestDeckOverrides, type TestDeckOverrides } from "@/lib/game/deck";
 import { CARD_POOL } from "@/lib/game/cards";
 import type { VariantConfig } from "@/lib/game/variants";
 import { generateOpaqueToken, hashToken } from "@/lib/server/auth";
@@ -110,7 +110,11 @@ async function generateUniqueShortId(tx: TransactionClient, maxRetries = 10): Pr
   throw new Error("短いルームIDの生成に失敗しました");
 }
 
-export async function createRoomWithBot(nickname: string, variantIds?: CardId[]) {
+export async function createRoomWithBot(
+  nickname: string,
+  variantIds?: CardId[],
+  overrides?: TestDeckOverrides,
+) {
   return db.transaction(async (tx) => {
     const shortId = await generateUniqueShortId(tx);
     const [room] = await tx
@@ -148,6 +152,7 @@ export async function createRoomWithBot(nickname: string, variantIds?: CardId[])
       room.id,
       [host, ...botRows].sort((a, b) => a.seat - b.seat),
       variantConfig,
+      overrides,
     );
 
     await tx
@@ -837,9 +842,18 @@ async function setupNewGame(
   roomId: string,
   playerRows: typeof players.$inferSelect[],
   variants?: VariantConfig,
+  overrides?: TestDeckOverrides,
 ) {
-  const seed = randomUUID();
-  const deck = shuffleDeck(buildFullDeck(variants), seed);
+  const envOverrides = getTestDeckOverrides() ?? undefined;
+  const ov = overrides ?? envOverrides;
+
+  let deck: CardId[];
+  if (ov?.fixedDeck && ov.fixedDeck.length > 0) {
+    deck = [...ov.fixedDeck];
+  } else {
+    const seed = ov?.seed ?? randomUUID();
+    deck = shuffleDeck(buildFullDeck(variants), seed);
+  }
 
   const { card: burnCard, deck: deckAfterBurn } = draw(deck);
 

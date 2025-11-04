@@ -43,3 +43,44 @@ export function draw(deck: CardId[]): { card: CardId | undefined; deck: CardId[]
   return { card, deck: rest };
 }
 
+// --- E2E test overrides ---
+
+export type TestDeckOverrides = {
+  seed?: string;
+  fixedDeck?: CardId[];
+};
+
+/**
+ * E2E専用のデッキ/シード上書き設定を環境変数から取得する。
+ * 本番(NODE_ENV=production)では無効。
+ *
+ * 環境変数:
+ * - E2E_TEST_MODE: '1' のときのみ有効
+ * - E2E_SEED: シャッフルシード（文字列）
+ * - E2E_DECK: カードIDをカンマ/空白区切りで列挙（先頭が山札トップ）
+ */
+export function getTestDeckOverrides(): TestDeckOverrides | null {
+  if (process.env.NODE_ENV === "production") return null;
+  const enabled = process.env.E2E_TEST_MODE === "1";
+  if (!enabled) return null;
+
+  const seed = process.env.E2E_SEED?.trim();
+  const deckSpec = process.env.E2E_DECK?.trim();
+  let fixedDeck: CardId[] | undefined;
+
+  if (deckSpec && deckSpec.length > 0) {
+    const parts = deckSpec.split(/[\s,]+/).filter(Boolean);
+    const valid: CardId[] = [];
+    for (const token of parts) {
+      if ((CARD_DEFINITIONS as any)[token]) {
+        valid.push(token as CardId);
+      }
+    }
+    if (valid.length > 0) {
+      fixedDeck = valid;
+    }
+  }
+
+  return { seed, fixedDeck };
+}
+
