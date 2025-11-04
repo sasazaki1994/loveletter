@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
 import { AlertCircle, Loader2, RefreshCw, Users, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
   0: { x: 0, y: 0.82 },
@@ -62,6 +63,7 @@ export function GameBoard() {
   const processedActionIdsRef = useRef<Set<string>>(new Set());
   const [showHandReveal, setShowHandReveal] = useState(false);
   const [handRevealComplete, setHandRevealComplete] = useState(false);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
   const hand = useMemo(() => state?.hand ?? state?.self?.hand ?? [], [state?.hand, state?.self?.hand]);
   const orderedPlayers = useMemo(() => {
     if (!state) return [];
@@ -77,6 +79,16 @@ export function GameBoard() {
     const me = state.players.find((p) => p.id === selfId);
     return me?.seat ?? 0;
   }, [state, selfId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const evaluateViewport = () => {
+      setIsCompactViewport(window.innerHeight < 960);
+    };
+    evaluateViewport();
+    window.addEventListener("resize", evaluateViewport);
+    return () => window.removeEventListener("resize", evaluateViewport);
+  }, []);
 
   const generateEventId = useCallback(() => {
     const globalCrypto = typeof window !== "undefined" ? window.crypto : undefined;
@@ -535,48 +547,49 @@ export function GameBoard() {
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {
     return (
-      <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-12">
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Users className="h-6 w-6 text-[var(--color-accent-light)]" />
-                ルーム待機中
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <p className="text-sm text-[var(--color-text-muted)]">
-                他のプレイヤーの参加を待っています。ホストがゲームを開始すると、自動的に開始されます。
-              </p>
-              {!isBotGame && <RoomIdDisplay roomId={shortId ?? roomId} />}
-              {loading && (
-                <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-text-muted)]">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  状態を確認中...
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid h-screen w-full place-items-center overflow-hidden px-6">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <Users className="h-6 w-6 text-[var(--color-accent-light)]" />
+              ルーム待機中
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <p className="text-sm text-[var(--color-text-muted)]">
+              他のプレイヤーの参加を待っています。ホストがゲームを開始すると、自動的に開始されます。
+            </p>
+            {!isBotGame && <RoomIdDisplay roomId={shortId ?? roomId} />}
+            {loading && (
+              <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-text-muted)]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                状態を確認中...
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  const rootClasses = cn(
+    "relative flex h-screen flex-col",
+    isCompactViewport ? "overflow-y-auto" : "overflow-hidden",
+  );
+
   return (
-    <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto">
-      <div className="pointer-events-none fixed left-4 top-24 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6">
+    <div className={rootClasses}>
+      <div className="pointer-events-none fixed left-4 top-20 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 lg:left-10">
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
       </div>
-      
-      {/* ルームID表示（ボット戦では非表示） */}
+
       {!isBotGame && (
-        <div className="pointer-events-auto fixed left-4 top-6 z-30 sm:left-6">
+        <div className="pointer-events-auto fixed left-4 top-6 z-30 sm:left-6 lg:left-10">
           <RoomIdDisplay roomId={shortId ?? roomId} variant="compact" />
         </div>
       )}
-      
-      {/* エラー通知バナー */}
+
       <AnimatePresence>
         {error && (
           <motion.div
@@ -629,7 +642,7 @@ export function GameBoard() {
 
       <ResultDialog />
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-16 pb-32" role="region" aria-label="ゲームテーブル">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-14 pb-20">
         <div className="flex flex-1 flex-col items-center gap-6">
           <div className="flex flex-1 items-center justify-center">
             <div
@@ -676,7 +689,7 @@ export function GameBoard() {
             </div>
           </div>
 
-          <div className="mt-24 w-full max-w-3xl shrink-0 sm:mt-28">
+          <div className="w-full max-w-3xl">
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Badge variant="outline">あなた</Badge>
               <span className="font-heading text-xl text-[var(--color-accent-light)]">
@@ -686,7 +699,7 @@ export function GameBoard() {
                 <span className="text-xs text-[var(--color-text-muted)]">ターン待機中...</span>
               )}
             </div>
-          <div className="mt-1 flex min-h-[5.5rem] flex-wrap justify-center gap-4">
+            <div className="mt-3 flex min-h-[5.5rem] flex-wrap justify-center gap-4">
               {hand && hand.length > 0 ? (
                 <LayoutGroup id="player-hand">
                   <AnimatePresence initial={false}>

@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { useGameContext } from "@/components/game/game-provider";
 import { cn } from "@/lib/utils";
 
+type DockPosition = "left" | "bottom";
+
 export function ActionBar() {
   const {
     selectedCard,
@@ -33,15 +35,34 @@ export function ActionBar() {
     setVolume,
   } = useGameContext();
 
+  const [dockPosition, setDockPosition] = useState<DockPosition>("left");
   const [hintVisible, setHintVisible] = useState(false);
   const [gameInfoVisible, setGameInfoVisible] = useState(false);
-  const [dockPosition, setDockPosition] = useState<"bottom" | "left">("left");
+  const [isCompactHeight, setIsCompactHeight] = useState(false);
   const isDockedLeft = dockPosition === "left";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("actionBarDock");
+    if (stored === "left" || stored === "bottom") {
+      setDockPosition(stored);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("actionBarDock", dockPosition);
   }, [dockPosition]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setIsCompactHeight(window.innerHeight < 960);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (!cardDefinition?.requiresGuess) {
@@ -64,14 +85,16 @@ export function ActionBar() {
   }, [cardDefinition, guessedRank, isMyTurn, noAvailableTargets, requiresTarget, selectedTarget, targetOptions]);
 
   const containerClasses = cn(
-    "fixed z-30",
+    "fixed z-30 flex flex-col gap-3 text-sm text-[var(--color-text-muted)] backdrop-blur-sm",
     isDockedLeft
-      ? "inset-y-0 right-0 w-full max-w-[20rem] bg-gradient-to-l from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-4 py-4 shadow-[-24px_0_60px_rgba(0,0,0,0.45)]"
-      : "inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-6 py-4 shadow-[0_-24px_60px_rgba(0,0,0,0.45)]",
+      ? "inset-y-0 right-0 w-full max-w-[20rem] border-l border-[rgba(215,178,110,0.18)] bg-gradient-to-l from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-4 py-4 shadow-[-24px_0_60px_rgba(0,0,0,0.45)]"
+      : "inset-x-0 bottom-0 w-full border-t border-[rgba(215,178,110,0.18)] bg-gradient-to-t from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-6 py-4 shadow-[0_-24px_60px_rgba(0,0,0,0.45)]",
+    isDockedLeft && "scrollbar-thin max-h-[calc(100vh-2.5rem)] overflow-y-auto pr-1",
+    isDockedLeft && isCompactHeight && "pb-6",
   );
 
   const initialAnimation = useMemo(
-    () => (isDockedLeft ? { x: -80, opacity: 0 } : { y: 80, opacity: 0 }),
+    () => (isDockedLeft ? { x: 64, opacity: 0 } : { y: 64, opacity: 0 }),
     [isDockedLeft],
   );
 
@@ -82,7 +105,7 @@ export function ActionBar() {
 
   const innerClasses = cn(
     "flex flex-col",
-    isDockedLeft ? "h-full gap-3" : "mx-auto w-full max-w-5xl gap-3",
+    isDockedLeft ? "gap-3" : "mx-auto w-full max-w-5xl gap-3",
   );
 
   const infoRowClasses = cn(
@@ -108,7 +131,7 @@ export function ActionBar() {
           <div className={infoRowClasses}>
             {isDockedLeft ? (
               <>
-                <div className="flex items-center gap-2 pb-2 border-b border-[rgba(255,255,255,0.1)]">
+                <div className="flex items-center gap-2 border-b border-[rgba(255,255,255,0.1)] pb-2">
                   <Info className="h-4 w-4 text-[var(--color-accent-light)]" />
                   <span className="text-xs leading-tight">
                     {isMyTurn ? "カードを選択して Enter で使用" : "待機中"}
@@ -116,20 +139,26 @@ export function ActionBar() {
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
                   <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">Tab</Badge>
+                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                      Tab
+                    </Badge>
                     <span>移動</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">Enter</Badge>
+                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                      Enter
+                    </Badge>
                     <span>使用</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">Esc</Badge>
+                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                      Esc
+                    </Badge>
                     <span>キャンセル</span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5 pt-2 border-t border-[rgba(255,255,255,0.1)]">
-                  <div className="flex items-center gap-2 px-2">
+                <div className="flex flex-col gap-1.5 border-t border-[rgba(255,255,255,0.1)] pt-2">
+                  <div className="flex items-center gap-2 px-1.5">
                     <Button
                       type="button"
                       variant="ghost"
@@ -170,6 +199,7 @@ export function ActionBar() {
                     variant="ghost"
                     className="h-7 w-full justify-start px-2 text-xs"
                     onClick={() => setHintVisible((prev) => !prev)}
+                    aria-expanded={hintVisible}
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
@@ -177,6 +207,7 @@ export function ActionBar() {
                     variant="ghost"
                     className="h-7 w-full justify-start px-2 text-xs"
                     onClick={() => setGameInfoVisible((prev) => !prev)}
+                    aria-expanded={gameInfoVisible}
                   >
                     {gameInfoVisible ? "ゲーム概要を隠す" : "ゲーム概要"}
                   </Button>
@@ -234,6 +265,7 @@ export function ActionBar() {
                     variant="ghost"
                     className="h-8 px-3 text-xs"
                     onClick={() => setHintVisible((prev) => !prev)}
+                    aria-expanded={hintVisible}
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
@@ -241,6 +273,7 @@ export function ActionBar() {
                     variant="ghost"
                     className="h-8 px-3 text-xs"
                     onClick={() => setGameInfoVisible((prev) => !prev)}
+                    aria-expanded={gameInfoVisible}
                   >
                     {gameInfoVisible ? "ゲーム概要を隠す" : "ゲーム概要"}
                   </Button>
@@ -249,27 +282,34 @@ export function ActionBar() {
             )}
           </div>
 
-        {actionError && (
-          <div className="flex items-start justify-between gap-4 rounded-xl border border-[rgba(215,120,110,0.35)] bg-[rgba(60,20,18,0.65)] px-4 py-3 text-sm text-[var(--color-warn-light)]" role="alert">
-            <span>{actionError}</span>
-            <Button variant="ghost" className="h-8 px-3 text-xs text-[var(--color-warn-light)]" onClick={clearActionError}>
-              閉じる
-            </Button>
-          </div>
-        )}
+          {actionError && (
+            <div
+              className="flex items-start justify-between gap-4 rounded-xl border border-[rgba(215,120,110,0.35)] bg-[rgba(60,20,18,0.65)] px-4 py-3 text-sm text-[var(--color-warn-light)]"
+              role="alert"
+            >
+              <span>{actionError}</span>
+              <Button
+                variant="ghost"
+                className="h-8 px-3 text-xs text-[var(--color-warn-light)]"
+                onClick={clearActionError}
+              >
+                閉じる
+              </Button>
+            </div>
+          )}
 
           {gameInfoVisible && (
             <div
               className={cn(
                 "space-y-2 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)]",
-                isDockedLeft && "px-3 py-2 text-xs"
+                isDockedLeft && "px-3 py-2 text-xs",
               )}
             >
               <p className={cn("font-heading text-[var(--color-accent-light)]", isDockedLeft ? "text-sm" : "text-lg")}>Love Letter Reverie</p>
               <ul
                 className={cn(
-                  "list-disc space-y-1 leading-relaxed pl-5",
-                  isDockedLeft && "pl-4"
+                  "list-disc space-y-1 pl-5 leading-relaxed",
+                  isDockedLeft && "pl-4",
                 )}
               >
                 <li>各ターンで山札から1枚引き、手札2枚のうち1枚を公開して効果を解決します。</li>
@@ -283,7 +323,7 @@ export function ActionBar() {
             <div
               className={cn(
                 "rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)]",
-                isDockedLeft && "px-3 py-2"
+                isDockedLeft && "px-3 py-2",
               )}
             >
               <p className={cn("font-heading text-[var(--color-accent-light)]", isDockedLeft ? "text-sm" : "text-lg")}>{cardDefinition.name}</p>
@@ -293,17 +333,17 @@ export function ActionBar() {
         </div>
 
         <div className={controlsRowClasses}>
-          <div className={cn("flex flex-col gap-1", isDockedLeft ? "w-full" : "min-w-[14rem]")}>
+          <div className={cn("flex flex-col gap-1", isDockedLeft ? "w-full" : "min-w-[14rem]")}> 
             <span className="text-xs uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
               選択中カード
             </span>
-            <p className={cn("text-[var(--color-accent-light)]", isDockedLeft ? "text-xs" : "text-sm")}>
+            <p className={cn("text-[var(--color-accent-light)]", isDockedLeft ? "text-xs" : "text-sm")}> 
               {cardDefinition ? `${cardDefinition.name} (ランク ${cardDefinition.rank})` : "未選択"}
             </p>
           </div>
 
           {requiresTarget && (
-            <div className={cn("flex flex-col gap-1.5", isDockedLeft ? "w-full" : "text-sm")}>
+            <div className={cn("flex flex-col gap-1.5", isDockedLeft ? "w-full" : "text-sm")}> 
               <span className="text-xs uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
                 対象プレイヤー
               </span>
@@ -340,7 +380,7 @@ export function ActionBar() {
           )}
 
           {cardDefinition?.requiresGuess && (
-            <div className={cn("flex flex-col gap-1.5", isDockedLeft ? "w-full" : "text-sm")}>
+            <div className={cn("flex flex-col gap-1.5", isDockedLeft ? "w-full" : "text-sm")}> 
               <span className="text-xs uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
                 推測するランク
               </span>
@@ -357,7 +397,7 @@ export function ActionBar() {
                     return;
                   }
                   const numValue = Number(value);
-                  if (!isNaN(numValue)) {
+                  if (!Number.isNaN(numValue)) {
                     setGuessedRank(numValue);
                   }
                 }}
@@ -367,7 +407,7 @@ export function ActionBar() {
                     setGuessedRank(null);
                   } else {
                     const numValue = Number(value);
-                    if (!isNaN(numValue)) {
+                    if (!Number.isNaN(numValue)) {
                       if (numValue < 2) {
                         setGuessedRank(null);
                       } else if (numValue > 8) {
@@ -385,18 +425,18 @@ export function ActionBar() {
             </div>
           )}
 
-          <div className={cn("flex gap-2", isDockedLeft ? "w-full flex-col pt-0" : "ml-auto gap-3")}>
-            <Button 
-              variant="ghost" 
-              className={cn(isDockedLeft ? "w-full h-9 justify-center" : "px-4")} 
-              onClick={cancelSelection} 
+          <div className={cn("flex gap-2", isDockedLeft ? "w-full flex-col pt-0" : "ml-auto gap-3")}> 
+            <Button
+              variant="ghost"
+              className={cn(isDockedLeft ? "h-9 w-full justify-center" : "px-4")}
+              onClick={cancelSelection}
               disabled={!selectedCard}
             >
               取り消し
             </Button>
-            <Button 
-              className={cn(isDockedLeft ? "w-full h-10" : "px-6")} 
-              onClick={playCard} 
+            <Button
+              className={cn(isDockedLeft ? "h-10 w-full" : "px-6")}
+              onClick={playCard}
               disabled={!canConfirm || acting}
             >
               {acting ? "送信中..." : "カードを使う"}
