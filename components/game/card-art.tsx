@@ -71,6 +71,7 @@ export function CardArt({ cardId, alt = '', className }: CardArtProps) {
       className={className}
       style={{ objectFit: 'cover' }}
       onError={handleError}
+      unoptimized
       priority={false}
     />
   );

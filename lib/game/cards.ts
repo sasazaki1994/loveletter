@@ -3,7 +3,7 @@ import { CardDefinition } from "./types";
 export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   sentinel: {
     id: "sentinel",
-    name: "Sentinel of Whispers",
+    name: "Guard",
     rank: 1,
     copies: 5,
     effectType: "guess_eliminate",
@@ -16,7 +16,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   oracle: {
     id: "oracle",
-    name: "Oracle of Veils",
+    name: "Priest",
     rank: 2,
     copies: 2,
     effectType: "peek",
@@ -27,7 +27,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   duelist: {
     id: "duelist",
-    name: "Duelist of Courts",
+    name: "Baron",
     rank: 3,
     copies: 2,
     effectType: "compare",
@@ -39,7 +39,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   warder: {
     id: "warder",
-    name: "Warder of Aegis",
+    name: "Handmaid",
     rank: 4,
     copies: 2,
     effectType: "shield",
@@ -49,7 +49,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   legate: {
     id: "legate",
-    name: "Legate of Cinders",
+    name: "Prince",
     rank: 5,
     copies: 2,
     effectType: "force_discard",
@@ -60,7 +60,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   arbiter: {
     id: "arbiter",
-    name: "Arbiter of Mirrors",
+    name: "King",
     rank: 6,
     copies: 1,
     effectType: "swap_hands",
@@ -71,7 +71,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   vizier: {
     id: "vizier",
-    name: "Vizier of Silence",
+    name: "Countess",
     rank: 7,
     copies: 1,
     effectType: "conditional_discard",
@@ -83,7 +83,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   emissary: {
     id: "emissary",
-    name: "Emissary of Radiance",
+    name: "Princess",
     rank: 8,
     copies: 1,
     effectType: "self_eliminate",
@@ -94,7 +94,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   // --- Optional swap-ins (disabled by default via deck builder) ---
   feint: {
     id: "feint",
-    name: "Feint of Whispers",
+    name: "Feint",
     rank: 1,
     copies: 1, // replaces 1 of 5
     effectType: "guess_reveal",
@@ -107,7 +107,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   insight: {
     id: "insight",
-    name: "Insight of Veils",
+    name: "Insight",
     rank: 2,
     copies: 1, // replaces 1 of 2
     effectType: "peek", // NOTE: placeholder effect type; deck toggle is off by default
@@ -117,7 +117,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   standoff: {
     id: "standoff",
-    name: "Standoff at Court",
+    name: "Standoff",
     rank: 3,
     copies: 1, // replaces 1 of 2
     effectType: "compare",
@@ -128,7 +128,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   wager: {
     id: "wager",
-    name: "Wager of Masks",
+    name: "Wager",
     rank: 4,
     copies: 1, // replaces 1 of 2
     effectType: "guess_reveal",
@@ -141,7 +141,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   ambush: {
     id: "ambush",
-    name: "Ambush of Mirrors",
+    name: "Ambush",
     rank: 6,
     copies: 1, // replaces 1 of 1
     effectType: "swap_hands",
@@ -152,7 +152,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
   },
   marquise: {
     id: "marquise",
-    name: "Marquise of Poise",
+    name: "Marquise",
     rank: 7,
     copies: 1, // replaces 1 of 1
     effectType: "conditional_discard",
