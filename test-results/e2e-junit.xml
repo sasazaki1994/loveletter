@@ -1,0 +1,18 @@
+<testsuites id="" name="" tests="4" failures="0" skipped="0" errors="0" time="34.96475100000001">
+<testsuite name="e2e\deterministic-fullgame.spec.ts" timestamp="2025-11-04T12:54:31.435Z" hostname="chromium" tests="1" failures="0" skipped="0" time="23.101" errors="0">
+<testcase name="決定論的フロー: 2人対戦で即時終了(Resign)→リザルト表示" classname="e2e\deterministic-fullgame.spec.ts" time="23.101">
+</testcase>
+</testsuite>
+<testsuite name="e2e\lobby-create-bot.spec.ts" timestamp="2025-11-04T12:54:31.435Z" hostname="chromium" tests="1" failures="0" skipped="0" time="13.268" errors="0">
+<testcase name="ロビーからBot対戦を開始できる" classname="e2e\lobby-create-bot.spec.ts" time="13.268">
+</testcase>
+</testsuite>
+<testsuite name="e2e\reconnect-resume.spec.ts" timestamp="2025-11-04T12:54:31.435Z" hostname="chromium" tests="1" failures="0" skipped="0" time="17.773" errors="0">
+<testcase name="リロード後も状態が継続しUIが復帰する" classname="e2e\reconnect-resume.spec.ts" time="17.773">
+</testcase>
+</testsuite>
+<testsuite name="e2e\two-player-join.spec.ts" timestamp="2025-11-04T12:54:31.435Z" hostname="chromium" tests="1" failures="0" skipped="0" time="24.078" errors="0">
+<testcase name="2人対戦: 参加→開始→双方同期" classname="e2e\two-player-join.spec.ts" time="24.078">
+</testcase>
+</testsuite>
+</testsuites>

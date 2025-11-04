@@ -3,6 +3,23 @@ import { test as base, expect, APIRequestContext, Page } from "@playwright/test"
 export const test = base;
 export { expect };
 
+export async function waitForGameUI(page: Page, timeoutMs = 20000) {
+  const start = Date.now();
+  for (;;) {
+    const hasTable = await page.getByRole('region', { name: 'ゲームテーブル' }).isVisible().catch(() => false);
+    if (hasTable) return;
+    // セッション未検出はSSR→CSRの間に一瞬出ることがある
+    const sessionMissing = await page.getByText('セッション未検出').isVisible().catch(() => false);
+    if (!sessionMissing) {
+      // 代替としてターンバナーの一部文言でも可
+      const banner = await page.getByText(/(の手番|ターン待機中)/).isVisible().catch(() => false);
+      if (banner) return;
+    }
+    if (Date.now() - start > timeoutMs) throw new Error('Game UI not visible');
+    await page.waitForTimeout(500);
+  }
+}
+
 export async function createBotRoomViaUI(page: Page, nickname: string) {
   await page.goto("/");
   const input = page.getByLabel(/ニックネーム|Nickname/i).or(
@@ -16,12 +33,18 @@ export async function createBotRoomViaUI(page: Page, nickname: string) {
     return;
   } catch {
     // Fallback: APIで作成して直接遷移
-    const r = await page.request.post("/api/room/create", {
+  const r = await page.request.post("/api/room/create", {
       data: { nickname, variants: [] },
     });
-    const json = (await r.json()) as { roomId?: string };
-    if (!r.ok() || !json.roomId) throw new Error("failed to create room via API fallback");
-    await page.goto(`/game/${json.roomId}`);
+  const json = (await r.json()) as { roomId?: string; playerId?: string };
+  if (!r.ok() || !json.roomId || !json.playerId) throw new Error("failed to create room via API fallback");
+  await page.addInitScript(([roomId, playerId, nick]) => {
+    window.localStorage.setItem(
+      "llr:session",
+      JSON.stringify({ roomId, playerId, nickname: nick }),
+    );
+  }, [json.roomId, json.playerId, nickname]);
+  await page.goto(`/game/${json.roomId}`);
   }
 }
 
@@ -45,6 +68,29 @@ export async function createBotRoomViaAPI(
     throw new Error(`create failed: ${json?.error ?? res.status()}`);
   }
   return json as { roomId: string; playerId: string; gameId?: string };
+}
+
+export async function waitForServerState(
+  request: APIRequestContext,
+  roomId: string,
+  player?: { id: string; token?: string },
+  timeoutMs = 20000,
+) {
+  const start = Date.now();
+  for (;;) {
+    const url = new URL('/api/game/state', 'http://localhost');
+    url.searchParams.set('roomId', roomId);
+    if (player?.id) url.searchParams.set('playerId', player.id);
+    const res = await request.get(url.pathname + url.search, {
+      headers: player?.token ? { 'X-Player-Id': player.id, 'X-Player-Token': player.token } : {},
+    });
+    if (res.status() === 200) {
+      const json = await res.json();
+      if (json?.state) return json;
+    }
+    if (Date.now() - start > timeoutMs) throw new Error('Server state not ready');
+    await new Promise((r) => setTimeout(r, 500));
+  }
 }
 
 

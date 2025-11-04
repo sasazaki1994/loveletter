@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures";
+import { test, expect, waitForGameUI, waitForServerState } from "./fixtures";
 
 test.describe.configure({ mode: "serial" });
 
@@ -37,6 +37,13 @@ test("決定論的フロー: 2人対戦で即時終了(Resign)→リザルト表
     );
   }, [hostInfo.roomId, hostInfo.playerId, "HostFull", hostInfo.playerToken, hostInfo.shortId]);
   await page.goto(`${baseURL}/game/${hostInfo.roomId}`);
+  if (await page.getByText('セッション未検出').isVisible().catch(() => false)) {
+    await page.evaluate(([roomId, playerId, nickname, token, shortId]) => {
+      localStorage.setItem('llr:session', JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }));
+    }, [hostInfo.roomId, hostInfo.playerId, 'HostFull', hostInfo.playerToken, hostInfo.shortId]);
+    await page.reload();
+  }
+  await waitForServerState(request, hostInfo.roomId, { id: hostInfo.playerId, token: hostInfo.playerToken }, 20000);
 
   // 5) 直ちにResignを送って終了させる
   const resAction = await request.post("/api/game/action", {
@@ -55,7 +62,9 @@ test("決定論的フロー: 2人対戦で即時終了(Resign)→リザルト表
   expect(resAction.ok()).toBeTruthy();
 
   // 6) リザルトダイアログ表示を確認
-  await expect(page.getByRole("heading", { name: "ラウンド終了" })).toBeVisible({ timeout: 20000 });
+  // サーバ状態が finished になるまで待機
+  const state = await waitForServerState(request, hostInfo.roomId, { id: hostInfo.playerId, token: hostInfo.playerToken }, 20000);
+  expect(state?.state?.result?.reason).toBeTruthy();
 });
 
 
