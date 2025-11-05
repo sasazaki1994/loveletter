@@ -53,9 +53,6 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
           {definition.rank}
         </span>
         <span className="sr-only">ランク {definition.rank}</span>
-        <span className="rounded-full border border-[rgba(215,178,110,0.6)] bg-[rgba(55,84,78,0.6)] px-2 py-0.5 text-xs uppercase tracking-[0.3em] text-[var(--color-accent-light)]">
-          {definition.name.split(" ")[0]}
-        </span>
       </div>
       <div className="relative z-10 mt-4 flex items-center justify-center">
         <CardSymbol icon={definition.icon} size={38} className="text-[var(--color-accent-light)]" />
