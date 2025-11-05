@@ -54,7 +54,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
     copies: 2,
     effectType: "force_discard",
     description:
-      "対象の手札を捨てさせ、新しい 1 枚を引かせる。Princess を捨てさせた場合は脱落。",
+      "対象の手札を捨てさせ、新しい 1 枚を引かせる。Emissary を捨てさせた場合は脱落。",
     icon: "quill",
     target: "any",
   },

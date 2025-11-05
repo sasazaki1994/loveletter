@@ -270,7 +270,7 @@ export function RoomLobby() {
                 <ul className="list-disc space-y-1 leading-relaxed pl-5">
                   <li>カード効果で条件を満たしたプレイヤーは即座に脱落し、以降の手番を失います。</li>
                   <li>守護効果中のプレイヤーは対象にできません。守護が切れると再びターゲット可能です。</li>
-                  <li>Princess 相当のカードを捨て札にすると、自主的であっても脱落します。</li>
+                  <li>Emissary 相当のカードを捨て札にすると、自主的であっても脱落します。</li>
                 </ul>
               </section>
 

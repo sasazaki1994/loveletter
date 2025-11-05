@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "bgm:download": "node scripts/download-bgm.mjs",
     "e2e:test": "playwright test tests/e2e --project=chromium",
     "e2e:test:headed": "PLAYWRIGHT_HEADLESS=0 playwright test tests/e2e --project=chromium",
     "e2e:ci": "playwright test tests/e2e --project=chromium",

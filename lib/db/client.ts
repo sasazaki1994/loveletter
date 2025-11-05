@@ -1,9 +1,11 @@
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
+import { Pool as NeonPool, neonConfig } from "@neondatabase/serverless";
+import { drizzle as drizzleNeon } from "drizzle-orm/neon-serverless";
+import { Pool as PgPool } from "pg";
+import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import ws from "ws";
 import * as schema from "@/drizzle/schema";
 
-type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
+type DrizzleDb = ReturnType<typeof drizzleNeon<typeof schema>> | ReturnType<typeof drizzlePg<typeof schema>>;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -29,12 +31,21 @@ function createDb(): DrizzleDb {
   }
   
   const databaseUrl = getDatabaseUrl();
-  // Neon WebSocket 接続の最適化（Node.js で WS を使用）
-  neonConfig.webSocketConstructor = (globalThis as any).WebSocket ?? (ws as unknown as typeof WebSocket);
-  neonConfig.useSecureWebSocket = true;
-  neonConfig.pipelineConnect = "password";
-  const pool = new Pool({ connectionString: databaseUrl });
-  const dbInstance = drizzle(pool, { schema, logger: process.env.NODE_ENV === "development" });
+  const isNeon = Boolean(process.env.NEON_DATABASE_URL) || /\.neon\./i.test(databaseUrl);
+
+  let dbInstance: DrizzleDb;
+  if (isNeon) {
+    // Neon (serverless/WebSocket)
+    neonConfig.webSocketConstructor = (globalThis as any).WebSocket ?? (ws as unknown as typeof WebSocket);
+    neonConfig.useSecureWebSocket = true;
+    neonConfig.pipelineConnect = "password";
+    const pool = new NeonPool({ connectionString: databaseUrl });
+    dbInstance = drizzleNeon(pool, { schema, logger: process.env.NODE_ENV === "development" });
+  } else {
+    // ローカル/通常のPostgreSQL (pg)
+    const pool = new PgPool({ connectionString: databaseUrl, ssl: false });
+    dbInstance = drizzlePg(pool, { schema, logger: process.env.NODE_ENV === "development" });
+  }
   
   if (process.env.NODE_ENV !== "production") {
     globalThis.__drizzleDb__ = dbInstance;
