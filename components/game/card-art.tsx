@@ -26,13 +26,17 @@ export function CardArt({ cardId, alt = '', className }: CardArtProps) {
     const encodedName = name ? encodeURIComponent(name) : '';
 
     return [
-      // id ベース優先
+      // id ベース優先（小文字）
       `/cards/${cardId}.svg`,
       `/cards/${cardId}.webp`,
       `/cards/${cardId}.png`,
-      // 表示名ベース（ユーザー提供資産のファイル名に合わせる）
+      // 表示名ベース（大文字始まりのPNGを優先）
       ...(encodedName
-        ? [`/cards/${encodedName}.svg`, `/cards/${encodedName}.webp`, `/cards/${encodedName}.png`]
+        ? [
+            `/cards/${encodedName}.png`, // PNGを最優先
+            `/cards/${encodedName}.webp`,
+            `/cards/${encodedName}.svg`,
+          ]
         : []),
       // プレースホルダ
       `/cards/placeholder.svg`,
