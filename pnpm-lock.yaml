@@ -31,7 +31,7 @@ importers:
         version: 2.1.1
       drizzle-orm:
         specifier: ^0.35.0
-        version: 0.35.3(@libsql/client-wasm@0.15.15)(@neondatabase/serverless@0.10.4)(@types/pg@8.11.6)(@types/react@18.3.11)(pg@8.16.3)(react@18.2.0)
+        version: 0.35.3(@libsql/client-wasm@0.15.15)(@neondatabase/serverless@0.10.4)(@types/pg@8.15.6)(@types/react@18.3.11)(pg@8.16.3)(react@18.2.0)
       framer-motion:
         specifier: ^11.11.11
         version: 11.18.2(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -75,6 +75,9 @@ importers:
       '@types/node':
         specifier: ^20
         version: 20.19.24
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.15.6
       '@types/react':
         specifier: 18.3.11
         version: 18.3.11
@@ -953,6 +956,9 @@ packages:
 
   '@types/pg@8.11.6':
     resolution: {integrity: sha512-/2WmmBXHLsfRqzfHW7BNZ8SbYzE8OSk7i3WjFYvfgRHj7S1xj+16Je5fUKv3lVdVzk/zn9TXOqf+avFCFIE0yQ==}
+
+  '@types/pg@8.15.6':
+    resolution: {integrity: sha512-NoaMtzhxOrubeL/7UZuNTrejB4MPAJ0RpxZqXQf2qXuVlTPuG6Y8p4u9dKRaue4yjmC7ZhzVO2/Yyyn25znrPQ==}
 
   '@types/prop-types@15.7.15':
     resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
@@ -3409,6 +3415,12 @@ snapshots:
       pg-protocol: 1.10.3
       pg-types: 4.1.0
 
+  '@types/pg@8.15.6':
+    dependencies:
+      '@types/node': 20.19.24
+      pg-protocol: 1.10.3
+      pg-types: 2.2.0
+
   '@types/prop-types@15.7.15': {}
 
   '@types/react-dom@18.3.7(@types/react@18.3.11)':
@@ -3777,12 +3789,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.35.3(@libsql/client-wasm@0.15.15)(@neondatabase/serverless@0.10.4)(@types/pg@8.11.6)(@types/react@18.3.11)(pg@8.16.3)(react@18.2.0):
+  drizzle-orm@0.35.3(@libsql/client-wasm@0.15.15)(@neondatabase/serverless@0.10.4)(@types/pg@8.15.6)(@types/react@18.3.11)(pg@8.16.3)(react@18.2.0):
     dependencies:
       '@libsql/client-wasm': 0.15.15
     optionalDependencies:
       '@neondatabase/serverless': 0.10.4
-      '@types/pg': 8.11.6
+      '@types/pg': 8.15.6
       '@types/react': 18.3.11
       pg: 8.16.3
       react: 18.2.0
