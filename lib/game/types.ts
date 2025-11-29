@@ -167,6 +167,7 @@ export interface GameActionResult {
   success: boolean;
   message?: string;
   state?: ClientGameState;
+  animationDelay?: number;
 }
 
 export type GameVisibility = "player" | "observer" | "owner";

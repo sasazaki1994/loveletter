@@ -45,43 +45,6 @@ type PlayerRole = (typeof playerRoleEnum.enumValues)[number];
 
 type TransactionClient = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
 
-// クライアント側のアニメーション時間と同期するための待機時間計算
-function getAnimationDelay(effectType: string, hasEffect: boolean): number {
-  const BASE_DISPLAY_DURATION_MS = 1500;
-  const EFFECT_DURATION_SCALE = 1.0;
-
-  let base = BASE_DISPLAY_DURATION_MS;
-  switch (effectType) {
-    case "peek":
-      base = hasEffect ? 2500 : 2000;
-      break;
-    case "guess_eliminate":
-      base = 2000;
-      break;
-    case "compare":
-      base = 2000;
-      break;
-    case "force_discard":
-      base = 1800;
-      break;
-    case "swap_hands":
-      base = 1800;
-      break;
-    case "shield":
-      base = BASE_DISPLAY_DURATION_MS;
-      break;
-    case "conditional_discard":
-      base = BASE_DISPLAY_DURATION_MS;
-      break;
-    case "self_eliminate":
-      base = BASE_DISPLAY_DURATION_MS;
-      break;
-    default:
-      base = BASE_DISPLAY_DURATION_MS;
-  }
-  return Math.round(base * EFFECT_DURATION_SCALE);
-}
-
 export async function cleanupStaleActiveRooms(maxAgeMinutes = 60) {
   const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
 
@@ -743,6 +706,7 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
         }
         break;
       case "shield":
+        effectActivated = true;
         await tx
           .update(players)
           .set({ shield: true })
@@ -846,12 +810,6 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
       return { success: true };
     }
 
-    // アニメーション完了まで待機してからターンを進める
-    const animationDelay = getAnimationDelay(definition.effectType, effectActivated);
-    if (animationDelay > 0) {
-      await new Promise((resolve) => setTimeout(resolve, animationDelay));
-    }
-
     await advanceTurn(tx, game, postPlayers);
 
     const [nextGame] = await tx
@@ -870,6 +828,7 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
     });
     success = !!txResult.success;
     runBotAfterCommit = !!(txResult as { runBotAfterCommit?: boolean }).runBotAfterCommit;
+    
   } catch (error) {
     console.error("[handlePlayCard] transaction failed", error);
     return { success: false, message: "カード処理中にエラーが発生しました。" };

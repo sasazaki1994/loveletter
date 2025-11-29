@@ -111,7 +111,7 @@ export function ResultDialog() {
     if (!state?.players) return [];
     const winnerIds = state.result?.winnerIds ?? [];
     return state.players.filter((player) => winnerIds.includes(player.id));
-  }, [state]);
+  }, [state?.players, state?.result?.winnerIds]);
 
   const placements = useMemo(() => {
     if (!state?.players || !state?.logs) return [];
@@ -240,7 +240,7 @@ export function ResultDialog() {
     }
 
     return placements;
-  }, [state]);
+  }, [state?.players, state?.logs, state?.result?.winnerIds, state?.result?.reason, state?.result?.finalHands]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
