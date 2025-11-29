@@ -45,6 +45,43 @@ type PlayerRole = (typeof playerRoleEnum.enumValues)[number];
 
 type TransactionClient = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
 
+// クライアント側のアニメーション時間と同期するための待機時間計算
+function getAnimationDelay(effectType: string, hasEffect: boolean): number {
+  const BASE_DISPLAY_DURATION_MS = 1500;
+  const EFFECT_DURATION_SCALE = 1.0;
+
+  let base = BASE_DISPLAY_DURATION_MS;
+  switch (effectType) {
+    case "peek":
+      base = hasEffect ? 2500 : 2000;
+      break;
+    case "guess_eliminate":
+      base = 2000;
+      break;
+    case "compare":
+      base = 2000;
+      break;
+    case "force_discard":
+      base = 1800;
+      break;
+    case "swap_hands":
+      base = 1800;
+      break;
+    case "shield":
+      base = BASE_DISPLAY_DURATION_MS;
+      break;
+    case "conditional_discard":
+      base = BASE_DISPLAY_DURATION_MS;
+      break;
+    case "self_eliminate":
+      base = BASE_DISPLAY_DURATION_MS;
+      break;
+    default:
+      base = BASE_DISPLAY_DURATION_MS;
+  }
+  return Math.round(base * EFFECT_DURATION_SCALE);
+}
+
 export async function cleanupStaleActiveRooms(maxAgeMinutes = 60) {
   const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
 
@@ -590,6 +627,7 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
     let deckState = game.deckState as DeckState;
     let eliminationQueue: PlayerId[] = [];
     let logMessage = `${actingPlayer.nickname} が ${definition.name} を使用`;
+    let effectActivated = false; // エフェクトが実際に発動したかどうかを追跡
 
     await tx
       .insert(actions)
@@ -619,6 +657,7 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
             logMessage += "。相手の手札が存在せず効果は発動しませんでした。";
             break;
           }
+          effectActivated = true;
           const targetCard = targetHandRow.cards[0] as CardId;
           const targetRank = CARD_DEFINITIONS[targetCard].rank;
           if (targetRank === guessedRank) {
@@ -674,6 +713,7 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
         if (!hasSelectableTarget || !targetPlayer) {
           logMessage += noEffectMessage || "。対象がいないため効果は発動しませんでした。";
         } else {
+          effectActivated = true;
           logMessage += `。${targetPlayer.nickname} の手札を覗き見ました。`;
           await tx
             .insert(actions)
@@ -689,6 +729,7 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
         if (!hasSelectableTarget || !targetPlayer) {
           logMessage += noEffectMessage || "。比較対象がいないため効果は発動しませんでした。";
         } else {
+          effectActivated = true;
           await tx
             .insert(actions)
             .values({
@@ -712,6 +753,7 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
         if (!hasSelectableTarget || !targetPlayer) {
           logMessage += noEffectMessage || "。対象がいないため効果は発動しませんでした。";
         } else {
+          effectActivated = true;
           const discardResult = await resolveForceDiscard(
             tx,
             game,
@@ -741,6 +783,7 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
         if (!hasSelectableTarget || !targetPlayer) {
           logMessage += noEffectMessage || "。対象がいないため効果は発動しませんでした。";
         } else {
+          effectActivated = true;
           await swapHands(tx, game.id, actingPlayer.id, targetPlayer.id);
           if (cardId === "ambush") {
             logMessage += `。${targetPlayer.nickname} の手札を確認し、決断を下しました。`;
@@ -750,9 +793,11 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
         }
         break;
       case "conditional_discard":
+        effectActivated = true;
         logMessage += "。静かに捨てられました。";
         break;
       case "self_eliminate":
+        effectActivated = true;
         eliminationQueue = [actingPlayer.id];
         logMessage += "。照耀の重責により自滅しました。";
         break;
@@ -799,6 +844,12 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
       const winnerIds = await determineWinnersByHand(tx, game.id, survivors);
       await concludeRound(tx, game, winnerIds, "deck_exhausted");
       return { success: true };
+    }
+
+    // アニメーション完了まで待機してからターンを進める
+    const animationDelay = getAnimationDelay(definition.effectType, effectActivated);
+    if (animationDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, animationDelay));
     }
 
     await advanceTurn(tx, game, postPlayers);

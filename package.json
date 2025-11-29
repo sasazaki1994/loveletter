@@ -38,6 +38,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.48",
     "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/howler": "^2.2.11",

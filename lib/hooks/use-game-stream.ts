@@ -51,6 +51,11 @@ export function useGameStream({
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
+  const isConnectedRef = useRef(false);
+
+  useEffect(() => {
+    isConnectedRef.current = isConnected;
+  }, [isConnected]);
 
   const connect = useCallback(() => {
     if (!roomId || !isMountedRef.current) return;
@@ -83,7 +88,7 @@ export function useGameStream({
 
       // 接続タイムアウト設定
       connectionTimeoutRef.current = setTimeout(() => {
-        if (!isConnected && isMountedRef.current) {
+        if (!isConnectedRef.current && isMountedRef.current) {
           eventSource.close();
           setError("接続がタイムアウトしました。再試行中...");
           retryCountRef.current += 1;
@@ -174,7 +179,7 @@ export function useGameStream({
           }
         } else if (eventSource.readyState === EventSource.CONNECTING) {
           // 再接続中
-          if (isMountedRef.current && !isConnected) {
+          if (isMountedRef.current && !isConnectedRef.current) {
             setError("再接続中...");
           }
         }
@@ -189,11 +194,6 @@ export function useGameStream({
         
         setIsConnected(true);
         setError(null);
-        
-        // 最初の接続時のみローディングを解除
-        if (loading && !state) {
-          // 状態がまだ受信されていない場合はローディングを維持
-        }
       });
     } catch (err) {
       console.error("[SSE] Connection error:", err);
@@ -202,7 +202,7 @@ export function useGameStream({
         setLoading(false);
       }
     }
-  }, [roomId, playerId, isConnected, loading, state, session?.playerToken]);
+  }, [roomId, playerId, session?.playerToken]);
 
   // 初回接続
   useEffect(() => {

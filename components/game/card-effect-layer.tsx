@@ -7,27 +7,27 @@ import { CardSymbol } from '@/components/icons/card-symbol';
 import { CARD_DEFINITIONS } from '@/lib/game/cards';
 import type { CardEffectType, CardId, CardIconId, PlayerId } from '@/lib/game/types';
 
-const BASE_DISPLAY_DURATION_MS = 2200;
-const EFFECT_DURATION_SCALE = 1.25;
+const BASE_DISPLAY_DURATION_MS = 1500;
+const EFFECT_DURATION_SCALE = 1.0;
 
 // エフェクトタイプごとの表示時間（ミリ秒）
 function getDisplayDuration(effectType: CardEffectType, hasResult: boolean): number {
   let base = BASE_DISPLAY_DURATION_MS;
   switch (effectType) {
     case 'peek':
-      base = hasResult ? 4500 : 3500;
+      base = hasResult ? 2500 : 2000;
       break;
     case 'guess_eliminate':
-      base = 3500;
+      base = 2000;
       break;
     case 'compare':
-      base = 3500;
+      base = 2000;
       break;
     case 'force_discard':
-      base = 3000;
+      base = 1800;
       break;
     case 'swap_hands':
-      base = 3000;
+      base = 1800;
       break;
     default:
       base = BASE_DISPLAY_DURATION_MS;

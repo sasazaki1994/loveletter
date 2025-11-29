@@ -18,10 +18,9 @@ interface HandCardProps {
 }
 
 export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: HandCardProps) {
+	const { play } = useSoundEffects(0.4);
   const definition = CARD_DEFINITIONS[cardId];
   if (!definition) return null;
-
-	const { play } = useSoundEffects(0.4);
 
   return (
 		<motion.button

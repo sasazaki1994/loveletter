@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -10,7 +11,45 @@ const querySchema = z.object({
   waitingMinutes: z.coerce.number().int().positive().max(1440).optional(), // waiting cleanup window (default 15)
 });
 
+function ensureAuthorized(request: NextRequest): NextResponse | null {
+  const secret = process.env.MAINTENANCE_ACCESS_TOKEN;
+  if (!secret) {
+    console.error(
+      "[room/cleanup] MAINTENANCE_ACCESS_TOKEN is not set. Denying access to prevent unauthenticated cleanup.",
+    );
+    return NextResponse.json({ error: "Server maintenance token is not configured." }, { status: 500 });
+  }
+
+  const headerValue = request.headers.get("authorization");
+  if (!headerValue?.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const provided = headerValue.slice("Bearer ".length).trim();
+  if (!provided) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const expectedBuffer = Buffer.from(secret);
+  const providedBuffer = Buffer.from(provided);
+  if (expectedBuffer.length !== providedBuffer.length) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const authorized = timingSafeEqual(expectedBuffer, providedBuffer);
+  if (!authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
+  const unauthorized = ensureAuthorized(request);
+  if (unauthorized) {
+    return unauthorized;
+  }
+
   try {
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());

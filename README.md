@@ -94,6 +94,7 @@
 - **通信**: HTTP ポーリング、Server-Sent Events
 - **サウンド**: Howler.js
 - **テスト**: Playwright (モンキーテスト)
+- **MCP**: Playwright MCP (Model Context Protocol) - AI によるブラウザ自動化
 
 ## クイックスタート
 
@@ -177,6 +178,34 @@ npm run dev
 - **Neon**: SSL モードが自動で有効になります
 - **ローカル PostgreSQL**: SSL は自動で無効化されます（URL パターンで判定）
 - **その他のクラウド**: URL に `aws` / `gcp` / `azure` が含まれる場合、SSL が有効になります
+
+### Playwright MCP 設定
+
+このプロジェクトには Playwright MCP (Model Context Protocol) が導入されています。AI モデルがブラウザ操作を自動化できるようになります。
+
+**設定方法**:
+
+1. `mcp.json` ファイルがプロジェクトルートに配置されています
+2. Cursor などの MCP 対応クライアントで、この設定ファイルを読み込むように設定してください
+3. 設定例（Cursor の場合）:
+   ```json
+   {
+     "mcpServers": {
+       "playwright": {
+         "command": "npx",
+         "args": ["@playwright/mcp@latest"]
+       }
+     }
+   }
+   ```
+
+**機能**:
+- ブラウザの自動操作（ナビゲーション、クリック、フォーム入力など）
+- スクリーンショット取得
+- ページコンテンツの取得
+- JavaScript 実行
+
+詳細は [Playwright MCP ドキュメント](https://github.com/playwright-community/playwright-mcp) を参照してください。
 
 ## コマンド一覧
 
