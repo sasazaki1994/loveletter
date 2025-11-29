@@ -1,4 +1,4 @@
-# Love Letter Inspired Card Game
+# Love Letter Card Game
 
 ![Next.js](https://img.shields.io/badge/Next.js-14.2.5-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
