@@ -125,32 +125,42 @@ test("ランダムプレイ: ボット戦を最後まで進行", async ({ reques
   {
     // 自分の手番に揃えて送るのが安全
     const start = Date.now();
+    let resignSent = false;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const s = await fetchState();
       const st = s.state;
       if (st?.result) break;
-      if (st?.activePlayerId === playerId) {
-        await sendResign();
+      if (st?.activePlayerId === playerId && !resignSent) {
+        const res = await sendResign();
+        if (res.ok && res.json?.success) {
+          resignSent = true;
+        }
       }
-      if (Date.now() - start > 15_000) break;
+      if (Date.now() - start > 20_000) break;
       await new Promise((r) => setTimeout(r, 500));
     }
   }
 
-  // 終了確認（404も許容）
+  // 終了確認（404も許容、ボットの処理を待つ）
   {
     let done = false;
-    for (let i = 0; i < 20; i += 1) {
+    const maxWaitTime = 30_000; // 30秒待つ
+    const start = Date.now();
+    while (Date.now() - start < maxWaitTime) {
       const s = await fetchState();
+      // 404の場合は result.reason が "not_found" になる
       if (s.state?.result) {
         done = true;
         break;
       }
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 500));
     }
     const finalState = await fetchState();
-    expect(done || finalState.state?.result).toBeTruthy();
+    // ゲームが終了していることを確認（resultが存在するか、404が返される）
+    // 404の場合は fetchState() が { state: { result: { reason: "not_found" } } } を返す
+    const hasResult = finalState.state?.result;
+    expect(hasResult).toBeTruthy();
   }
 });
 

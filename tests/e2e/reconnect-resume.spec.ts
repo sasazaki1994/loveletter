@@ -11,7 +11,7 @@ test("リロード後も状態が継続しUIが復帰する", async ({ page, req
   await waitForServerState(request, roomId, undefined, 20000);
 
   // ゲームテーブルが見える
-  await expect(page.getByRole('region', { name: 'ゲームテーブル' })).toBeVisible({ timeout: 15000 });
+  await waitForGameUI(page, 20000);
 
   // リロード
   await page.reload();
@@ -19,6 +19,7 @@ test("リロード後も状態が継続しUIが復帰する", async ({ page, req
   // 復帰後も同様に見える
   await expect(page).toHaveURL(/\/game\//);
   await waitForServerState(request, roomId, undefined, 20000);
+  await waitForGameUI(page, 20000);
 });
 
 

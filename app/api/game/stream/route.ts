@@ -82,14 +82,25 @@ export async function GET(request: NextRequest) {
                 timestamp: new Date().toISOString(),
               });
 
-              controller.enqueue(
-                encoder.encode(`data: ${data}\n\n`),
-              );
+              // ストリームが閉じられていないか再チェック
+              if (isClosed) return;
+              try {
+                controller.enqueue(
+                  encoder.encode(`data: ${data}\n\n`),
+                );
+              } catch (enqueueError) {
+                // ストリームが既に閉じられている場合
+                isClosed = true;
+                if (heartbeatTimer) clearInterval(heartbeatTimer);
+                if (unsubscribe) unsubscribe();
+                return;
+              }
             }
           } catch (error) {
-            if (!isClosed) {
-              console.error("[SSE Stream] State fetch error:", error);
-              // エラーをクライアントに通知
+            if (isClosed) return;
+            console.error("[SSE Stream] State fetch error:", error);
+            // エラーをクライアントに通知（ストリームが閉じられていない場合のみ）
+            try {
               const errorData = JSON.stringify({
                 error: "状態取得に失敗しました",
                 timestamp: new Date().toISOString(),
@@ -97,6 +108,11 @@ export async function GET(request: NextRequest) {
               controller.enqueue(
                 encoder.encode(`event: sse_error\ndata: ${errorData}\n\n`),
               );
+            } catch (enqueueError) {
+              // ストリームが既に閉じられている場合
+              isClosed = true;
+              if (heartbeatTimer) clearInterval(heartbeatTimer);
+              if (unsubscribe) unsubscribe();
             }
           }
         };
@@ -132,7 +148,10 @@ export async function GET(request: NextRequest) {
 
         // ハートビート（接続が生きていることを確認）
         heartbeatTimer = setInterval(() => {
-          if (isClosed) return;
+          if (isClosed) {
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            return;
+          }
           try {
             controller.enqueue(
               encoder.encode(`: heartbeat ${Date.now()}\n\n`),
