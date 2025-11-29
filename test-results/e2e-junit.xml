@@ -1,6 +1,0 @@
-<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="46.740686000000004">
-<testsuite name="e2e\random-play.spec.ts" timestamp="2025-11-04T13:13:37.172Z" hostname="chromium" tests="1" failures="0" skipped="0" time="36.21" errors="0">
-<testcase name="ランダムプレイ: ボット戦を最後まで進行" classname="e2e\random-play.spec.ts" time="36.21">
-</testcase>
-</testsuite>
-</testsuites>
