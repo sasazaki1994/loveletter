@@ -148,18 +148,36 @@ test("ランダムプレイ: ボット戦を最後まで進行", async ({ reques
     const maxWaitTime = 30_000; // 30秒待つ
     const start = Date.now();
     while (Date.now() - start < maxWaitTime) {
-      const s = await fetchState();
-      // 404の場合は result.reason が "not_found" になる
-      if (s.state?.result) {
+      const url = new URL("/api/game/state", "http://localhost");
+      url.searchParams.set("roomId", roomId);
+      url.searchParams.set("playerId", playerId);
+      const res = await request.get(url.pathname + url.search);
+      if (res.status() === 404) {
+        // ゲーム終了やGC後などのケースを許容
         done = true;
         break;
       }
+      if (res.ok()) {
+        const json = await res.json();
+        if (json?.state?.result) {
+          done = true;
+          break;
+        }
+      }
       await new Promise((r) => setTimeout(r, 500));
     }
-    const finalState = await fetchState();
-    // ゲームが終了していることを確認（resultが存在するか、404が返される）
-    // 404の場合は fetchState() が { state: { result: { reason: "not_found" } } } を返す
-    const hasResult = finalState.state?.result;
+    // 最終確認：resultが存在するか、404が返される
+    const url = new URL("/api/game/state", "http://localhost");
+    url.searchParams.set("roomId", roomId);
+    url.searchParams.set("playerId", playerId);
+    const finalRes = await request.get(url.pathname + url.search);
+    if (finalRes.status() === 404) {
+      // 404は許容（ゲーム終了してGCされた可能性がある）
+      return;
+    }
+    expect(finalRes.ok()).toBeTruthy();
+    const finalJson = await finalRes.json();
+    const hasResult = finalJson?.state?.result;
     expect(hasResult).toBeTruthy();
   }
 });

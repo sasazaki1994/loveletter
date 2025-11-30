@@ -5,16 +5,22 @@ export { expect };
 
 export async function waitForGameUI(page: Page, timeoutMs = 20000) {
   const start = Date.now();
+  // まずセッション未検出メッセージが消えるまで待つ（リロード後のセッション復元を待つ）
+  {
+    const sessionWaitStart = Date.now();
+    while (Date.now() - sessionWaitStart < timeoutMs) {
+      const sessionMissing = await page.getByText('セッション未検出').isVisible().catch(() => false);
+      if (!sessionMissing) break;
+      await page.waitForTimeout(200);
+    }
+  }
+  // ゲームUIが表示されるまで待つ
   for (;;) {
     const hasTable = await page.getByRole('region', { name: 'ゲームテーブル' }).isVisible().catch(() => false);
     if (hasTable) return;
-    // セッション未検出はSSR→CSRの間に一瞬出ることがある
-    const sessionMissing = await page.getByText('セッション未検出').isVisible().catch(() => false);
-    if (!sessionMissing) {
-      // 代替としてターンバナーの一部文言でも可
-      const banner = await page.getByText(/(の手番|ターン待機中)/).isVisible().catch(() => false);
-      if (banner) return;
-    }
+    // 代替としてターンバナーの一部文言でも可
+    const banner = await page.getByText(/(の手番|ターン待機中)/).isVisible().catch(() => false);
+    if (banner) return;
     if (Date.now() - start > timeoutMs) throw new Error('Game UI not visible');
     await page.waitForTimeout(500);
   }
