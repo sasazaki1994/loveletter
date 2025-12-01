@@ -1,0 +1,56 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: Love Letter Inspired
+        - heading "Love Letter Reverie" [level=1] [ref=e7]
+        - paragraph [ref=e8]: 高級感あるフェルト卓で繰り広げられるミニマルな駆け引き。ニックネームを入力して即座にBot対戦を開始できます。
+        - button "ルールガイドを開く" [ref=e10]
+      - generic [ref=e12]:
+        - heading "新しいラウンドを開く" [level=3] [ref=e14]:
+          - img [ref=e15]
+          - text: 新しいラウンドを開く
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - text: ニックネーム
+            - 'textbox "例: Velvet Strategist" [ref=e19]': ReconnectE2E
+            - paragraph [ref=e20]: ルーム作成に失敗しました。 (DATABASE_URL または NEON_DATABASE_URL が未設定です。環境変数を設定してください。)
+          - generic [ref=e21]:
+            - text: 差し替えオプション（各ランク1枚）
+            - generic [ref=e22]:
+              - generic [ref=e23]:
+                - 'checkbox "Rank1: Feint (推測→公開)" [ref=e24]'
+                - generic [ref=e25]: "Rank1: Feint (推測→公開)"
+              - generic [ref=e26]:
+                - 'checkbox "Rank2: Insight (山札2枚操作)" [ref=e27]'
+                - generic [ref=e28]: "Rank2: Insight (山札2枚操作)"
+              - generic [ref=e29]:
+                - 'checkbox "Rank3: Standoff (公開比較)" [ref=e30]'
+                - generic [ref=e31]: "Rank3: Standoff (公開比較)"
+              - generic [ref=e32]:
+                - 'checkbox "Rank4: Wager (推測→公開)" [ref=e33]'
+                - generic [ref=e34]: "Rank4: Wager (推測→公開)"
+              - generic [ref=e35]:
+                - 'checkbox "Rank6: Ambush (密やかな交換)" [ref=e36]'
+                - generic [ref=e37]: "Rank6: Ambush (密やかな交換)"
+              - generic [ref=e38]:
+                - 'checkbox "Rank7: Marquise (合計12以上は強制)" [ref=e39]'
+                - generic [ref=e40]: "Rank7: Marquise (合計12以上は強制)"
+          - button "Bot対戦を開始" [ref=e41]
+          - generic [ref=e43]:
+            - generic [ref=e44]:
+              - text: マルチ用ニックネーム
+              - 'textbox "例: Velvet Strategist" [ref=e45]'
+            - generic [ref=e46]:
+              - button "マルチ部屋を作成" [ref=e47]
+              - generic [ref=e48]:
+                - textbox "Room ID を入力" [ref=e49]
+                - button "参加" [ref=e50]
+          - generic [ref=e52]:
+            - generic [ref=e53]: 公開ルーム
+            - button "表示" [ref=e54]
+  - alert [ref=e55]
+```
