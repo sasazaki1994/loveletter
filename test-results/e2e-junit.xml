@@ -1,6 +1,144 @@
-<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="46.740686000000004">
-<testsuite name="e2e\random-play.spec.ts" timestamp="2025-11-04T13:13:37.172Z" hostname="chromium" tests="1" failures="0" skipped="0" time="36.21" errors="0">
-<testcase name="ランダムプレイ: ボット戦を最後まで進行" classname="e2e\random-play.spec.ts" time="36.21">
+<testsuites id="" name="" tests="5" failures="5" skipped="0" errors="0" time="17.412896999999997">
+<testsuite name="e2e/deterministic-fullgame.spec.ts" timestamp="2025-12-01T07:45:54.933Z" hostname="chromium" tests="1" failures="1" skipped="0" time="1.88" errors="0">
+<testcase name="決定論的フロー: 2人対戦で即時終了(Resign)→リザルト表示" classname="e2e/deterministic-fullgame.spec.ts" time="1.88">
+<failure message="deterministic-fullgame.spec.ts:5:5 決定論的フロー: 2人対戦で即時終了(Resign)→リザルト表示" type="FAILURE">
+<![CDATA[  [chromium] › e2e/deterministic-fullgame.spec.ts:5:5 › 決定論的フロー: 2人対戦で即時終了(Resign)→リザルト表示 ──────────
+
+    Error: expect(received).toBeTruthy()
+
+    Received: false
+
+       9 |   });
+      10 |   const hostInfo = await resCreate.json();
+    > 11 |   expect(resCreate.ok()).toBeTruthy();
+         |                          ^
+      12 |
+      13 |   // 2) 参加者ジョイン（API）
+      14 |   const resJoin = await request.post("/api/room/join", {
+        at /workspace/tests/e2e/deterministic-fullgame.spec.ts:11:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/e2e-deterministic-fullgame-決定論的フロー-2人対戦で即時終了-Resign-→リザルト表示-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|e2e-deterministic-fullgame-決定論的フロー-2人対戦で即時終了-Resign-→リザルト表示-chromium/test-failed-1.png]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="e2e/lobby-create-bot.spec.ts" timestamp="2025-12-01T07:45:54.933Z" hostname="chromium" tests="1" failures="1" skipped="0" time="10.406" errors="0">
+<testcase name="ロビーからBot対戦を開始できる" classname="e2e/lobby-create-bot.spec.ts" time="10.406">
+<failure message="lobby-create-bot.spec.ts:6:5 ロビーからBot対戦を開始できる" type="FAILURE">
+<![CDATA[  [chromium] › e2e/lobby-create-bot.spec.ts:6:5 › ロビーからBot対戦を開始できる ─────────────────────────────────
+
+    Error: failed to create room via API fallback
+
+       at e2e/fixtures.ts:40
+
+      38 |     });
+      39 |   const json = (await r.json()) as { roomId?: string; playerId?: string };
+    > 40 |   if (!r.ok() || !json.roomId || !json.playerId) throw new Error("failed to create room via API fallback");
+         |                                                        ^
+      41 |   await page.addInitScript(([roomId, playerId, nick]) => {
+      42 |     window.localStorage.setItem(
+      43 |       "llr:session",
+        at createBotRoomViaUI (/workspace/tests/e2e/fixtures.ts:40:56)
+        at /workspace/tests/e2e/lobby-create-bot.spec.ts:8:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/e2e-lobby-create-bot-ロビーからBot対戦を開始できる-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/e2e-lobby-create-bot-ロビーからBot対戦を開始できる-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|e2e-lobby-create-bot-ロビーからBot対戦を開始できる-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|e2e-lobby-create-bot-ロビーからBot対戦を開始できる-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="e2e/random-play.spec.ts" timestamp="2025-12-01T07:45:54.933Z" hostname="chromium" tests="1" failures="1" skipped="0" time="0.083" errors="0">
+<testcase name="ランダムプレイ: ボット戦を最後まで進行" classname="e2e/random-play.spec.ts" time="0.083">
+<failure message="random-play.spec.ts:9:5 ランダムプレイ: ボット戦を最後まで進行" type="FAILURE">
+<![CDATA[  [chromium] › e2e/random-play.spec.ts:9:5 › ランダムプレイ: ボット戦を最後まで進行 ──────────────────────────────────
+
+    Error: expect(received).toBeTruthy()
+
+    Received: false
+
+      13 |     data: { nickname: "RandE2E", variants: [] },
+      14 |   });
+    > 15 |   expect(createRes.ok()).toBeTruthy();
+         |                          ^
+      16 |   const created = await createRes.json();
+      17 |   const roomId = created.roomId as string;
+      18 |   const playerId = created.playerId as string;
+        at /workspace/tests/e2e/random-play.spec.ts:15:26
+]]>
+</failure>
+</testcase>
+</testsuite>
+<testsuite name="e2e/reconnect-resume.spec.ts" timestamp="2025-12-01T07:45:54.933Z" hostname="chromium" tests="1" failures="1" skipped="0" time="8.655" errors="0">
+<testcase name="リロード後も状態が継続しUIが復帰する" classname="e2e/reconnect-resume.spec.ts" time="8.655">
+<failure message="reconnect-resume.spec.ts:5:5 リロード後も状態が継続しUIが復帰する" type="FAILURE">
+<![CDATA[  [chromium] › e2e/reconnect-resume.spec.ts:5:5 › リロード後も状態が継続しUIが復帰する ──────────────────────────────
+
+    Error: failed to create room via API fallback
+
+       at e2e/fixtures.ts:40
+
+      38 |     });
+      39 |   const json = (await r.json()) as { roomId?: string; playerId?: string };
+    > 40 |   if (!r.ok() || !json.roomId || !json.playerId) throw new Error("failed to create room via API fallback");
+         |                                                        ^
+      41 |   await page.addInitScript(([roomId, playerId, nick]) => {
+      42 |     window.localStorage.setItem(
+      43 |       "llr:session",
+        at createBotRoomViaUI (/workspace/tests/e2e/fixtures.ts:40:56)
+        at /workspace/tests/e2e/reconnect-resume.spec.ts:6:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/e2e-reconnect-resume-リロード後も状態が継続しUIが復帰する-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/e2e-reconnect-resume-リロード後も状態が継続しUIが復帰する-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|e2e-reconnect-resume-リロード後も状態が継続しUIが復帰する-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|e2e-reconnect-resume-リロード後も状態が継続しUIが復帰する-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="e2e/two-player-join.spec.ts" timestamp="2025-12-01T07:45:54.933Z" hostname="chromium" tests="1" failures="1" skipped="0" time="0.04" errors="0">
+<testcase name="2人対戦: 参加→開始→双方同期" classname="e2e/two-player-join.spec.ts" time="0.04">
+<failure message="two-player-join.spec.ts:5:5 2人対戦: 参加→開始→双方同期" type="FAILURE">
+<![CDATA[  [chromium] › e2e/two-player-join.spec.ts:5:5 › 2人対戦: 参加→開始→双方同期 ──────────────────────────────────
+
+    Error: expect(received).toBeTruthy()
+
+    Received: false
+
+       9 |   });
+      10 |   const hostInfo = await resCreate.json();
+    > 11 |   expect(resCreate.ok()).toBeTruthy();
+         |                          ^
+      12 |
+      13 |   // 2) 参加者ジョイン（API）
+      14 |   const resJoin = await request.post("/api/room/join", {
+        at /workspace/tests/e2e/two-player-join.spec.ts:11:26
+]]>
+</failure>
 </testcase>
 </testsuite>
 </testsuites>
