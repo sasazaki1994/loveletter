@@ -1,19 +1,22 @@
 'use client';
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Crown, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
+import { RoomQrShare } from "@/components/ui/room-qr-share";
 import { usePlayerSession } from "@/lib/client/session";
 import { CARD_POOL } from "@/lib/game/cards";
+import { normalizeRoomId } from "@/lib/utils/room-id";
 
 export function RoomLobby() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { session, setSession } = usePlayerSession();
 
   const [nickname, setNickname] = useState("");
@@ -44,6 +47,15 @@ export function RoomLobby() {
     () => [...CARD_POOL].sort((a, b) => a.rank - b.rank),
     [],
   );
+
+  // 招待リンク (?join=XXXX) からルームIDを埋め込む
+  useEffect(() => {
+    const invite = searchParams.get("join") ?? searchParams.get("room");
+    if (invite) {
+      const normalized = normalizeRoomId(invite);
+      setJoinRoomId((prev) => (prev ? prev : normalized));
+    }
+  }, [searchParams]);
 
   const handleCreateRoom = async () => {
     if (!nickname.trim()) {
@@ -475,7 +487,12 @@ export function RoomLobby() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {createdRoomId && <RoomIdDisplay roomId={createdRoomId} />}
+            {createdRoomId && (
+              <div className="space-y-3">
+                <RoomIdDisplay roomId={createdRoomId} />
+                <RoomQrShare roomId={createdRoomId} />
+              </div>
+            )}
             <div className="flex gap-2">
               <Button
                 variant="outline"

@@ -18,6 +18,7 @@ import { useGameContext } from "@/components/game/game-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
+import { RoomQrShare } from "@/components/ui/room-qr-share";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
@@ -559,7 +560,12 @@ export function GameBoard() {
             <p className="text-sm text-[var(--color-text-muted)]">
               他のプレイヤーの参加を待っています。ホストがゲームを開始すると、自動的に開始されます。
             </p>
-            {!isBotGame && <RoomIdDisplay roomId={shortId ?? roomId} />}
+            {!isBotGame && (
+              <div className="grid gap-4 lg:grid-cols-[1.25fr_auto] lg:items-start">
+                <RoomIdDisplay roomId={shortId ?? roomId} />
+                <RoomQrShare roomId={shortId ?? roomId} compact className="lg:justify-self-end" />
+              </div>
+            )}
             {loading && (
               <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-text-muted)]">
                 <Loader2 className="h-4 w-4 animate-spin" />
