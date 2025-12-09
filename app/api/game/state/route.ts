@@ -36,8 +36,12 @@ export async function GET(request: NextRequest) {
           perspectiveId = parsed.playerId;
         } else {
           const { playerId, playerToken } = extractPlayerAuth(request);
-          if (playerId === parsed.playerId && playerToken && verifyToken(playerToken, row.authTokenHash)) {
+          const isAuthed = playerId === parsed.playerId && playerToken && verifyToken(playerToken, row.authTokenHash);
+          if (isAuthed) {
             perspectiveId = playerId;
+          } else {
+            // ヒューマンルームでトークン不一致なら閲覧させない
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
           }
         }
       }
@@ -48,6 +52,17 @@ export async function GET(request: NextRequest) {
       parsed.roomId,
       perspectiveId,
     );
+
+    if (clientTag && etag && clientTag === etag) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          ETag: etag,
+          "Cache-Control": "no-store, must-revalidate",
+          "X-Cache": "HIT",
+        },
+      });
+    }
 
     return NextResponse.json(
       { state, lastUpdated },

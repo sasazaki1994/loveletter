@@ -1,44 +1,24 @@
 'use client';
 
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export const ScrollArea = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => (
-  <ScrollAreaPrimitive.Root
-    ref={ref}
-    className={cn("relative overflow-hidden", className)}
-    {...props}
-  >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-lg">
+// Radix ScrollArea が再描画で無限ループを起こすことがあるため、
+// e2e 安定性を優先してシンプルな実装に置き換える。
+export const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, children, ...props }, ref) => (
+    <div ref={ref} className={cn("relative overflow-auto", className)} {...props}>
       {children}
-    </ScrollAreaPrimitive.Viewport>
-    <ScrollBar orientation="vertical" />
-  </ScrollAreaPrimitive.Root>
-));
-ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
+    </div>
+  ),
+);
+ScrollArea.displayName = "ScrollArea";
 
-export const ScrollBar = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
->(({ className, orientation = "vertical", ...props }, ref) => (
-  <ScrollAreaPrimitive.ScrollAreaScrollbar
-    ref={ref}
-    orientation={orientation}
-    className={cn(
-      "flex touch-none select-none transition-colors",
-      orientation === "vertical" && "h-full w-2 border-l border-l-transparent",
-      orientation === "horizontal" && "h-2 flex-col border-t border-t-transparent",
-      className,
-    )}
-    {...props}
-  >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-[rgba(215,178,110,0.45)]" />
-  </ScrollAreaPrimitive.ScrollAreaScrollbar>
-));
-ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName;
-
+// API 互換のためにダミーの ScrollBar を残す（未使用でも安全）
+export const ScrollBar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("hidden", className)} {...props} />
+  ),
+);
+ScrollBar.displayName = "ScrollBar";

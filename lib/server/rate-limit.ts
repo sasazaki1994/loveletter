@@ -2,6 +2,24 @@ type Entry = { count: number; resetAt: number };
 
 const BUCKET = new Map<string, Entry>();
 
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+function startCleanupTimer() {
+  if (typeof globalThis === "undefined") return;
+  const globalScope = globalThis as typeof globalThis & { __llrRateLimitCleanup?: NodeJS.Timeout };
+  if (globalScope.__llrRateLimitCleanup) return;
+  globalScope.__llrRateLimitCleanup = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of BUCKET.entries()) {
+      if (entry.resetAt <= now) {
+        BUCKET.delete(key);
+      }
+    }
+  }, CLEANUP_INTERVAL_MS);
+}
+
+startCleanupTimer();
+
 export function rateLimit(key: string, limit: number, windowMs: number): {
   ok: boolean;
   remaining: number;

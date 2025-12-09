@@ -18,6 +18,7 @@ const querySchema = z.object({
 });
 
 const HEARTBEAT_INTERVAL_MS = 30000; // 30秒ごとにハートビート
+const STATE_POLL_INTERVAL_MS = 4000; // フェイルセーフ: インスタンス跨ぎの更新検知
 
 /**
  * SSE (Server-Sent Events) ストリーム
@@ -41,8 +42,14 @@ export async function GET(request: NextRequest) {
           effectivePlayerId = parsed.playerId;
         } else {
           const { playerId, playerToken } = extractPlayerAuth(request);
-          if (playerId === parsed.playerId && playerToken && verifyToken(playerToken, row.authTokenHash)) {
+          const isAuthed = playerId === parsed.playerId && playerToken && verifyToken(playerToken, row.authTokenHash);
+          if (isAuthed) {
             effectivePlayerId = playerId;
+          } else {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            });
           }
         }
       }
@@ -55,6 +62,7 @@ export async function GET(request: NextRequest) {
         let lastEtag: string | null = null;
         let isClosed = false;
         let heartbeatTimer: NodeJS.Timeout | null = null;
+        let pollTimer: NodeJS.Timeout | null = null;
         let unsubscribe: (() => void) | null = null;
         let isSending = false;
         let needsResend = false;
@@ -146,10 +154,16 @@ export async function GET(request: NextRequest) {
         // ルーム更新イベントを購読
         unsubscribe = subscribeRoomUpdates(parsed.roomId, scheduleSend);
 
+        // フェイルセーフポーリング（マルチインスタンスでの更新取りこぼし防止）
+        pollTimer = setInterval(() => {
+          scheduleSend();
+        }, STATE_POLL_INTERVAL_MS);
+
         // ハートビート（接続が生きていることを確認）
         heartbeatTimer = setInterval(() => {
           if (isClosed) {
             if (heartbeatTimer) clearInterval(heartbeatTimer);
+            if (pollTimer) clearInterval(pollTimer);
             return;
           }
           try {
@@ -160,6 +174,7 @@ export async function GET(request: NextRequest) {
             // ストリームが閉じられている場合
             isClosed = true;
             if (heartbeatTimer) clearInterval(heartbeatTimer);
+            if (pollTimer) clearInterval(pollTimer);
             if (unsubscribe) unsubscribe();
           }
         }, HEARTBEAT_INTERVAL_MS);
@@ -168,6 +183,7 @@ export async function GET(request: NextRequest) {
         request.signal.addEventListener("abort", () => {
           isClosed = true;
           if (heartbeatTimer) clearInterval(heartbeatTimer);
+          if (pollTimer) clearInterval(pollTimer);
           if (unsubscribe) unsubscribe();
           try {
             controller.close();

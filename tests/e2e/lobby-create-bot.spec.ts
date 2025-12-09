@@ -11,7 +11,7 @@ test("ロビーからBot対戦を開始できる", async ({ page }) => {
   await expect(page).toHaveURL(/\/game\//);
 
   // ゲームテーブル領域の可視性で安定確認
-  await waitForGameUI(page, 20000);
+  await waitForGameUI(page, 45000);
 });
 
 

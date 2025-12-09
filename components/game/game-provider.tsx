@@ -290,7 +290,6 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       setActionError(null);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (selfId) headers["X-Player-Id"] = selfId;
-      if (session?.playerToken) headers["X-Player-Token"] = session.playerToken;
 
       const response = await fetch("/api/game/action", {
         method: "POST",
@@ -340,7 +339,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       clearTimeout(timeoutId);
       setActing(false);
     }
-  }, [acting, cancelSelection, guessedRank, noAvailableTargets, playSound, refetch, selectedCard, selectedTarget, selfId, state, session?.playerToken]);
+  }, [acting, cancelSelection, guessedRank, noAvailableTargets, playSound, refetch, selectedCard, selectedTarget, selfId, state]);
 
   const value = useMemo<GameContextValue>(
     () => ({

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ClientGameState } from "@/lib/game/types";
-import { usePlayerSession } from "@/lib/client/session";
 
 interface UseGameStreamOptions {
   roomId: string;
@@ -39,7 +38,6 @@ export function useGameStream({
   roomId,
   playerId,
 }: UseGameStreamOptions): UseGameStreamResult {
-  const { session } = usePlayerSession();
   const [state, setState] = useState<ClientGameState | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,9 +79,9 @@ export function useGameStream({
     try {
       const params = new URLSearchParams({ roomId });
       if (playerId) params.set("playerId", playerId);
-      if (playerId && session?.playerToken) params.set("playerToken", session.playerToken);
-      
-      const eventSource = new EventSource(`/api/game/stream?${params.toString()}`);
+      const eventSource = new EventSource(`/api/game/stream?${params.toString()}`, {
+        withCredentials: true,
+      });
       eventSourceRef.current = eventSource;
 
       // 接続タイムアウト設定
@@ -202,7 +200,7 @@ export function useGameStream({
         setLoading(false);
       }
     }
-  }, [roomId, playerId, session?.playerToken]);
+  }, [roomId, playerId]);
 
   // 初回接続
   useEffect(() => {

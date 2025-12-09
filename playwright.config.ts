@@ -23,6 +23,10 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+    },
   ],
   webServer: {
     command: process.env.CI ? 'pnpm start --port 3100' : 'pnpm dev --port 3100',

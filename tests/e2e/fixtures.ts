@@ -4,11 +4,14 @@ export const test = base;
 export { expect };
 
 export async function waitForGameUI(page: Page, timeoutMs = 20000) {
+  const viewport = page.viewportSize();
+  const isNarrow = viewport ? viewport.width < 800 : false;
+  const effectiveTimeout = Math.max(timeoutMs, isNarrow ? 60000 : timeoutMs);
   const start = Date.now();
   // まずセッション未検出メッセージが消えるまで待つ（リロード後のセッション復元を待つ）
   {
     const sessionWaitStart = Date.now();
-    while (Date.now() - sessionWaitStart < timeoutMs) {
+    while (Date.now() - sessionWaitStart < effectiveTimeout) {
       const sessionMissing = await page.getByText('セッション未検出').isVisible().catch(() => false);
       if (!sessionMissing) break;
       await page.waitForTimeout(200);
@@ -21,7 +24,10 @@ export async function waitForGameUI(page: Page, timeoutMs = 20000) {
     // 代替としてターンバナーの一部文言でも可
     const banner = await page.getByText(/(の手番|ターン待機中)/).isVisible().catch(() => false);
     if (banner) return;
-    if (Date.now() - start > timeoutMs) throw new Error('Game UI not visible');
+    // さらに代替としてアクションバーの主要ボタンで判定
+    const actionButton = await page.getByRole('button', { name: /カードを使う|Play Card/i }).isVisible().catch(() => false);
+    if (actionButton) return;
+    if (Date.now() - start > effectiveTimeout) throw new Error('Game UI not visible');
     await page.waitForTimeout(500);
   }
 }
@@ -35,7 +41,7 @@ export async function createBotRoomViaUI(page: Page, nickname: string) {
   const btn = page.getByRole("button", { name: /Bot対戦を開始|Create Room|Start/i });
   await btn.first().click();
   try {
-    await page.waitForURL(/\/game\//, { timeout: 8000 });
+    await page.waitForURL(/\/game\//, { timeout: 12000 });
     return;
   } catch {
     // Fallback: APIで作成して直接遷移

@@ -6,7 +6,6 @@ interface PlayerSession {
   roomId: string;
   playerId: string;
   nickname: string;
-  playerToken?: string;
   shortId?: string;
 }
 
@@ -30,7 +29,12 @@ export function loadSession(): PlayerSession | null {
 
 export function saveSession(session: PlayerSession) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  // セッション情報は最小限のみ保存（機密トークンは保存しない）
+  const { roomId, playerId, nickname, shortId } = session;
+  window.localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ roomId, playerId, nickname, shortId }),
+  );
 }
 
 export function clearSession() {

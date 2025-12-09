@@ -105,7 +105,6 @@ export function RoomLobby() {
         roomId?: string;
         shortId?: string;
         playerId?: string;
-        playerToken?: string;
         error?: string;
         detail?: string;
       };
@@ -114,14 +113,13 @@ export function RoomLobby() {
         const detailMsg = payload.detail ? ` (${payload.detail})` : "";
         throw new Error(errorMsg + detailMsg);
       }
-      if (!payload.roomId || !payload.playerId || !payload.playerToken) {
+      if (!payload.roomId || !payload.playerId) {
         throw new Error("無効なレスポンスです。");
       }
       setSession({
         roomId: payload.roomId,
         playerId: payload.playerId,
         nickname: mpNickname.trim(),
-        playerToken: payload.playerToken,
         shortId: payload.shortId,
       });
       // ルームIDを表示するダイアログを表示（短いIDを優先）
@@ -151,7 +149,6 @@ export function RoomLobby() {
         roomId?: string;
         shortId?: string;
         playerId?: string;
-        playerToken?: string;
         seat?: number;
         error?: string;
         detail?: string;
@@ -161,14 +158,13 @@ export function RoomLobby() {
         const detailMsg = payload.detail ? ` (${payload.detail})` : "";
         throw new Error(errorMsg + detailMsg);
       }
-      if (!payload.roomId || !payload.playerId || !payload.playerToken) {
+      if (!payload.roomId || !payload.playerId) {
         throw new Error("無効なレスポンスです。");
       }
       setSession({
         roomId: payload.roomId,
         playerId: payload.playerId,
         nickname: mpNickname.trim(),
-        playerToken: payload.playerToken,
         shortId: payload.shortId,
       });
       router.push(`/game/${payload.roomId}`);
@@ -180,15 +176,13 @@ export function RoomLobby() {
   };
 
   const handleStartRoom = async () => {
-    if (!session?.roomId || !session.playerId || !session.playerToken) return;
+    if (!session?.roomId || !session.playerId) return;
     setMpLoading(true);
     try {
       const response = await fetch("/api/room/start", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Player-Id": session.playerId,
-          "X-Player-Token": session.playerToken,
         },
         body: JSON.stringify({ roomId: session.roomId }),
       });
@@ -223,12 +217,12 @@ export function RoomLobby() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-12">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
       <header className="flex flex-col gap-3">
         <span className="font-heading text-sm uppercase tracking-[0.6em] text-[rgba(215,178,110,0.75)]">
           Love Letter Inspired
         </span>
-        <h1 className="font-heading text-5xl text-shadow-gold">
+        <h1 className="font-heading text-4xl text-shadow-gold sm:text-5xl">
           Love Letter Reverie
         </h1>
         <p className="max-w-2xl text-sm text-[var(--color-text-muted)]">
@@ -349,7 +343,7 @@ export function RoomLobby() {
               <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
                 差し替えオプション（各ランク1枚）
               </label>
-              <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-muted)]">
+              <div className="grid grid-cols-1 gap-2 text-xs text-[var(--color-text-muted)] sm:grid-cols-2">
                 {[
                   { id: "feint", label: "Rank1: Feint (推測→公開)" },
                   { id: "insight", label: "Rank2: Insight (山札2枚操作)" },
@@ -389,24 +383,27 @@ export function RoomLobby() {
                 <Button onClick={handleCreateHumanRoom} disabled={mpLoading} className="w-full">
                   {mpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "マルチ部屋を作成"}
                 </Button>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Input
                     value={joinRoomId}
                     onChange={(e) => setJoinRoomId(e.target.value)}
                     placeholder="Room ID を入力"
+                    className="sm:flex-1"
                   />
-                  <Button onClick={handleJoinRoom} disabled={mpLoading}>参加</Button>
+                  <Button onClick={handleJoinRoom} disabled={mpLoading} className="w-full sm:w-auto">
+                    参加
+                  </Button>
                 </div>
               </div>
               {mpError && <p className="text-sm text-[var(--color-warn-light)]">{mpError}</p>}
-              {session?.roomId && session?.playerToken && (
+              {session?.roomId && (
                 <Button variant="outline" onClick={handleStartRoom} disabled={mpLoading} className="w-full">
                   {mpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "この部屋でゲーム開始 (ホスト)"}
                 </Button>
               )}
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">公開ルーム</label>
                 <Button
                   variant="outline"
@@ -429,11 +426,16 @@ export function RoomLobby() {
                     <p className="text-sm text-[var(--color-text-muted)]">現在参加可能なルームはありません。</p>
                   )}
                 {rooms.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between rounded border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-3 py-2 text-sm">
-                    <span className="truncate">Room {r.shortId ?? r.id.slice(0, 8)} · {r.status} · {r.playerCount} 人</span>
+                  <div
+                    key={r.id}
+                    className="flex flex-col gap-2 rounded border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span className="truncate">
+                      Room {r.shortId ?? r.id.slice(0, 8)} · {r.status} · {r.playerCount} 人
+                    </span>
                     <Button
                       variant="ghost"
-                      className="h-8 px-3 text-xs"
+                      className="h-8 w-full px-3 text-xs sm:w-auto"
                       onClick={() => setJoinRoomId(r.shortId ?? r.id)}
                     >
                       参加準備

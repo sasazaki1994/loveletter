@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ClientGameState, PollingResponse } from "@/lib/game/types";
-import { usePlayerSession } from "@/lib/client/session";
 
 interface UseGamePollingOptions {
   roomId: string;
@@ -42,7 +41,6 @@ export function useGamePolling({
   playerId,
   interval = 1200,
 }: UseGamePollingOptions): UseGamePollingResult {
-  const { session } = usePlayerSession();
   const BOT_POLL_INTERVAL = 350;
   const [state, setState] = useState<ClientGameState | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -83,10 +81,7 @@ export function useGamePolling({
       if (playerId) params.set("playerId", playerId);
       const headers: Record<string, string> = {};
       if (etagRef.current) headers["If-None-Match"] = etagRef.current;
-      if (playerId && session?.playerToken) {
-        headers["X-Player-Id"] = playerId;
-        headers["X-Player-Token"] = session.playerToken;
-      }
+      if (playerId) headers["X-Player-Id"] = playerId;
       const response = await fetch(`/api/game/state?${params.toString()}`, {
         headers,
         signal: controller.signal,
@@ -182,7 +177,7 @@ export function useGamePolling({
         setLoading(false);
       }
     }
-  }, [playerId, roomId, session?.playerToken]);
+  }, [playerId, roomId]);
 
   useEffect(() => {
     fetchState(false);

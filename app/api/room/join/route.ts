@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { joinRoomAsPlayer } from "@/lib/server/game-service";
-import { getClientIp } from "@/lib/server/auth";
+import { buildAuthCookies, getClientIp } from "@/lib/server/auth";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
 
@@ -29,14 +29,32 @@ export async function POST(request: Request) {
     const normalizedRoomId = normalizeRoomId(parsed.roomId);
 
     const result = await joinRoomAsPlayer(normalizedRoomId, parsed.nickname.trim());
+    const cookies = buildAuthCookies(result.playerId, result.playerToken);
 
-    return NextResponse.json(result, {
-      status: 200,
-      headers: {
-        "Cache-Control": "no-store",
+    const response = NextResponse.json(
+      result,
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
       },
-    });
+    );
+    for (const cookie of cookies) {
+      response.headers.append("Set-Cookie", cookie);
+    }
+    return response;
   } catch (error) {
+    const code = (error as any)?.code as string | undefined;
+    const message = (error as any)?.message as string | undefined;
+    const isSeatConflict =
+      code === "23505" || message?.includes?.("players_room_id_seat_unique");
+    if (isSeatConflict) {
+      return NextResponse.json(
+        { error: "同時参加により座席を確保できませんでした。再度お試しください。" },
+        { status: 409 },
+      );
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "入力が不正です。" },

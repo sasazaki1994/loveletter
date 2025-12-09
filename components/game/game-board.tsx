@@ -83,7 +83,7 @@ export function GameBoard() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const evaluateViewport = () => {
-      setIsCompactViewport(window.innerHeight < 960);
+      setIsCompactViewport(window.innerHeight < 960 || window.innerWidth < 1024);
     };
     evaluateViewport();
     window.addEventListener("resize", evaluateViewport);
@@ -577,15 +577,20 @@ export function GameBoard() {
     isCompactViewport ? "overflow-y-auto" : "overflow-hidden",
   );
 
+  const contentClasses = cn(
+    "mx-auto flex w-full max-w-6xl flex-1 flex-col",
+    isCompactViewport ? "px-4 pt-10 pb-32" : "px-6 pt-14 pb-20",
+  );
+
   return (
     <div className={rootClasses}>
-      <div className="pointer-events-none fixed left-4 top-20 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 lg:left-10">
+      <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
       </div>
 
       {!isBotGame && (
-        <div className="pointer-events-auto fixed left-4 top-6 z-30 sm:left-6 lg:left-10">
+        <div className="pointer-events-auto fixed left-3 top-4 z-30 sm:left-6 sm:top-6 lg:left-10">
           <RoomIdDisplay roomId={shortId ?? roomId} variant="compact" />
         </div>
       )}
@@ -642,12 +647,12 @@ export function GameBoard() {
 
       <ResultDialog />
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-14 pb-20">
+      <div className={contentClasses}>
         <div className="flex flex-1 flex-col items-center gap-6">
           <div className="flex flex-1 items-center justify-center">
             <div
               ref={tableContainerRef}
-              className="relative aspect-square w-full max-w-[28rem] sm:max-w-[32rem] lg:max-w-[38rem]"
+              className="relative aspect-square w-full max-w-[24rem] sm:max-w-[30rem] lg:max-w-[38rem]"
               style={{ width: tableSize.width ? `${tableSize.width}px` : undefined, height: tableSize.height ? `${tableSize.height}px` : undefined }}
             >
               <GameTable

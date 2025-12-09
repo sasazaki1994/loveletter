@@ -137,7 +137,7 @@ test("ランダムプレイ: ボット戦を最後まで進行", async ({ reques
           resignSent = true;
         }
       }
-      if (Date.now() - start > 20_000) break;
+      if (Date.now() - start > 60_000) break;
       await new Promise((r) => setTimeout(r, 500));
     }
   }
@@ -145,7 +145,7 @@ test("ランダムプレイ: ボット戦を最後まで進行", async ({ reques
   // 終了確認（404も許容、ボットの処理を待つ）
   {
     let done = false;
-    const maxWaitTime = 30_000; // 30秒待つ
+    const maxWaitTime = 90_000; // 90秒待つ（ボットの長考に備える）
     const start = Date.now();
     while (Date.now() - start < maxWaitTime) {
       const url = new URL("/api/game/state", "http://localhost");

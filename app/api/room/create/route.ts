@@ -5,6 +5,8 @@ import { createRoomWithBot } from "@/lib/server/game-service";
 import type { CardId } from "@/lib/game/types";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { TestDeckOverrides } from "@/lib/game/deck";
+import { buildAuthCookies, getClientIp } from "@/lib/server/auth";
+import { rateLimit } from "@/lib/server/rate-limit";
 
 const createRoomSchema = z.object({
   nickname: z.string().min(1).max(24),
@@ -13,6 +15,16 @@ const createRoomSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // Bot部屋作成も乱用されうるため緩やかなレートリミットを適用
+    const ip = getClientIp(request as any);
+    const r = rateLimit(`create-bot:${ip}`, 30, 30_000); // 30 req / 30s
+    if (!r.ok) {
+      return NextResponse.json(
+        { error: "しばらくしてからお試しください。" },
+        { status: 429, headers: { "Retry-After": Math.ceil((r.resetAt - Date.now()) / 1000).toString() } },
+      );
+    }
+
     const body = await request.json();
     const parsed = createRoomSchema.parse(body);
 
@@ -41,12 +53,21 @@ export async function POST(request: Request) {
 
     const result = await createRoomWithBot(parsed.nickname.trim(), variantIds, overrides);
 
-    return NextResponse.json(result, {
-      status: 200,
-      headers: {
-        "Cache-Control": "no-store",
+    const cookies = buildAuthCookies(result.playerId, null);
+
+    const response = NextResponse.json(
+      result,
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
       },
-    });
+    );
+    for (const cookie of cookies) {
+      response.headers.append("Set-Cookie", cookie);
+    }
+    return response;
   } catch (error) {
     console.error("createRoom error", error);
     if (error instanceof z.ZodError) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Info, Volume2, VolumeX } from "lucide-react";
 
@@ -39,26 +39,31 @@ export function ActionBar() {
   const [hintVisible, setHintVisible] = useState(false);
   const [gameInfoVisible, setGameInfoVisible] = useState(false);
   const [isCompactHeight, setIsCompactHeight] = useState(false);
+  const [isCompactWidth, setIsCompactWidth] = useState(false);
+  const preferredDockRef = useRef<DockPosition>("left");
   const isDockedLeft = dockPosition === "left";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("actionBarDock");
     if (stored === "left" || stored === "bottom") {
+      preferredDockRef.current = stored;
       setDockPosition(stored);
     }
-  }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("actionBarDock", dockPosition);
-  }, [dockPosition]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     const handleResize = () => {
-      setIsCompactHeight(window.innerHeight < 960);
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const shouldStack = width < 1024;
+      setIsCompactWidth(shouldStack);
+      setIsCompactHeight(height < 960);
+      if (shouldStack) {
+        setDockPosition("bottom");
+      } else {
+        setDockPosition(preferredDockRef.current);
+      }
     };
+
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -69,6 +74,14 @@ export function ActionBar() {
       setGuessedRank(null);
     }
   }, [cardDefinition, setGuessedRank]);
+
+  const setPreferredDock = (dock: DockPosition) => {
+    preferredDockRef.current = dock;
+    setDockPosition(dock);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("actionBarDock", dock);
+    }
+  };
 
   const canConfirm = useMemo(() => {
     if (!isMyTurn || !cardDefinition) return false;
@@ -88,9 +101,12 @@ export function ActionBar() {
     "fixed z-30 flex flex-col gap-3 text-sm text-[var(--color-text-muted)] backdrop-blur-sm",
     isDockedLeft
       ? "inset-y-0 right-0 w-full max-w-[20rem] border-l border-[rgba(215,178,110,0.18)] bg-gradient-to-l from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-4 py-4 shadow-[-24px_0_60px_rgba(0,0,0,0.45)]"
-      : "inset-x-0 bottom-0 w-full border-t border-[rgba(215,178,110,0.18)] bg-gradient-to-t from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-6 py-4 shadow-[0_-24px_60px_rgba(0,0,0,0.45)]",
-    isDockedLeft && "scrollbar-thin max-h-[calc(100vh-2.5rem)] overflow-y-auto pr-1",
+      : "inset-x-0 bottom-0 w-full border-t border-[rgba(215,178,110,0.18)] bg-gradient-to-t from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-4 py-3 shadow-[0_-24px_60px_rgba(0,0,0,0.45)] sm:px-6 sm:py-4",
+    isDockedLeft
+      ? "scrollbar-thin max-h-[calc(100vh-2.5rem)] overflow-y-auto pr-1"
+      : "max-h-[min(70vh,36rem)] overflow-y-auto",
     isDockedLeft && isCompactHeight && "pb-6",
+    !isDockedLeft && isCompactWidth && "px-4",
   );
 
   const initialAnimation = useMemo(
@@ -103,19 +119,31 @@ export function ActionBar() {
     [isDockedLeft],
   );
 
+  const actionBarStyle = isDockedLeft
+    ? undefined
+    : { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" };
+
   const innerClasses = cn(
     "flex flex-col",
-    isDockedLeft ? "gap-3" : "mx-auto w-full max-w-5xl gap-3",
+    isDockedLeft
+      ? "gap-3"
+      : cn("mx-auto w-full max-w-5xl", isCompactWidth ? "gap-2.5 px-1" : "gap-3"),
   );
 
   const infoRowClasses = cn(
     "text-sm text-[var(--color-text-muted)]",
-    isDockedLeft ? "flex flex-col gap-2" : "flex flex-wrap items-center gap-3",
+    isDockedLeft
+      ? "flex flex-col gap-2"
+      : isCompactWidth
+        ? "flex flex-col gap-2"
+        : "flex flex-wrap items-center gap-3",
   );
+
+  const stackControls = isDockedLeft || isCompactWidth;
 
   const controlsRowClasses = cn(
     "flex gap-3",
-    isDockedLeft ? "flex-col" : "flex-wrap items-center",
+    isDockedLeft ? "flex-col" : stackControls ? "flex-col" : "flex-wrap items-center",
   );
 
   return (
@@ -125,6 +153,7 @@ export function ActionBar() {
       animate={animateTo}
       transition={{ duration: 0.25, ease: "easeOut" }}
       aria-live="polite"
+      style={actionBarStyle}
     >
       <div className={innerClasses}>
         <div className="flex flex-col gap-3">
@@ -191,7 +220,7 @@ export function ActionBar() {
                   <Button
                     variant="ghost"
                     className="h-7 w-full justify-start px-2 text-xs"
-                    onClick={() => setDockPosition("bottom")}
+                    onClick={() => setPreferredDock("bottom")}
                   >
                     下部に表示
                   </Button>
@@ -257,7 +286,7 @@ export function ActionBar() {
                   <Button
                     variant="ghost"
                     className="h-8 px-3 text-xs"
-                    onClick={() => setDockPosition("left")}
+                    onClick={() => setPreferredDock("left")}
                   >
                     左に表示
                   </Button>
@@ -357,7 +386,10 @@ export function ActionBar() {
                     <Button
                       key={target.id}
                       variant={selectedTarget === target.id ? "primary" : "outline"}
-                      className={cn("px-3 text-xs", isDockedLeft ? "h-8 w-full justify-start" : "h-9")}
+                      className={cn(
+                        "px-3 text-xs",
+                        isDockedLeft || isCompactWidth ? "h-8 w-full justify-start" : "h-9",
+                      )}
                       disabled={target.disabled}
                       onClick={() => setSelectedTarget(target.id)}
                     >
@@ -420,22 +452,22 @@ export function ActionBar() {
                     }
                   }
                 }}
-                className={cn(isDockedLeft ? "h-8 w-full" : "h-9 w-28")}
+                className={cn(isDockedLeft || isCompactWidth ? "h-8 w-full" : "h-9 w-28")}
               />
             </div>
           )}
 
-          <div className={cn("flex gap-2", isDockedLeft ? "w-full flex-col pt-0" : "ml-auto gap-3")}> 
+          <div className={cn("flex gap-2", stackControls ? "w-full flex-col pt-0" : "ml-auto gap-3")}> 
             <Button
               variant="ghost"
-              className={cn(isDockedLeft ? "h-9 w-full justify-center" : "px-4")}
+              className={cn(stackControls ? "h-9 w-full justify-center" : "px-4")}
               onClick={cancelSelection}
               disabled={!selectedCard}
             >
               取り消し
             </Button>
             <Button
-              className={cn(isDockedLeft ? "h-10 w-full" : "px-6")}
+              className={cn(stackControls ? "h-10 w-full" : "px-6")}
               onClick={playCard}
               disabled={!canConfirm || acting}
             >

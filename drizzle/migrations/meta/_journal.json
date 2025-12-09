@@ -8,6 +8,13 @@
       "when": 1761749861935,
       "tag": "0000_wonderful_onslaught",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1761753000000,
+      "tag": "0002_add_unique_room_constraints",
+      "breakpoints": false
     }
   ]
 }

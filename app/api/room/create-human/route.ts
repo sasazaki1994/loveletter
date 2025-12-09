@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createHumanRoom } from "@/lib/server/game-service";
-import { getClientIp } from "@/lib/server/auth";
+import { buildAuthCookies, getClientIp } from "@/lib/server/auth";
 import { rateLimit } from "@/lib/server/rate-limit";
 
 const createRoomSchema = z.object({
@@ -25,13 +25,21 @@ export async function POST(request: Request) {
     const parsed = createRoomSchema.parse(body);
 
     const result = await createHumanRoom(parsed.nickname.trim());
+    const cookies = buildAuthCookies(result.playerId, result.playerToken);
 
-    return NextResponse.json(result, {
-      status: 200,
-      headers: {
-        "Cache-Control": "no-store",
+    const response = NextResponse.json(
+      result,
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
       },
-    });
+    );
+    for (const cookie of cookies) {
+      response.headers.append("Set-Cookie", cookie);
+    }
+    return response;
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

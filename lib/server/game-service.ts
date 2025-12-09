@@ -225,70 +225,98 @@ async function findRoomByIdentifier(tx: TransactionClient, identifier: string) {
 }
 
 export async function joinRoomAsPlayer(roomId: string, nickname: string) {
-  return db.transaction(async (tx) => {
-    const room = await findRoomByIdentifier(tx, roomId);
-    if (!room) {
-      throw new Error("ルームが見つかりません");
-    }
-    if (room.status !== "waiting") {
-      throw new Error("このルームは参加を受け付けていません");
-    }
+  const maxRetries = 3;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await db.transaction(async (tx) => {
+        const room = await findRoomByIdentifier(tx, roomId);
+        if (!room) {
+          throw new Error("ルームが見つかりません");
+        }
+        if (room.status !== "waiting") {
+          throw new Error("このルームは参加を受け付けていません");
+        }
 
-    const existingPlayers = await tx
-      .select()
-      .from(players)
-      .where(eq(players.roomId, room.id));
-    if (existingPlayers.length >= 4) {
-      throw new Error("満席です");
-    }
+        const existingPlayers = await tx
+          .select()
+          .from(players)
+          .where(eq(players.roomId, room.id))
+          .for("update");
+        if (existingPlayers.length >= 4) {
+          throw new Error("満席です");
+        }
 
-    const taken = existingPlayers.map((p) => p.seat);
-    let seat = 0;
-    for (let i = 0; i < 4; i += 1) {
-      if (!taken.includes(i)) {
-        seat = i;
-        break;
+        const taken = existingPlayers.map((p) => p.seat);
+        let seat = 0;
+        for (let i = 0; i < 4; i += 1) {
+          if (!taken.includes(i)) {
+            seat = i;
+            break;
+          }
+        }
+
+        const avatarSeed = randomAvatarSeed();
+        const token = generateOpaqueToken(32);
+        const tokenHash = hashToken(token);
+
+        const [player] = await tx
+          .insert(players)
+          .values({
+            roomId: room.id,
+            nickname,
+            seat,
+            role: "player" as PlayerRole,
+            isBot: false,
+            avatarSeed,
+            authTokenHash: tokenHash,
+          })
+          .returning();
+
+        return {
+          roomId: room.id,
+          shortId: room.shortId,
+          playerId: player.id,
+          playerToken: token,
+          seat,
+        } as const;
+      });
+    } catch (error) {
+      const code = (error as any)?.code as string | undefined;
+      const message = (error as any)?.message as string | undefined;
+      const isUniqueSeat =
+        code === "23505" || message?.includes?.("players_room_id_seat_unique");
+      const shouldRetry = isUniqueSeat && attempt < maxRetries;
+      if (shouldRetry) {
+        continue;
       }
+      throw error;
     }
-
-    const avatarSeed = randomAvatarSeed();
-    const token = generateOpaqueToken(32);
-    const tokenHash = hashToken(token);
-
-    const [player] = await tx
-      .insert(players)
-      .values({
-        roomId: room.id,
-        nickname,
-        seat,
-        role: "player" as PlayerRole,
-        isBot: false,
-        avatarSeed,
-        authTokenHash: tokenHash,
-      })
-      .returning();
-
-    return {
-      roomId: room.id,
-      shortId: room.shortId,
-      playerId: player.id,
-      playerToken: token,
-      seat,
-    } as const;
-  });
+  }
+  throw new Error("座席の確保に失敗しました。時間をおいて再試行してください。");
 }
 
 export async function startHumanGame(roomId: string, hostId: string) {
   return db.transaction(async (tx) => {
-    const roomRows = await tx.select().from(rooms).where(eq(rooms.id, roomId));
+    const roomRows = await tx.select().from(rooms).where(eq(rooms.id, roomId)).for("update");
     const room = roomRows[0];
     if (!room) throw new Error("ルームが見つかりません");
     if (room.status !== "waiting") throw new Error("すでに開始済みです");
 
+    // 既存ゲームの多重作成を防止
+    const existingGames = await tx
+      .select()
+      .from(games)
+      .where(eq(games.roomId, roomId))
+      .for("update");
+    if (existingGames.length > 0) {
+      throw new Error("すでにゲームが存在します");
+    }
+
     const playerRows = await tx
       .select()
       .from(players)
-      .where(eq(players.roomId, roomId));
+      .where(eq(players.roomId, roomId))
+      .for("update");
     if (playerRows.length < 2) throw new Error("開始には2人以上が必要です");
 
     const host = playerRows.find((p) => p.id === hostId);
@@ -450,7 +478,8 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
     const [game] = await tx
       .select()
       .from(games)
-      .where(eq(games.id, action.gameId));
+      .where(eq(games.id, action.gameId))
+      .for("update");
 
     if (!game) {
       return { success: false, message: "ゲームが存在しません。" };
@@ -468,7 +497,8 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
       .select()
       .from(players)
       .where(eq(players.roomId, action.roomId))
-      .orderBy(players.seat);
+      .orderBy(players.seat)
+      .for("update");
 
     const actingPlayer = playersInRoom.find((p) => p.id === action.playerId);
     if (!actingPlayer || actingPlayer.isEliminated) {
@@ -482,7 +512,8 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
     const handRow = await tx
       .select()
       .from(hands)
-      .where(and(eq(hands.gameId, game.id), eq(hands.playerId, action.playerId)));
+      .where(and(eq(hands.gameId, game.id), eq(hands.playerId, action.playerId)))
+      .for("update");
 
     const currentHand = handRow[0];
     if (!currentHand) {
