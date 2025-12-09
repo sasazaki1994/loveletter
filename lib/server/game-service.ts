@@ -425,6 +425,8 @@ export async function handleGameAction(
 }
 
 async function handleResign(playerId: string, roomId: string) {
+  let runBotAfterCommit = false;
+
   const result = await db.transaction(async (tx) => {
     await tx
       .update(players)
@@ -434,22 +436,44 @@ async function handleResign(playerId: string, roomId: string) {
     const [game] = await tx
       .select()
       .from(games)
-      .where(eq(games.roomId, roomId));
+      .where(eq(games.roomId, roomId))
+      .for("update");
 
     if (!game) {
       return { success: true };
     }
 
-    const allPlayers = await tx
+    const playersInRoom = await tx
       .select()
       .from(players)
       .where(eq(players.roomId, roomId))
-      .orderBy(players.seat);
+      .orderBy(players.seat)
+      .for("update");
 
-    const survivors = allPlayers.filter((p) => !p.isEliminated && p.role === "player");
+    const survivors = playersInRoom.filter((p) => !p.isEliminated && p.role === "player");
 
     if (survivors.length <= 1) {
       await concludeRound(tx, game, survivors.map((p) => p.id), "resign");
+      return { success: true };
+    }
+
+    const activePlayer = playersInRoom.find((p) => p.id === game.activePlayerId);
+    const activeEliminated = !activePlayer || activePlayer.isEliminated;
+
+    if (activeEliminated || !game.activePlayerId) {
+      await advanceTurn(tx, game, playersInRoom);
+
+      const [nextGame] = await tx
+        .select()
+        .from(games)
+        .where(eq(games.id, game.id));
+
+      if (nextGame?.activePlayerId && nextGame.phase === "choose_card") {
+        const nextPlayer = playersInRoom.find((p) => p.id === nextGame.activePlayerId);
+        if (nextPlayer?.isBot && !nextPlayer.isEliminated) {
+          runBotAfterCommit = true;
+        }
+      }
     }
 
     return { success: true };
@@ -457,6 +481,11 @@ async function handleResign(playerId: string, roomId: string) {
 
   if (result.success) {
     invalidateStateCache(roomId);
+    if (runBotAfterCommit) {
+      executeBotTurn(roomId).catch((error) => {
+        console.error("bot turn error after resign", error);
+      });
+    }
   }
 
   return result;
