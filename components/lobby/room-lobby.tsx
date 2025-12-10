@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Crown, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -48,14 +48,32 @@ export function RoomLobby() {
     [],
   );
 
+  const multiSectionRef = useRef<HTMLDivElement | null>(null);
+  const mpNicknameInputRef = useRef<HTMLInputElement | null>(null);
+  const joinRoomIdInputRef = useRef<HTMLInputElement | null>(null);
+  const multiLandingHandledRef = useRef(false);
+
   // 招待リンク (?join=XXXX) からルームIDを埋め込む
   useEffect(() => {
     const invite = searchParams.get("join") ?? searchParams.get("room");
+    const mode = searchParams.get("mode");
     if (invite) {
       const normalized = normalizeRoomId(invite);
       setJoinRoomId((prev) => (prev ? prev : normalized));
     }
-  }, [searchParams]);
+    const shouldSurfaceMulti = invite || mode?.toLowerCase() === "multi";
+    if (shouldSurfaceMulti && !multiLandingHandledRef.current) {
+      multiLandingHandledRef.current = true;
+      const scrollTarget = multiSectionRef.current;
+      const focusTarget = mpNicknameInputRef.current ?? joinRoomIdInputRef.current;
+      window.requestAnimationFrame(() => {
+        scrollTarget?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => {
+          focusTarget?.focus({ preventScroll: true });
+        }, 120);
+      });
+    }
+  }, [searchParams, setJoinRoomId]);
 
   const handleCreateRoom = async () => {
     if (!nickname.trim()) {
@@ -381,10 +399,11 @@ export function RoomLobby() {
               {createLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bot対戦を開始"}
             </Button>
             <div className="h-px bg-[rgba(215,178,110,0.25)]" />
-            <div className="grid gap-4">
+            <div className="grid gap-4" ref={multiSectionRef}>
               <div className="space-y-2">
                 <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">マルチ用ニックネーム</label>
                 <Input
+                  ref={mpNicknameInputRef}
                   value={mpNickname}
                   onChange={(e) => setMpNickname(e.target.value)}
                   placeholder="例: Velvet Strategist"
@@ -397,6 +416,7 @@ export function RoomLobby() {
                 </Button>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Input
+                    ref={joinRoomIdInputRef}
                     value={joinRoomId}
                     onChange={(e) => setJoinRoomId(e.target.value)}
                     placeholder="Room ID を入力"

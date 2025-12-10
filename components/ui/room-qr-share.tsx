@@ -14,18 +14,20 @@ interface RoomQrShareProps {
 }
 
 const buildJoinUrl = (roomId: string) => {
+  const fallback = `/?join=${encodeURIComponent(roomId)}&mode=multi`;
   try {
     if (typeof window === "undefined") {
-      return `/?join=${encodeURIComponent(roomId)}`;
+      return fallback;
     }
     const url = new URL(window.location.href);
     url.search = "";
     url.hash = "";
     url.pathname = "/";
     url.searchParams.set("join", roomId);
+    url.searchParams.set("mode", "multi");
     return url.toString();
   } catch {
-    return `/?join=${encodeURIComponent(roomId)}`;
+    return fallback;
   }
 };
 
@@ -66,7 +68,6 @@ export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareP
         </div>
         <Button
           variant="ghost"
-          size="sm"
           className="h-8 px-2 text-xs"
           onClick={handleCopyLink}
           disabled={copying}
