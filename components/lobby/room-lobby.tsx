@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Crown, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, Crown, Loader2, QrCode } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
+import { RoomQrScanner } from "@/components/ui/room-qr-scanner";
 import { usePlayerSession } from "@/lib/client/session";
 import { CARD_POOL } from "@/lib/game/cards";
-import { normalizeRoomId } from "@/lib/utils/room-id";
+import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
 
 export function RoomLobby() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export function RoomLobby() {
   const [createdRoomId, setCreatedRoomId] = useState<string | null>(null);
   const [showRooms, setShowRooms] = useState(false);
   const [roomsLoading, setRoomsLoading] = useState(false);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [variants, setVariants] = useState<Record<string, boolean>>({
     feint: false,
     insight: false,
@@ -74,6 +76,48 @@ export function RoomLobby() {
       });
     }
   }, [searchParams, setJoinRoomId]);
+
+  const extractRoomIdFromValue = useCallback((value: string): string | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      const url = new URL(trimmed);
+      const fromParams = url.searchParams.get("join") ?? url.searchParams.get("room");
+      if (fromParams) return normalizeRoomId(fromParams);
+      const pathParts = url.pathname.split("/").filter(Boolean);
+      const maybeId = pathParts[pathParts.length - 1];
+      if (maybeId) {
+        const normalized = normalizeRoomId(maybeId);
+        if (isValidShortRoomId(normalized) || normalized.length >= 12) {
+          return normalized;
+        }
+      }
+    } catch {
+      // not a URL; fall through to raw handling
+    }
+    const normalizedRaw = normalizeRoomId(trimmed);
+    if (isValidShortRoomId(normalizedRaw) || normalizedRaw.length >= 12) {
+      return normalizedRaw;
+    }
+    return null;
+  }, []);
+
+  const handleQrDetected = useCallback(
+    (rawValue: string) => {
+      const extracted = extractRoomIdFromValue(rawValue);
+      if (!extracted) {
+        setMpError("QRコードからルームIDを読み取れませんでした");
+        return;
+      }
+      setJoinRoomId(extracted);
+      setMpError(null);
+      setQrScannerOpen(false);
+      setTimeout(() => {
+        joinRoomIdInputRef.current?.focus({ preventScroll: true });
+      }, 80);
+    },
+    [extractRoomIdFromValue],
+  );
 
   const handleCreateRoom = async () => {
     if (!nickname.trim()) {
@@ -422,9 +466,20 @@ export function RoomLobby() {
                     placeholder="Room ID を入力"
                     className="sm:flex-1"
                   />
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                   <Button onClick={handleJoinRoom} disabled={mpLoading} className="w-full sm:w-auto">
                     参加
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setQrScannerOpen(true)}
+                    disabled={mpLoading}
+                    className="w-full sm:w-auto"
+                  >
+                    <QrCode className="mr-2 h-4 w-4" />
+                    QR読取
+                  </Button>
+                </div>
                 </div>
               </div>
               {mpError && <p className="text-sm text-[var(--color-warn-light)]">{mpError}</p>}
@@ -496,6 +551,8 @@ export function RoomLobby() {
           </CardContent>
         </Card>
       </div>
+
+      <RoomQrScanner open={qrScannerOpen} onOpenChange={setQrScannerOpen} onDetected={handleQrDetected} />
 
       {/* ルーム作成成功ダイアログ */}
       <Dialog open={showRoomCreatedDialog} onOpenChange={setShowRoomCreatedDialog}>
