@@ -195,6 +195,12 @@ export async function createHumanRoom(nickname: string) {
       })
       .returning();
 
+    // ルーム作成者をホストとして固定（seat 依存をやめる）
+    await tx
+      .update(rooms)
+      .set({ hostPlayerId: host.id, updatedAt: new Date() })
+      .where(eq(rooms.id, room.id));
+
     return {
       roomId: room.id,
       shortId: room.shortId,
@@ -320,7 +326,10 @@ export async function startHumanGame(roomId: string, hostId: string) {
     if (playerRows.length < 2) throw new Error("開始には2人以上が必要です");
 
     const host = playerRows.find((p) => p.id === hostId);
-    if (!host || host.seat !== 0) throw new Error("ホストのみ開始できます");
+    if (!host) throw new Error("ホストのみ開始できます");
+    // rooms.hostPlayerId が存在する場合はそれを優先し、移行前データは seat0 をホストとみなす
+    const expectedHostId = (room as any).hostPlayerId ?? playerRows.find((p) => p.seat === 0)?.id ?? null;
+    if (!expectedHostId || host.id !== expectedHostId) throw new Error("ホストのみ開始できます");
 
     const ordered = playerRows
       .filter((p) => p.role === "player")

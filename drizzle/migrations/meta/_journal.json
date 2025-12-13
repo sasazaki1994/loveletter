@@ -15,6 +15,13 @@
       "when": 1761753000000,
       "tag": "0002_add_unique_room_constraints",
       "breakpoints": false
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765689000000,
+      "tag": "0003_add_room_host_player",
+      "breakpoints": false
     }
   ]
 }

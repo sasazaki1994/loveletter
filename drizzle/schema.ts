@@ -33,6 +33,9 @@ export const rooms = pgTable("rooms", {
   id: uuid("id").primaryKey().defaultRandom(),
   shortId: text("short_id").notNull().unique(),
   status: roomStatusEnum("status").notNull().default("waiting"),
+  // マルチルームの作成者（ホスト）。開始権限の判定に利用する。
+  // 循環参照を避けるため、作成時は NULL → host作成後に UPDATE で埋める。
+  hostPlayerId: uuid("host_player_id").references(() => players.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
