@@ -167,6 +167,12 @@ export function RoomLobby() {
       setMpError("ニックネームを入力してください");
       return;
     }
+    if (session?.roomId) {
+      setMpError(
+        "既存のセッションがあります。同じブラウザで別プレイヤーとして参加するとホスト権限/認証が上書きされるため、別端末/シークレットで参加するか、下の「セッションを破棄」を押してから続行してください。",
+      );
+      return;
+    }
     setMpError(null);
     setMpLoading(true);
     try {
@@ -209,6 +215,12 @@ export function RoomLobby() {
   const handleJoinRoom = async () => {
     if (!mpNickname.trim() || !joinRoomId.trim()) {
       setMpError("ルームIDとニックネームを入力してください");
+      return;
+    }
+    if (session?.roomId) {
+      setMpError(
+        "既存のセッションがあります。同じブラウザで別プレイヤーとして参加するとホスト権限/認証が上書きされるため、別端末/シークレットで参加するか、下の「セッションを破棄」を押してから続行してください。",
+      );
       return;
     }
     setMpError(null);
@@ -262,7 +274,9 @@ export function RoomLobby() {
       });
       const payload = (await response.json()) as { gameId?: string; error?: string };
       if (!response.ok) {
-        throw new Error(payload.error ?? "開始に失敗しました");
+        const errorMsg = payload.error ?? "開始に失敗しました";
+        const detailMsg = (payload as any).detail ? ` (${(payload as any).detail})` : "";
+        throw new Error(errorMsg + detailMsg);
       }
       router.push(`/game/${session.roomId}`);
     } catch (error) {
@@ -482,6 +496,10 @@ export function RoomLobby() {
                 </div>
                 </div>
               </div>
+              <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">
+                同じブラウザ（同一プロファイル）で複数人が参加すると、認証Cookie/セッションが上書きされてホストが開始できなくなることがあります。
+                2人目以降は別端末、別ブラウザ、またはシークレットウィンドウで参加してください。
+              </p>
               {mpError && <p className="text-sm text-[var(--color-warn-light)]">{mpError}</p>}
               {session?.roomId && (
                 <Button variant="outline" onClick={handleStartRoom} disabled={mpLoading} className="w-full">
@@ -544,6 +562,16 @@ export function RoomLobby() {
                     onClick={() => router.push(`/game/${session.roomId}`)}
                   >
                   続きを再開
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => {
+                      setSession(null);
+                      setMpError(null);
+                    }}
+                  >
+                    セッションを破棄
                   </Button>
                 </div>
               </div>
