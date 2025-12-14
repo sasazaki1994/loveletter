@@ -35,7 +35,10 @@ export const rooms = pgTable("rooms", {
   status: roomStatusEnum("status").notNull().default("waiting"),
   // マルチルームの作成者（ホスト）。開始権限の判定に利用する。
   // 循環参照を避けるため、作成時は NULL → host作成後に UPDATE で埋める。
-  hostPlayerId: uuid("host_player_id").references(() => players.id, { onDelete: "set null" }),
+  // NOTE: DB制約は migration(0003_add_room_host_player.sql) 側で付与している。
+  // Drizzle の table 定義で players を参照すると rooms<->players の循環参照になり
+  // TypeScript の型推論が崩れるため、ここでは references() を付けない。
+  hostPlayerId: uuid("host_player_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
