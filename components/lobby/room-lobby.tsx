@@ -537,7 +537,7 @@ export function RoomLobby() {
                   ) : (
                     <div className="flex items-center gap-2">
                       <Button
-                        variant={authMode === "login" ? "default" : "outline"}
+                        variant={authMode === "login" ? "primary" : "outline"}
                         className="h-8 px-3 text-xs"
                         onClick={() => setAuthMode("login")}
                         disabled={authLoading}
@@ -545,7 +545,7 @@ export function RoomLobby() {
                         ログイン
                       </Button>
                       <Button
-                        variant={authMode === "signup" ? "default" : "outline"}
+                        variant={authMode === "signup" ? "primary" : "outline"}
                         className="h-8 px-3 text-xs"
                         onClick={() => setAuthMode("signup")}
                         disabled={authLoading}
