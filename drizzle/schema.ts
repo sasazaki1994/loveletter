@@ -44,6 +44,27 @@ export const rooms = pgTable("rooms", {
     .defaultNow(),
 });
 
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const userSessions = pgTable("user_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 export const players = pgTable(
   "players",
   {
@@ -51,6 +72,8 @@ export const players = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => rooms.id, { onDelete: "cascade" }),
+    // アカウントに紐づくプレイヤー（Bot等はNULL）
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     nickname: text("nickname").notNull(),
     seat: integer("seat").notNull(),
     role: playerRoleEnum("role").notNull().default("player"),

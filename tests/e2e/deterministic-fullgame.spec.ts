@@ -31,7 +31,7 @@ test("決定論的フロー: 2人対戦で即時終了(Resign)→リザルト表
 
   // 4) ホスト視点でゲームページへ
   await page.addInitScript(([roomId, playerId, nickname, token, shortId]) => {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       "llr:session",
       JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }),
     );
@@ -39,7 +39,7 @@ test("決定論的フロー: 2人対戦で即時終了(Resign)→リザルト表
   await page.goto(`${baseURL}/game/${hostInfo.roomId}`);
   if (await page.getByText('セッション未検出').isVisible().catch(() => false)) {
     await page.evaluate(([roomId, playerId, nickname, token, shortId]) => {
-      localStorage.setItem('llr:session', JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }));
+      sessionStorage.setItem('llr:session', JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }));
     }, [hostInfo.roomId, hostInfo.playerId, 'HostFull', hostInfo.playerToken, hostInfo.shortId]);
     await page.reload();
   }

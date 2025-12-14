@@ -170,7 +170,7 @@ export async function createRoomWithBot(
   });
 }
 
-export async function createHumanRoom(nickname: string) {
+export async function createHumanRoom(nickname: string, userId?: string | null) {
   return db.transaction(async (tx) => {
     const shortId = await generateUniqueShortId(tx);
     const [room] = await tx
@@ -179,19 +179,21 @@ export async function createHumanRoom(nickname: string) {
       .returning();
 
     const avatarSeed = randomAvatarSeed();
-    const token = generateOpaqueToken(32);
-    const tokenHash = hashToken(token);
+    const isAccountMode = Boolean(userId);
+    const token = isAccountMode ? null : generateOpaqueToken(32);
+    const tokenHash = isAccountMode || !token ? null : hashToken(token);
 
     const [host] = await tx
       .insert(players)
       .values({
         roomId: room.id,
+        userId: userId ?? null,
         nickname,
         seat: 0,
         role: "player" as PlayerRole,
         isBot: false,
         avatarSeed,
-        authTokenHash: tokenHash,
+        authTokenHash: tokenHash ?? null,
       })
       .returning();
 
@@ -205,7 +207,7 @@ export async function createHumanRoom(nickname: string) {
       roomId: room.id,
       shortId: room.shortId,
       playerId: host.id,
-      playerToken: token,
+      playerToken: token ?? undefined,
       status: "waiting" as const,
     };
   });
@@ -230,7 +232,7 @@ async function findRoomByIdentifier(tx: TransactionClient, identifier: string) {
   }
 }
 
-export async function joinRoomAsPlayer(roomId: string, nickname: string) {
+export async function joinRoomAsPlayer(roomId: string, nickname: string, userId?: string | null) {
   const maxRetries = 3;
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
@@ -262,19 +264,21 @@ export async function joinRoomAsPlayer(roomId: string, nickname: string) {
         }
 
         const avatarSeed = randomAvatarSeed();
-        const token = generateOpaqueToken(32);
-        const tokenHash = hashToken(token);
+        const isAccountMode = Boolean(userId);
+        const token = isAccountMode ? null : generateOpaqueToken(32);
+        const tokenHash = isAccountMode || !token ? null : hashToken(token);
 
         const [player] = await tx
           .insert(players)
           .values({
             roomId: room.id,
+            userId: userId ?? null,
             nickname,
             seat,
             role: "player" as PlayerRole,
             isBot: false,
             avatarSeed,
-            authTokenHash: tokenHash,
+            authTokenHash: tokenHash ?? null,
           })
           .returning();
 
@@ -282,7 +286,7 @@ export async function joinRoomAsPlayer(roomId: string, nickname: string) {
           roomId: room.id,
           shortId: room.shortId,
           playerId: player.id,
-          playerToken: token,
+          playerToken: token ?? undefined,
           seat,
         } as const;
       });

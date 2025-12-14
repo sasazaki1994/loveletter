@@ -32,7 +32,7 @@ test("2人対戦: 参加→開始→双方同期", async ({ browser, request, ba
   const ctxA = await browser.newContext();
   const pageA = await ctxA.newPage();
   await pageA.addInitScript(([roomId, playerId, nickname, token, shortId]) => {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       "llr:session",
       JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }),
     );
@@ -41,7 +41,7 @@ test("2人対戦: 参加→開始→双方同期", async ({ browser, request, ba
   // Fallback: セッション未検出なら後から注入してリロード
   if (await pageA.getByText('セッション未検出').isVisible().catch(() => false)) {
     await pageA.evaluate(([roomId, playerId, nickname, token, shortId]) => {
-      localStorage.setItem('llr:session', JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }));
+      sessionStorage.setItem('llr:session', JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }));
     }, [hostInfo.roomId, hostInfo.playerId, 'HostE2E', hostInfo.playerToken, hostInfo.shortId]);
     await pageA.reload();
   }
@@ -50,7 +50,7 @@ test("2人対戦: 参加→開始→双方同期", async ({ browser, request, ba
   const ctxB = await browser.newContext();
   const pageB = await ctxB.newPage();
   await pageB.addInitScript(([roomId, playerId, nickname, token, shortId]) => {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       "llr:session",
       JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }),
     );
@@ -58,7 +58,7 @@ test("2人対戦: 参加→開始→双方同期", async ({ browser, request, ba
   await pageB.goto(`${baseURL}/game/${hostInfo.roomId}`);
   if (await pageB.getByText('セッション未検出').isVisible().catch(() => false)) {
     await pageB.evaluate(([roomId, playerId, nickname, token, shortId]) => {
-      localStorage.setItem('llr:session', JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }));
+      sessionStorage.setItem('llr:session', JSON.stringify({ roomId, playerId, nickname, playerToken: token, shortId }));
     }, [guestInfo.roomId, guestInfo.playerId, 'GuestE2E', guestInfo.playerToken, guestInfo.shortId]);
     await pageB.reload();
   }

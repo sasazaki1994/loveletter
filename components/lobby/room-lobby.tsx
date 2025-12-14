@@ -20,6 +20,13 @@ export function RoomLobby() {
   const searchParams = useSearchParams();
   const { session, setSession } = usePlayerSession();
 
+  const [user, setUser] = useState<{ id: string; username: string } | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+
   const [nickname, setNickname] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -76,6 +83,64 @@ export function RoomLobby() {
       });
     }
   }, [searchParams, setJoinRoomId]);
+
+  // アカウント状態を取得（任意）
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/auth/me", { method: "GET", headers: { "Cache-Control": "no-store" } })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!alive) return;
+        setUser((j as any)?.user ?? null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setUser(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const handleAuth = useCallback(async () => {
+    if (authLoading) return;
+    if (!authUsername.trim() || !authPassword) {
+      setAuthError("ユーザー名とパスワードを入力してください。");
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const endpoint = authMode === "signup" ? "/api/auth/signup" : "/api/auth/login";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: authUsername.trim(), password: authPassword }),
+      });
+      const json = (await res.json()) as { user?: { id: string; username: string }; error?: string; detail?: string };
+      if (!res.ok || !json.user) {
+        const detail = json.detail ? ` (${json.detail})` : "";
+        throw new Error((json.error ?? "認証に失敗しました") + detail);
+      }
+      setUser(json.user);
+      setAuthPassword("");
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : "認証に失敗しました");
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [authLoading, authMode, authPassword, authUsername]);
+
+  const handleLogout = useCallback(async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setUser(null);
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
 
   const extractRoomIdFromValue = useCallback((value: string): string | null => {
     const trimmed = value.trim();
@@ -269,6 +334,7 @@ export function RoomLobby() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Player-Id": session.playerId,
         },
         body: JSON.stringify({ roomId: session.roomId }),
       });
@@ -458,6 +524,63 @@ export function RoomLobby() {
             </Button>
             <div className="h-px bg-[rgba(215,178,110,0.25)]" />
             <div className="grid gap-4" ref={multiSectionRef}>
+              <div className="rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.55)] p-4 text-sm text-[var(--color-text-muted)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="font-medium text-[var(--color-accent-light)]">アカウント</span>
+                  {user ? (
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs">{user.username}</span>
+                      <Button variant="outline" className="h-8 px-3 text-xs" onClick={handleLogout} disabled={authLoading}>
+                        ログアウト
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={authMode === "login" ? "default" : "outline"}
+                        className="h-8 px-3 text-xs"
+                        onClick={() => setAuthMode("login")}
+                        disabled={authLoading}
+                      >
+                        ログイン
+                      </Button>
+                      <Button
+                        variant={authMode === "signup" ? "default" : "outline"}
+                        className="h-8 px-3 text-xs"
+                        onClick={() => setAuthMode("signup")}
+                        disabled={authLoading}
+                      >
+                        登録
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {!user && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <Input
+                      value={authUsername}
+                      onChange={(e) => setAuthUsername(e.target.value)}
+                      placeholder="username"
+                      maxLength={32}
+                    />
+                    <Input
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="password"
+                      type="password"
+                      maxLength={128}
+                    />
+                    <Button onClick={handleAuth} disabled={authLoading} className="w-full">
+                      {authLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : authMode === "signup" ? "登録して続行" : "ログインして続行"}
+                    </Button>
+                  </div>
+                )}
+                {authError && <p className="mt-2 text-xs text-[var(--color-warn-light)]">{authError}</p>}
+                <p className="mt-2 text-xs leading-relaxed">
+                  ログインしてマルチ参加すると、従来の player Cookie（llr_pid/llr_ptk）に依存せず、
+                  <span className="text-[var(--color-accent-light)]">同一ブラウザでもタブごとに別プレイヤー</span>を扱えます（テスト用途向け）。
+                </p>
+              </div>
               <div className="space-y-2">
                 <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">マルチ用ニックネーム</label>
                 <Input
@@ -497,8 +620,9 @@ export function RoomLobby() {
                 </div>
               </div>
               <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">
-                同じブラウザ（同一プロファイル）で複数人が参加すると、認証Cookie/セッションが上書きされてホストが開始できなくなることがあります。
-                2人目以降は別端末、別ブラウザ、またはシークレットウィンドウで参加してください。
+                {user
+                  ? "ログイン中は同一ブラウザでもタブを分ければ参加できます（ただし同一アカウントで複数席を操作できます）。実運用のマルチは別アカウント/別端末を推奨します。"
+                  : "未ログインのまま同一ブラウザで複数人が参加すると、player Cookieが上書きされてホストが開始できなくなることがあります。2人目以降は別端末/別ブラウザ/シークレット、またはログインを推奨します。"}
               </p>
               {mpError && <p className="text-sm text-[var(--color-warn-light)]">{mpError}</p>}
               {session?.roomId && (

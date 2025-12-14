@@ -5,6 +5,7 @@ import { joinRoomAsPlayer } from "@/lib/server/game-service";
 import { buildAuthCookies, getClientIp } from "@/lib/server/auth";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
+import { getUserFromRequest } from "@/lib/server/user-auth";
 
 const joinSchema = z.object({
   roomId: z.string().min(1).max(50), // UUIDまたは短いID
@@ -28,8 +29,10 @@ export async function POST(request: Request) {
     // ルームIDを正規化（大文字に変換、空白削除）
     const normalizedRoomId = normalizeRoomId(parsed.roomId);
 
-    const result = await joinRoomAsPlayer(normalizedRoomId, parsed.nickname.trim());
-    const cookies = buildAuthCookies(result.playerId, result.playerToken);
+    const user = await getUserFromRequest(request as any);
+    const result = await joinRoomAsPlayer(normalizedRoomId, parsed.nickname.trim(), user?.id ?? null);
+    // 未ログイン（レガシー）時のみ player cookie を発行する
+    const cookies = user ? [] : buildAuthCookies(result.playerId, result.playerToken);
 
     const response = NextResponse.json(
       result,

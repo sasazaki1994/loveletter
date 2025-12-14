@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -18,6 +18,7 @@ interface GameClientProps {
 export function GameClient({ roomId }: GameClientProps) {
   const { session, setSession } = usePlayerSession();
   const router = useRouter();
+  const [hasGame, setHasGame] = useState<boolean>(false);
 
   const activeSession = useMemo(() => {
     if (session?.roomId === roomId) {
@@ -26,7 +27,37 @@ export function GameClient({ roomId }: GameClientProps) {
     return null;
   }, [roomId, session]);
 
-  const showSessionNotice = !activeSession;
+  // ゲーム開始前（waiting）はゲーム画面側で参加/開始まで完結させるため、
+  // 「セッション未検出」オーバーレイはゲーム開始後のみ表示する。
+  useEffect(() => {
+    if (hasGame) return;
+    let timer: number | null = null;
+    const check = async () => {
+      try {
+        const res = await fetch(`/api/game/state?roomId=${encodeURIComponent(roomId)}`, {
+          method: "GET",
+          headers: { "Cache-Control": "no-store" },
+        });
+        const json = (await res.json()) as { state?: unknown };
+        const next = Boolean(json?.state);
+        setHasGame(next);
+        if (next && timer) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+      } catch {
+        // 失敗時は従来通りオーバーレイを出しやすい方へ（hasGame=true扱い）にはしない
+        setHasGame(false);
+      }
+    };
+    void check();
+    timer = window.setInterval(check, 2000);
+    return () => {
+      if (timer) window.clearInterval(timer);
+    };
+  }, [roomId, hasGame]);
+
+  const showSessionNotice = !activeSession && hasGame;
 
   return (
     <GameProvider roomId={roomId} playerId={activeSession?.playerId}>
@@ -43,8 +74,11 @@ export function GameClient({ roomId }: GameClientProps) {
                   操作するにはロビーに戻ってセッションを作成し直してください。
                 </p>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button onClick={() => router.push("/")} className="sm:flex-1">
-                    ロビーに戻る
+                  <Button
+                    onClick={() => router.push(`/?join=${encodeURIComponent(roomId)}&mode=multi`)}
+                    className="sm:flex-1"
+                  >
+                    ロビーに戻って参加する
                   </Button>
                   <Button variant="outline" onClick={() => router.refresh()} className="sm:flex-1">
                     再読み込み

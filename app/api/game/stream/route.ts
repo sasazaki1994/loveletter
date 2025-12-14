@@ -10,6 +10,7 @@ import type { ClientGameState } from "@/lib/game/types";
 import { extractPlayerAuth, verifyToken } from "@/lib/server/auth";
 import { players } from "@/drizzle/schema";
 import { db } from "@/lib/db/client";
+import { getUserFromRequest } from "@/lib/server/user-auth";
 import { and, eq } from "drizzle-orm";
 
 const querySchema = z.object({
@@ -38,7 +39,16 @@ export async function GET(request: NextRequest) {
           .where(and(eq(players.id, parsed.playerId), eq(players.roomId, parsed.roomId)))
       )[0];
       if (row) {
-        if (!row.authTokenHash) {
+        if (row.userId) {
+          const user = await getUserFromRequest(request);
+          if (!user || user.id !== row.userId) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          effectivePlayerId = parsed.playerId;
+        } else if (!row.authTokenHash) {
           effectivePlayerId = parsed.playerId;
         } else {
           const { playerId, playerToken } = extractPlayerAuth(request);

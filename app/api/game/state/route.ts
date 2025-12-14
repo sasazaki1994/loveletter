@@ -6,6 +6,7 @@ import { fetchGameState } from "@/lib/server/game-service";
 import { extractPlayerAuth, verifyToken } from "@/lib/server/auth";
 import { players } from "@/drizzle/schema";
 import { db } from "@/lib/db/client";
+import { getUserFromRequest } from "@/lib/server/user-auth";
 import { and, eq } from "drizzle-orm";
 // メモリキャッシュはマルチインスタンスで不整合を生むため、このエンドポイントでは使用しない
 
@@ -31,7 +32,14 @@ export async function GET(request: NextRequest) {
           .where(and(eq(players.id, parsed.playerId), eq(players.roomId, parsed.roomId)))
       )[0];
       if (row) {
-        if (!row.authTokenHash) {
+        if (row.userId) {
+          // account mode: allow only when the logged-in user owns the player
+          const user = await getUserFromRequest(request);
+          if (!user || user.id !== row.userId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+          }
+          perspectiveId = parsed.playerId;
+        } else if (!row.authTokenHash) {
           // Legacy (bot room): allow perspective without token
           perspectiveId = parsed.playerId;
         } else {

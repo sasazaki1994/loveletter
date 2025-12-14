@@ -8,6 +8,7 @@ import { extractPlayerAuth, getClientIp, verifyToken } from "@/lib/server/auth";
 import { rateLimit } from "@/lib/server/rate-limit";
 import { db } from "@/lib/db/client";
 import { players } from "@/drizzle/schema";
+import { getUserFromRequest } from "@/lib/server/user-auth";
 import { and, eq } from "drizzle-orm";
 
 const cardIdValues = Object.keys(CARD_DEFINITIONS) as [CardId, ...CardId[]];
@@ -56,7 +57,19 @@ export async function POST(request: Request) {
         .from(players)
         .where(and(eq(players.id, playerId), eq(players.roomId, parsed.roomId)))
     )[0];
-    if (row?.authTokenHash) {
+    if (!row) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    if (row.userId) {
+      const user = await getUserFromRequest(request as any);
+      if (!user || user.id !== row.userId) {
+        return NextResponse.json(
+          { success: false, message: "Unauthorized" },
+          { status: 401 },
+        );
+      }
+    } else if (row.authTokenHash) {
       if (!playerToken || !verifyToken(playerToken, row.authTokenHash)) {
         return NextResponse.json(
           { success: false, message: "Unauthorized" },
@@ -64,8 +77,7 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      // Legacy mode (Bot room): allow when no authTokenHash is set
-      // no-op
+      // Bot room: allow
     }
 
     const result = await handleGameAction(parsed);

@@ -51,7 +51,7 @@ export async function createBotRoomViaUI(page: Page, nickname: string) {
   const json = (await r.json()) as { roomId?: string; playerId?: string };
   if (!r.ok() || !json.roomId || !json.playerId) throw new Error("failed to create room via API fallback");
   await page.addInitScript(([roomId, playerId, nick]) => {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       "llr:session",
       JSON.stringify({ roomId, playerId, nickname: nick }),
     );

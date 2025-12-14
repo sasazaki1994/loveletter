@@ -22,6 +22,20 @@
       "when": 1765689000000,
       "tag": "0003_add_room_host_player",
       "breakpoints": false
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1765689200000,
+      "tag": "0004_add_users_and_user_sessions",
+      "breakpoints": false
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1765689300000,
+      "tag": "0005_add_players_user_id",
+      "breakpoints": false
     }
   ]
 }

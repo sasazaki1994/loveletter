@@ -14,6 +14,7 @@ import { LogPanel } from "@/components/game/log-panel";
 import { PlayerHUD } from "@/components/game/player-hud";
 import { ResultDialog } from "@/components/game/result-dialog";
 import { TurnBanner } from "@/components/game/turn-banner";
+import { WaitingRoomPanel } from "@/components/game/waiting-room-panel";
 import { useGameContext } from "@/components/game/game-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -547,35 +548,7 @@ export function GameBoard() {
 
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {
-    return (
-      <div className="grid h-screen w-full place-items-center overflow-hidden px-6">
-        <Card className="w-full max-w-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Users className="h-6 w-6 text-[var(--color-accent-light)]" />
-              ルーム待機中
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <p className="text-sm text-[var(--color-text-muted)]">
-              他のプレイヤーの参加を待っています。ホストがゲームを開始すると、自動的に開始されます。
-            </p>
-            {!isBotGame && (
-              <div className="grid gap-4 lg:grid-cols-[1.25fr_auto] lg:items-start">
-                <RoomIdDisplay roomId={shortId ?? roomId} />
-                <RoomQrShare roomId={shortId ?? roomId} compact className="lg:justify-self-end" />
-              </div>
-            )}
-            {loading && (
-              <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-text-muted)]">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                状態を確認中...
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <WaitingRoomPanel roomId={roomId} />;
   }
 
   const rootClasses = cn(

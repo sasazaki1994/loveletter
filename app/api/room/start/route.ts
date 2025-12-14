@@ -6,6 +6,7 @@ import { db } from "@/lib/db/client";
 import { startHumanGame } from "@/lib/server/game-service";
 import { extractPlayerAuth, getClientIp, verifyToken } from "@/lib/server/auth";
 import { rateLimit } from "@/lib/server/rate-limit";
+import { getUserFromRequest } from "@/lib/server/user-auth";
 import { and, eq } from "drizzle-orm";
 
 const schema = z.object({
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     const parsed = schema.parse(body);
 
     const { playerId, playerToken } = extractPlayerAuth(request);
-    if (!playerId || !playerToken) {
+    if (!playerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -38,8 +39,23 @@ export async function POST(request: NextRequest) {
         .where(and(eq(players.id, playerId), eq(players.roomId, parsed.roomId)))
     )[0];
 
-    if (!row || !row.authTokenHash || !verifyToken(playerToken, row.authTokenHash)) {
+    if (!row) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // アカウント紐づけプレイヤーは「ユーザーが所有しているか」で認可（Cookieセッション）
+    if (row.userId) {
+      const user = await getUserFromRequest(request);
+      if (!user || user.id !== row.userId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else if (row.authTokenHash) {
+      // レガシー: player token で認可
+      if (!playerToken || !verifyToken(playerToken, row.authTokenHash)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else {
+      // Bot room: allow
     }
 
     const { gameId } = await startHumanGame(parsed.roomId, playerId);

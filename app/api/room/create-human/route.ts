@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createHumanRoom } from "@/lib/server/game-service";
 import { buildAuthCookies, getClientIp } from "@/lib/server/auth";
 import { rateLimit } from "@/lib/server/rate-limit";
+import { getUserFromRequest } from "@/lib/server/user-auth";
 
 const createRoomSchema = z.object({
   nickname: z.string().min(1).max(24),
@@ -24,8 +25,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = createRoomSchema.parse(body);
 
-    const result = await createHumanRoom(parsed.nickname.trim());
-    const cookies = buildAuthCookies(result.playerId, result.playerToken);
+    const user = await getUserFromRequest(request as any);
+    const result = await createHumanRoom(parsed.nickname.trim(), user?.id ?? null);
+    // 未ログイン（レガシー）時のみ player cookie を発行する
+    const cookies = user ? [] : buildAuthCookies(result.playerId, result.playerToken);
 
     const response = NextResponse.json(
       result,
