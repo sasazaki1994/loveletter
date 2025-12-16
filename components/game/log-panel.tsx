@@ -1,29 +1,35 @@
 'use client';
 
 import { useEffect, useRef } from "react";
+import { 
+  Swords, Shield, Eye, Crown, Skull, MessageSquare, 
+  Target, AlertTriangle, Info, HelpCircle, RefreshCw, Hand
+} from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useGameContext } from "@/components/game/game-provider";
-import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { cn } from "@/lib/utils";
 
-const ICON_LABELS: Record<string, string> = {
-  mask: "推測",
-  eye: "洞察",
-  swords: "決闘",
-  shield: "守護",
-  quill: "命令",
-  balance: "交換",
-  crown: "勝利",
-  flame: "崩落",
-  target: "指名",
-  info: "情報",
-  alert: "警告",
+const LOG_ICONS: Record<string, React.ElementType> = {
+  mask: HelpCircle,
+  eye: Eye,
+  swords: Swords,
+  shield: Shield,
+  quill: MessageSquare,
+  balance: RefreshCw,
+  crown: Crown,
+  flame: Skull,
+  target: Target,
+  info: Info,
+  alert: AlertTriangle,
+  hand: Hand,
 };
 
 export function LogPanel() {
   const { state } = useGameContext();
   const viewportRef = useRef<HTMLDivElement | null>(null);
 
+  // Auto-scroll to bottom
   useEffect(() => {
     const viewport = viewportRef.current;
     if (viewport) {
@@ -33,38 +39,84 @@ export function LogPanel() {
 
   return (
     <aside
-      className="pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.2)] bg-[rgba(10,28,26,0.85)] shadow-[0_18px_46px_rgba(0,0,0,0.4)]"
+      className="pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.2)] bg-[rgba(10,28,26,0.9)] shadow-[0_18px_46px_rgba(0,0,0,0.4)] backdrop-blur-sm"
       role="log"
       aria-live="polite"
       aria-relevant="additions"
     >
-      <div className="border-b border-[rgba(215,178,110,0.2)] px-4 py-3">
-        <h3 className="font-heading text-lg text-[var(--color-accent-light)]">ラウンドログ</h3>
-        <p className="text-xs text-[var(--color-text-muted)]">最新のアクションが時系列で表示されます。</p>
+      <div className="flex items-center justify-between border-b border-[rgba(215,178,110,0.15)] bg-[rgba(15,35,33,0.95)] px-4 py-3">
+        <div>
+          <h3 className="font-heading text-lg text-[var(--color-accent-light)] flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 opacity-70" />
+            Battle Log
+          </h3>
+        </div>
+        <span className="text-[10px] text-[var(--color-text-muted)] opacity-60">
+          Latest {state?.logs.length ?? 0}
+        </span>
       </div>
+      
       <ScrollArea className="h-64">
-        <div ref={viewportRef} className="space-y-2 px-4 py-3 text-sm text-[var(--color-text-muted)]">
+        <div ref={viewportRef} className="space-y-3 px-3 py-3">
           {state?.logs.map((log) => {
-            const label = log.icon ? ICON_LABELS[log.icon] ?? log.icon : "ログ";
+            const Icon = (log.icon ? LOG_ICONS[log.icon] : undefined) ?? Info;
+            const isElimination = log.icon === 'flame' || log.message.includes("脱落");
+            const isWin = log.icon === 'crown';
+            
             return (
               <div
                 key={log.id}
-                className="rounded-lg border border-[rgba(215,178,110,0.15)] bg-[rgba(12,32,30,0.7)] px-3 py-2"
+                className={cn(
+                  "relative flex gap-3 rounded-lg border p-2.5 text-sm transition-all",
+                  isElimination 
+                    ? "border-[rgba(247,184,184,0.3)] bg-[rgba(60,20,20,0.4)]" 
+                    : isWin
+                      ? "border-[rgba(215,178,110,0.5)] bg-[rgba(215,178,110,0.1)]"
+                      : "border-[rgba(215,178,110,0.1)] bg-[rgba(12,32,30,0.4)] hover:bg-[rgba(15,35,33,0.6)]"
+                )}
               >
-                <p className="text-xs uppercase tracking-[0.3em] text-[rgba(215,178,110,0.6)]">{label}</p>
-                <p className="mt-1 leading-relaxed text-[var(--color-text)]">{log.message}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
-                  {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </p>
+                <div className={cn(
+                  "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-sm",
+                  isElimination 
+                    ? "border-[rgba(247,184,184,0.4)] bg-[rgba(60,20,20,0.6)] text-[var(--color-warn-light)]"
+                    : isWin
+                      ? "border-[var(--color-accent)] bg-[rgba(215,178,110,0.2)] text-[var(--color-accent)]"
+                      : "border-[rgba(215,178,110,0.2)] bg-[rgba(20,45,40,0.5)] text-[var(--color-accent-light)]"
+                )}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                
+                <div className="flex-1 space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      "text-[10px] uppercase tracking-wider font-medium",
+                      isElimination ? "text-[var(--color-warn-light)]" : "text-[rgba(215,178,110,0.7)]"
+                    )}>
+                      {log.icon?.toUpperCase() ?? "INFO"}
+                    </span>
+                    <span className="text-[10px] text-[var(--color-text-muted)] opacity-50 font-mono">
+                      {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className={cn(
+                    "leading-relaxed",
+                    isElimination ? "text-[var(--color-warn-light)]" : "text-[var(--color-text)]"
+                  )}>
+                    {log.message}
+                  </p>
+                </div>
               </div>
             );
           })}
+          
           {(!state?.logs || state.logs.length === 0) && (
-            <p className="text-xs text-[var(--color-text-muted)]">まだログはありません。</p>
+            <div className="flex h-full flex-col items-center justify-center gap-2 py-8 text-[var(--color-text-muted)] opacity-50">
+              <Info className="h-8 w-8" />
+              <p className="text-xs">ログはまだありません</p>
+            </div>
           )}
         </div>
       </ScrollArea>
     </aside>
   );
 }
-

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { useGameContext } from "@/components/game/game-provider";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { cn } from "@/lib/utils";
 
 export function ResultDialog() {
   const { state, refetch } = useGameContext();
@@ -264,12 +265,33 @@ export function ResultDialog() {
                 {placements.map((entry, index) => (
                   <li key={`place-${entry.place}-${index}`}>
                     <div className="flex items-center gap-2 font-semibold text-[var(--color-accent-light)]">
-                      {entry.place === 1 && <Crown className="h-4 w-4 text-yellow-500" />}
-                      {entry.place}位
+                      {entry.place === 1 ? (
+                        <div className="relative mr-1 flex items-center justify-center">
+                          <div className="absolute inset-0 animate-ping rounded-full bg-yellow-400 opacity-20 blur-sm duration-1000" />
+                          <Crown className="relative h-5 w-5 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
+                        </div>
+                      ) : (
+                        <span className="inline-block w-6 text-center text-[var(--color-text-muted)]">
+                          {entry.place}.
+                        </span>
+                      )}
+                      <span className={cn(entry.place === 1 && "text-lg text-[var(--color-accent)] text-shadow-gold")}>
+                        {entry.place}位
+                      </span>
                     </div>
-                    <ul className="mt-1 space-y-1 text-[var(--color-text-muted)]">
+                    <ul className="mt-2 space-y-2 pl-8">
                       {entry.players.map((player) => (
-                        <li key={player.id}>{player.nickname}</li>
+                        <li 
+                          key={player.id} 
+                          className={cn(
+                            "rounded-md border px-3 py-2 text-sm backdrop-blur-sm",
+                            entry.place === 1 
+                              ? "border-[rgba(215,178,110,0.5)] bg-[rgba(215,178,110,0.1)] text-[var(--color-text)] shadow-[0_4px_12px_rgba(0,0,0,0.2)]" 
+                              : "border-transparent bg-[rgba(0,0,0,0.2)] text-[var(--color-text-muted)]"
+                          )}
+                        >
+                          {player.nickname}
+                        </li>
                       ))}
                     </ul>
                   </li>
