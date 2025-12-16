@@ -96,3 +96,12 @@ a {
     opacity: 0.0;
   }
 }
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+  to {
+    transform: translateX(200%) skewX(-15deg);
+  }
+}
