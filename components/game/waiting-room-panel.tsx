@@ -179,7 +179,7 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
                 {room ? `${room.playerCount} / 4` : "-- / 4"}
               </span>
             </div>
-            <div className="mt-3 grid gap-2">
+            <div className="mt-3 grid max-h-[12rem] gap-2 overflow-y-auto pr-1 scrollbar-thin">
               {(room?.players ?? []).map((p) => (
                 <div
                   key={p.id}

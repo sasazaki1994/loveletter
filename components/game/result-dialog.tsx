@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { Crown } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useGameContext } from "@/components/game/game-provider";
@@ -262,7 +263,8 @@ export function ResultDialog() {
               <ol className="mt-3 space-y-3 text-base">
                 {placements.map((entry, index) => (
                   <li key={`place-${entry.place}-${index}`}>
-                    <div className="font-semibold text-[var(--color-accent-light)]">
+                    <div className="flex items-center gap-2 font-semibold text-[var(--color-accent-light)]">
+                      {entry.place === 1 && <Crown className="h-4 w-4 text-yellow-500" />}
                       {entry.place}位
                     </div>
                     <ul className="mt-1 space-y-1 text-[var(--color-text-muted)]">

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
 import { RoomQrScanner } from "@/components/ui/room-qr-scanner";
+import { CardSymbol } from "@/components/icons/card-symbol";
 import { usePlayerSession } from "@/lib/client/session";
 import { CARD_POOL } from "@/lib/game/cards";
 import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
@@ -449,6 +450,7 @@ export function RoomLobby() {
                       className="rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-4 py-3"
                     >
                       <div className="flex flex-wrap items-baseline gap-3">
+                        <CardSymbol icon={card.icon} size={18} className="text-[var(--color-accent-light)] translate-y-0.5" />
                         <p className="font-heading text-base text-[var(--color-accent-light)]">
                           {card.name}
                         </p>
