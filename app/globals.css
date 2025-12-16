@@ -39,10 +39,26 @@ body {
 }
 
 .bg-table-felt {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(24, 67, 59, 0.85), transparent 60%),
+  background-color: #0f2d2a;
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 30% 30%, rgba(24, 67, 59, 0.9), transparent 60%),
     radial-gradient(circle at 70% 25%, rgba(17, 56, 50, 0.9), transparent 55%),
-    radial-gradient(circle, rgba(18, 52, 46, 0.95), rgba(10, 26, 24, 0.85));
+    radial-gradient(circle, rgba(18, 52, 46, 0.95), rgba(10, 26, 24, 0.95));
+}
+
+.card-shine {
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 233, 185, 0.1) 40%,
+    rgba(255, 255, 255, 0.2) 45%,
+    rgba(255, 233, 185, 0.1) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  mix-blend-mode: overlay;
+  pointer-events: none;
 }
 
 .noise-overlay::after {

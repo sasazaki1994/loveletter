@@ -65,8 +65,31 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
     >
       {/* 背景アート */}
       <div className="absolute inset-0 overflow-hidden rounded-[22px]">
-        <CardArt cardId={definition.id} alt={`${definition.name} (${definition.rank})`} className="opacity-95" />
+        <motion.div 
+          className="relative h-full w-full" 
+          variants={{ hover: { scale: 1.1 } }} 
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <CardArt cardId={definition.id} alt={`${definition.name} (${definition.rank})`} className="opacity-95" />
+        </motion.div>
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0)_0%,rgba(0,0,0,0.35)_40%,rgba(0,0,0,0.6)_100%)]" />
+        
+        {/* Shine Effect */}
+        <motion.div
+          className="absolute inset-0 z-10 card-shine opacity-0"
+          variants={{
+            hover: {
+              opacity: 1,
+              backgroundPosition: ["200% 0", "-100% 0"],
+              transition: { 
+                duration: 1.2, 
+                repeat: Infinity, 
+                repeatDelay: 0.5,
+                ease: "linear" 
+              }
+            }
+          }}
+        />
       </div>
 
 		<div className="absolute left-3 top-3 z-20 text-[var(--color-accent-light)]">

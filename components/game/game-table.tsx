@@ -45,12 +45,25 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
         <div className="relative h-full w-full">
           <div className="absolute left-1/2 top-1/2 flex -translate-x-[120%] -translate-y-1/2 flex-col items-center gap-2">
             <span className="text-xs uppercase tracking-[0.4em] text-[var(--color-text-muted)]">Draw</span>
-            <motion.div
-              className="h-[9.6rem] w-[6.5rem] rounded-[18px] border border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.9)] shadow-[0_12px_30px_rgba(0,0,0,0.35)]"
-              style={{ willChange: "transform" }}
-              animate={{ rotate: [0, -2, 2, 0] }}
-              transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-            />
+            <div className="relative h-[9.6rem] w-[6.5rem]">
+              {drawPileCount > 2 && (
+                <div className="absolute left-1 top-1 h-full w-full rounded-[18px] border border-[rgba(215,178,110,0.1)] bg-[rgba(8,20,18,0.8)]" />
+              )}
+              {drawPileCount > 1 && (
+                <div className="absolute left-0.5 top-0.5 h-full w-full rounded-[18px] border border-[rgba(215,178,110,0.15)] bg-[rgba(10,24,22,0.85)]" />
+              )}
+              <motion.div
+                className="relative h-full w-full rounded-[18px] border border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.95)] shadow-[0_12px_30px_rgba(0,0,0,0.35)] flex items-center justify-center overflow-hidden"
+                style={{ willChange: "transform" }}
+                animate={{ rotate: [0, -1.5, 1.5, 0] }}
+                transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
+              >
+                <div className="absolute inset-2 rounded-[12px] border border-dashed border-[rgba(215,178,110,0.15)]" />
+                <div className="text-[rgba(215,178,110,0.1)]">
+                  <CardSymbol icon="swords" size={32} />
+                </div>
+              </motion.div>
+            </div>
             <p className="text-xs text-[var(--color-text-muted)]">残り {drawPileCount} 枚</p>
           </div>
 
