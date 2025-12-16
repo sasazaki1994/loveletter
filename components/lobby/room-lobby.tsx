@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Crown, Loader2, QrCode } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,9 @@ import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
 import { RoomQrScanner } from "@/components/ui/room-qr-scanner";
 import { CardSymbol } from "@/components/icons/card-symbol";
+import { ParticlesCanvas, type ParticleBurst } from "@/components/game/particles-canvas";
 import { usePlayerSession } from "@/lib/client/session";
+import { useSoundEffects } from "@/lib/hooks/use-sound-effects";
 import { CARD_POOL } from "@/lib/game/cards";
 import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
 
@@ -20,8 +23,9 @@ export function RoomLobby() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session, setSession } = usePlayerSession();
+  const { play } = useSoundEffects(0.3);
 
-  const [user, setUser] = useState<{ id: string; username: string } | null>(null);
+  const particlesRef = useRef<{ emit: (burst: ParticleBurst) => void } | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authUsername, setAuthUsername] = useState("");
@@ -62,6 +66,24 @@ export function RoomLobby() {
   const mpNicknameInputRef = useRef<HTMLInputElement | null>(null);
   const joinRoomIdInputRef = useRef<HTMLInputElement | null>(null);
   const multiLandingHandledRef = useRef(false);
+
+  // Ambient particles
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() > 0.6) {
+        particlesRef.current?.emit({
+          kind: "dust",
+          count: 1,
+          hue: 45,
+          origin: {
+            x: Math.random() * window.innerWidth,
+            y: window.innerHeight + 20,
+          },
+        });
+      }
+    }, 300);
+    return () => clearInterval(interval);
+  }, []);
 
   // 招待リンク (?join=XXXX) からルームIDを埋め込む
   useEffect(() => {
@@ -372,31 +394,58 @@ export function RoomLobby() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <header className="flex flex-col gap-3">
-        <span className="font-heading text-sm uppercase tracking-[0.6em] text-[rgba(215,178,110,0.75)]">
-          Love Letter Inspired
-        </span>
-        <h1 className="font-heading text-4xl text-shadow-gold sm:text-5xl">
-          Love Letter Reverie
-        </h1>
-        <p className="max-w-2xl text-sm text-[var(--color-text-muted)]">
-          高級感あるフェルト卓で繰り広げられるミニマルな駆け引き。ニックネームを入力して即座にBot対戦を開始できます。
-        </p>
-        <div className="flex flex-wrap items-center gap-3 pt-1">
-          <Button
-            variant="outline"
-            className="h-9 px-4 text-xs"
-            onClick={() => setRulesOpen((prev) => !prev)}
+    <div className="relative min-h-screen w-full overflow-x-hidden">
+      <ParticlesCanvas ref={particlesRef} />
+      
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
+        <header className="flex flex-col gap-3">
+          <motion.span 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="font-heading text-sm uppercase tracking-[0.6em] text-[rgba(215,178,110,0.75)]"
           >
-            {rulesOpen ? "ルールガイドを隠す" : "ルールガイドを開く"}
-          </Button>
-        </div>
-      </header>
+            Love Letter Inspired
+          </motion.span>
+          <motion.h1 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="font-heading text-4xl text-shadow-gold sm:text-5xl bg-gradient-to-br from-[#f0d9aa] via-[#d7b26e] to-[#b08d55] bg-clip-text text-transparent"
+          >
+            Love Letter Reverie
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="max-w-2xl text-sm text-[var(--color-text-muted)]"
+          >
+            高級感あるフェルト卓で繰り広げられるミニマルな駆け引き。ニックネームを入力して即座にBot対戦を開始できます。
+          </motion.p>
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <Button
+              variant="outline"
+              className="h-9 px-4 text-xs"
+              onClick={() => {
+                setRulesOpen((prev) => !prev);
+                play("card_place", { volume: 0.4 });
+              }}
+              onMouseEnter={() => play("card_draw", { volume: 0.1 })}
+            >
+              {rulesOpen ? "ルールガイドを隠す" : "ルールガイドを開く"}
+            </Button>
+          </div>
+        </header>
 
       <div className="grid gap-6">
         {rulesOpen && (
-          <Card className="relative overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <Card className="relative overflow-hidden bg-table-felt border-[rgba(215,178,110,0.35)] shadow-2xl">
             <div className="noise-overlay" />
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
@@ -470,9 +519,10 @@ export function RoomLobby() {
               </section>
             </CardContent>
           </Card>
+          </motion.div>
         )}
 
-        <Card className="relative overflow-hidden">
+        <Card className="relative overflow-hidden bg-table-felt border-[rgba(215,178,110,0.35)] shadow-2xl">
           <div className="noise-overlay" />
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl">
@@ -521,7 +571,15 @@ export function RoomLobby() {
                 ))}
               </div>
             </div>
-            <Button onClick={handleCreateRoom} disabled={createLoading} className="w-full">
+            <Button 
+              onClick={() => {
+                play("confirm", { volume: 0.4 });
+                handleCreateRoom();
+              }}
+              onMouseEnter={() => play("card_draw", { volume: 0.1 })}
+              disabled={createLoading} 
+              className="w-full shadow-lg"
+            >
               {createLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bot対戦を開始"}
             </Button>
             <div className="h-px bg-[rgba(215,178,110,0.25)]" />
@@ -748,6 +806,7 @@ export function RoomLobby() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   );
 }
