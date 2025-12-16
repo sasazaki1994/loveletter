@@ -30,7 +30,14 @@ export function RoomQrScanner({ open, onOpenChange, onDetected }: RoomQrScannerP
 
   // テスト環境用フック: E2Eから強制検出を呼び出せるようにする
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
+    // プロダクション環境かつlocalhost以外の場合は無効化（セキュリティ対策）
+    if (
+      process.env.NODE_ENV === "production" &&
+      typeof window !== "undefined" &&
+      !["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ) {
+      return;
+    }
     if (typeof window === "undefined") return;
     const handler = (value: string) => onDetected(value);
     (window as any).__llrTestTriggerQr = handler;
