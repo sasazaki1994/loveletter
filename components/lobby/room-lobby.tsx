@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
 import { RoomQrScanner } from "@/components/ui/room-qr-scanner";
+import { CardSymbol } from "@/components/icons/card-symbol";
 import { usePlayerSession } from "@/lib/client/session";
 import { CARD_POOL } from "@/lib/game/cards";
 import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
