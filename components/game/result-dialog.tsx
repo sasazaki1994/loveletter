@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { useGameContext } from "@/components/game/game-provider";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { cn } from "@/lib/utils";
 
 export function ResultDialog() {
   const { state, refetch } = useGameContext();
