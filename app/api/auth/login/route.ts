@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const username = parsed.username.trim();
 
     const row = (await db.select().from(users).where(eq(users.username, username)).limit(1))[0];
-    if (!row || !verifyPassword(parsed.password, row.passwordHash)) {
+    if (!row || !(await verifyPassword(parsed.password, row.passwordHash))) {
       return NextResponse.json({ error: "ユーザー名またはパスワードが違います。" }, { status: 401 });
     }
 

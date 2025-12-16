@@ -1,9 +1,12 @@
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import type { NextRequest } from "next/server";
 
 import { db } from "@/lib/db/client";
 import { users, userSessions } from "@/drizzle/schema";
 import { and, eq, gt } from "drizzle-orm";
+
+const scryptAsync = promisify(scrypt);
 
 const USER_SESSION_COOKIE = "llr_sid";
 const USER_SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 30; // 30 days
@@ -70,18 +73,18 @@ function generateSessionToken(bytes = 32): string {
     .replace(/=+$/g, "");
 }
 
-export function hashPassword(password: string): string {
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
-  const key = scryptSync(password, salt, 64);
-  return `${salt}:${Buffer.from(key).toString("hex")}`;
+  const key = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${salt}:${key.toString("hex")}`;
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   if (!password || !stored || !stored.includes(":")) return false;
   const [salt, hex] = stored.split(":");
   if (!salt || !hex) return false;
   const expected = Buffer.from(hex, "hex");
-  const actual = scryptSync(password, salt, 64);
+  const actual = (await scryptAsync(password, salt, 64)) as Buffer;
   if (expected.length !== actual.length) return false;
   return timingSafeEqual(expected, actual);
 }
@@ -122,7 +125,9 @@ export async function deleteUserSessionFromRequest(request: Request | NextReques
   const token = parseCookie(cookieHeader, USER_SESSION_COOKIE);
   if (!token) return;
   const tokenHash = hashSessionLookupToken(token);
-  await db.delete(userSessions).where(eq(userSessions.tokenHash, tokenHash));
+  try {
+    await db.delete(userSessions).where(eq(userSessions.tokenHash, tokenHash));
+  } catch (error) {
+    console.error("Failed to delete user session", error);
+  }
 }
-
-

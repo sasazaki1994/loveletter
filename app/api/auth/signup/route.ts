@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     const [user] = await db
       .insert(users)
-      .values({ username, passwordHash: hashPassword(parsed.password) })
+      .values({ username, passwordHash: await hashPassword(parsed.password) })
       .returning({ id: users.id, username: users.username });
 
     const { sessionToken } = await createUserSession(user.id);
