@@ -59,7 +59,7 @@ export function LogPanel() {
       <ScrollArea className="h-64">
         <div ref={viewportRef} className="space-y-3 px-3 py-3">
           {state?.logs.map((log) => {
-            const Icon = LOG_ICONS[log.icon] ?? Info;
+            const Icon = LOG_ICONS[log.icon || 'info'] ?? Info;
             const isElimination = log.icon === 'flame' || log.message.includes("脱落");
             const isWin = log.icon === 'crown';
             

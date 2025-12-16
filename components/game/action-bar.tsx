@@ -14,6 +14,8 @@ import { CardSymbol } from "@/components/icons/card-symbol";
 
 type DockPosition = "left" | "bottom";
 
+const EXCLUDED_FROM_REFERENCE = ['feint', 'insight', 'standoff', 'wager', 'ambush', 'marquise'];
+
 export function ActionBar() {
   const {
     selectedCard,
@@ -185,7 +187,7 @@ export function ActionBar() {
                     <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
                       Esc
                     </Badge>
-                    <span>戻る</span>
+                    <span>キャンセル</span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5 border-t border-[rgba(255,255,255,0.1)] pt-2">
@@ -358,7 +360,7 @@ export function ActionBar() {
                 </h4>
                 <div className="grid gap-3">
                   {Object.values(CARD_DEFINITIONS)
-                    .filter(c => c.rank <= 8 && !['feint', 'insight', 'standoff', 'wager', 'ambush', 'marquise'].includes(c.id))
+                    .filter(c => c.rank <= 8 && !EXCLUDED_FROM_REFERENCE.includes(c.id))
                     .sort((a, b) => a.rank - b.rank)
                     .map((card) => (
                       <div key={card.id} className="group flex gap-2.5 text-xs">

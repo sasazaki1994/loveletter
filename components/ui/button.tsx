@@ -17,7 +17,7 @@ const baseStyles =
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "border-transparent bg-[var(--color-accent)] text-[var(--color-surface)] shadow-[0_0_12px_rgba(215,178,110,0.4)] hover:shadow-[0_0_16px_rgba(215,178,110,0.6)] relative overflow-hidden after:absolute after:inset-0 after:-translate-x-full after:animate-[shimmer_1.5s_infinite] after:bg-gradient-to-r after:from-transparent after:via-white/25 after:to-transparent after:content-[''] hover:after:block",
+    "border-transparent bg-[var(--color-accent)] text-[var(--color-surface)] shadow-[0_0_12px_rgba(215,178,110,0.4)] hover:shadow-[0_0_16px_rgba(215,178,110,0.6)] relative overflow-hidden after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:via-white/25 after:to-transparent after:content-[''] after:opacity-0 hover:after:opacity-100 hover:after:animate-[shimmer_1.5s_infinite]",
   outline:
     "border-[var(--color-border)] bg-transparent text-[var(--color-accent-light)] hover:bg-[rgba(215,178,110,0.1)] relative overflow-hidden",
   ghost:

@@ -53,7 +53,7 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
         selected && "scale-[1.05] -translate-y-3 border-(--color-accent) shadow-[0_0_20px_rgba(215,178,110,0.5)] ring-1 ring-(--color-accent)",
         disabled && "opacity-60 grayscale",
       )}
-      style={{ willChange: "transform" }}
+      style={{ willChange: "transform, box-shadow" }}
 			whileHover={disabled ? undefined : "hover"}
       whileTap={disabled ? undefined : { scale: 0.98 }}
       onClick={disabled ? undefined : onSelect}
