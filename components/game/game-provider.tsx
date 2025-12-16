@@ -341,6 +341,31 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     }
   }, [acting, cancelSelection, guessedRank, noAvailableTargets, playSound, refetch, selectedCard, selectedTarget, selfId, state]);
 
+  // Bot Turn Trigger
+  const activePlayerId = state?.activePlayerId;
+  const gamePhase = state?.phase;
+  const isBotTurn = useMemo(() => {
+    if (!state || !activePlayerId || gamePhase !== "choose_card") return false;
+    const player = state.players.find((p) => p.id === activePlayerId);
+    return player?.isBot && !player.isEliminated;
+  }, [state, activePlayerId, gamePhase]);
+
+  useEffect(() => {
+    if (!isBotTurn) return;
+
+    // Serverless environments might cut off the async bot execution.
+    // We trigger it from the client side as a reliable driver.
+    const timer = setTimeout(() => {
+      fetch("/api/game/bot-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+      }).catch((err) => console.error("Failed to trigger bot turn", err));
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [isBotTurn, roomId, state?.turnIndex]);
+
   const value = useMemo<GameContextValue>(
     () => ({
       roomId,
