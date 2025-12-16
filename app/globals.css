@@ -116,3 +116,8 @@ a {
     box-shadow: 0 0 16px rgba(215, 178, 110, 0.25);
   }
 }
+
+@keyframes shimmer-bg {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}

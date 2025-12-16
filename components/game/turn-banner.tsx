@@ -37,7 +37,7 @@ export function TurnBanner({ state, isMyTurn }: TurnBannerProps) {
       <div
         className={cn(
           "pointer-events-auto min-w-[18rem] rounded-3xl border border-[rgba(215,178,110,0.35)] bg-[rgba(17,40,36,0.92)] px-6 py-4 shadow-[0_24px_60px_rgba(0,0,0,0.45)] transition-all duration-300",
-          isMyTurn && "relative border-[var(--color-accent)] shadow-[0_0_40px_rgba(215,178,110,0.3)] bg-gradient-to-r from-[rgba(17,40,36,0.95)] via-[rgba(45,35,20,0.9)] to-[rgba(17,40,36,0.95)] overflow-hidden after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/10 after:to-transparent after:animate-[shimmer_4s_linear_infinite] after:content-['']"
+          isMyTurn && "border-[var(--color-accent)] shadow-[0_0_40px_rgba(215,178,110,0.3)] bg-gradient-to-r from-[rgba(17,40,36,0.95)] via-[rgba(45,35,20,0.9)] to-[rgba(17,40,36,0.95)] bg-[length:200%_100%] animate-[shimmer-bg_4s_linear_infinite]"
         )}
       >
         <div className="flex items-center justify-between gap-4">
