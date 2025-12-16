@@ -39,19 +39,19 @@ export function LogPanel() {
 
   return (
     <aside
-      className="pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.2)] bg-[rgba(10,28,26,0.9)] shadow-[0_18px_46px_rgba(0,0,0,0.4)] backdrop-blur-sm"
+      className="pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.3)] bg-[rgba(10,24,22,0.85)] shadow-[0_18px_46px_rgba(0,0,0,0.45)] backdrop-blur-md"
       role="log"
       aria-live="polite"
       aria-relevant="additions"
     >
-      <div className="flex items-center justify-between border-b border-[rgba(215,178,110,0.15)] bg-[rgba(15,35,33,0.95)] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-[rgba(215,178,110,0.2)] bg-[rgba(16,36,33,0.9)] px-4 py-3">
         <div>
-          <h3 className="font-heading text-lg text-[var(--color-accent-light)] flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 opacity-70" />
+          <h3 className="font-heading text-lg text-[var(--color-accent-light)] flex items-center gap-2 drop-shadow-sm">
+            <MessageSquare className="h-4 w-4 opacity-80" />
             Battle Log
           </h3>
         </div>
-        <span className="text-[10px] text-[var(--color-text-muted)] opacity-60">
+        <span className="rounded bg-[rgba(255,255,255,0.08)] px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] opacity-80">
           Latest {state?.logs.length ?? 0}
         </span>
       </div>
@@ -68,40 +68,40 @@ export function LogPanel() {
               <div
                 key={log.id}
                 className={cn(
-                  "relative flex gap-3 rounded-lg border p-2.5 text-sm transition-all",
+                  "relative flex gap-3 rounded-lg border p-3 text-sm transition-all shadow-sm",
                   isElimination 
-                    ? "border-[rgba(247,184,184,0.3)] bg-[rgba(60,20,20,0.4)]" 
+                    ? "border-[rgba(247,184,184,0.35)] bg-[rgba(60,20,20,0.55)] shadow-[inset_0_0_12px_rgba(200,50,50,0.1)]" 
                     : isWin
-                      ? "border-[rgba(215,178,110,0.5)] bg-[rgba(215,178,110,0.1)]"
-                      : "border-[rgba(215,178,110,0.1)] bg-[rgba(12,32,30,0.4)] hover:bg-[rgba(15,35,33,0.6)]"
+                      ? "border-[rgba(215,178,110,0.6)] bg-[rgba(215,178,110,0.15)] shadow-[0_0_12px_rgba(215,178,110,0.1)]"
+                      : "border-[rgba(215,178,110,0.15)] bg-[rgba(16,36,33,0.6)] hover:bg-[rgba(20,40,38,0.7)]"
                 )}
               >
                 <div className={cn(
-                  "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-sm",
+                  "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-md",
                   isElimination 
-                    ? "border-[rgba(247,184,184,0.4)] bg-[rgba(60,20,20,0.6)] text-[var(--color-warn-light)]"
+                    ? "border-[rgba(247,184,184,0.5)] bg-[rgba(60,20,20,0.8)] text-[var(--color-warn-light)]"
                     : isWin
-                      ? "border-[var(--color-accent)] bg-[rgba(215,178,110,0.2)] text-[var(--color-accent)]"
-                      : "border-[rgba(215,178,110,0.2)] bg-[rgba(20,45,40,0.5)] text-[var(--color-accent-light)]"
+                      ? "border-[var(--color-accent)] bg-gradient-to-br from-[var(--color-accent)] to-[#b08d55] text-[#0f2d2a]"
+                      : "border-[rgba(215,178,110,0.25)] bg-[rgba(20,45,40,0.8)] text-[var(--color-accent-light)]"
                 )}>
                   <Icon className="h-4 w-4" />
                 </div>
                 
-                <div className="flex-1 space-y-0.5">
+                <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className={cn(
-                      "text-[10px] uppercase tracking-wider font-medium",
-                      isElimination ? "text-[var(--color-warn-light)]" : "text-[rgba(215,178,110,0.7)]"
+                      "text-[10px] uppercase tracking-wider font-bold",
+                      isElimination ? "text-[var(--color-warn-light)]" : "text-[rgba(215,178,110,0.8)]"
                     )}>
                       {log.icon?.toUpperCase() ?? "INFO"}
                     </span>
-                    <span className="text-[10px] text-[var(--color-text-muted)] opacity-50 font-mono">
+                    <span className="text-[10px] text-[var(--color-text-muted)] opacity-60 font-mono">
                       {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                     </span>
                   </div>
                   <p className={cn(
-                    "leading-relaxed",
-                    isElimination ? "text-[var(--color-warn-light)]" : "text-[var(--color-text)]"
+                    "leading-relaxed font-medium",
+                    isElimination ? "text-[var(--color-warn-light)] text-shadow-sm" : "text-[var(--color-text)]"
                   )}>
                     {log.message}
                   </p>
@@ -111,7 +111,7 @@ export function LogPanel() {
           })}
           
           {(!state?.logs || state.logs.length === 0) && (
-            <div className="flex h-full flex-col items-center justify-center gap-2 py-8 text-[var(--color-text-muted)] opacity-50">
+            <div className="flex h-full flex-col items-center justify-center gap-2 py-8 text-[var(--color-text-muted)] opacity-40">
               <Info className="h-8 w-8" />
               <p className="text-xs">ログはまだありません</p>
             </div>

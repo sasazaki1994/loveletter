@@ -47,13 +47,13 @@ export function PlayerHUD({
         selected && "border-[var(--color-accent)] bg-[rgba(20,45,40,0.95)] shadow-[0_0_24px_rgba(215,178,110,0.4)] scale-[1.02] z-10",
         
         // Active Turn
-        isActive && !selected && "ring-1 ring-[var(--color-accent)] ring-offset-2 ring-offset-[rgba(10,20,18,0.8)] border-[rgba(215,178,110,0.6)]",
+        isActive && !selected && "ring-1 ring-[var(--color-accent)] ring-offset-2 ring-offset-[rgba(10,20,18,0.8)] border-[rgba(215,178,110,0.6)] shadow-[0_0_15px_rgba(215,178,110,0.2)]",
         
         // Eliminated
-        player.isEliminated && "opacity-50 grayscale border-dashed bg-black/20",
+        player.isEliminated && "opacity-50 grayscale border-dashed bg-black/40",
         
         // Disabled but in selection mode (e.g. Shielded)
-        selectable && isDisabled && !isSelf && !player.isEliminated && "cursor-not-allowed opacity-80 grayscale-[0.3] border-[rgba(247,184,184,0.3)]"
+        selectable && isDisabled && !isSelf && !player.isEliminated && "cursor-not-allowed opacity-80 grayscale-[0.3] border-[rgba(247,184,184,0.3)] bg-[rgba(60,20,20,0.2)]"
       )}
       disabled={isDisabled}
       aria-pressed={selected}
@@ -69,39 +69,44 @@ export function PlayerHUD({
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-3">
+      {/* Active Indicator Line */}
+      {isActive && !player.isEliminated && (
+        <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-[var(--color-accent)] shadow-[0_0_8px_rgba(215,178,110,0.6)]" />
+      )}
+
+      <div className="flex items-start justify-between gap-3 pl-2">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <p className={cn("font-heading text-lg", player.isEliminated ? "text-[var(--color-text-muted)] line-through" : "text-[var(--color-accent-light)]")}>
+            <p className={cn("font-heading text-lg tracking-wide", player.isEliminated ? "text-[var(--color-text-muted)] line-through decoration-[rgba(255,255,255,0.3)]" : "text-[var(--color-accent-light)]")}>
               {player.nickname}
             </p>
-            {player.isBot && <Badge variant="outline" className="text-[10px] h-4 px-1">BOT</Badge>}
+            {player.isBot && <Badge variant="outline" className="text-[9px] h-4 px-1 border-[rgba(255,255,255,0.2)] text-[var(--color-text-muted)]">BOT</Badge>}
           </div>
-          <p className="text-xs text-[var(--color-text-muted)]">座席 {player.seat + 1}</p>
+          <p className="text-xs text-[var(--color-text-muted)] opacity-70 font-mono tracking-wide">Seat {player.seat + 1}</p>
         </div>
         <div className="flex gap-1.5 flex-wrap justify-end">
-          {player.isEliminated && <Badge variant="danger" className="text-[10px] h-5">脱落</Badge>}
-          {isActive && <Badge variant="default" className="text-[10px] h-5">手番</Badge>}
+          {player.isEliminated && <Badge variant="danger" className="text-[10px] h-5 shadow-sm">Eliminated</Badge>}
+          {isActive && <Badge variant="default" className="text-[10px] h-5 shadow-[0_0_10px_rgba(215,178,110,0.4)] animate-pulse">Turn</Badge>}
         </div>
       </div>
 
       {topCardDefinition ? (
         <div className={cn(
-          "mt-1 flex items-center gap-3 rounded-xl border px-3 py-2 text-xs transition-colors",
-          "border-[rgba(215,178,110,0.15)] bg-[rgba(0,0,0,0.2)]",
+          "mt-2 ml-2 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-xs transition-colors",
+          "border-[rgba(215,178,110,0.15)] bg-[rgba(0,0,0,0.3)] shadow-inner",
           player.isEliminated && "opacity-50"
         )}>
-          <span className="rounded-full border border-[rgba(215,178,110,0.35)] bg-[rgba(20,48,45,0.8)] px-2 py-0.5 font-heading text-xs text-[var(--color-accent-light)]">
+          <span className="rounded border border-[rgba(215,178,110,0.35)] bg-[rgba(20,48,45,0.8)] px-1.5 py-0.5 font-heading text-sm font-bold text-[var(--color-accent-light)] min-w-[1.5rem] text-center">
             {topCardDefinition.rank}
           </span>
           <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
-            <CardSymbol icon={topCardDefinition.icon} size={16} className="text-[var(--color-accent-light)]" />
-            <span className="truncate max-w-[8rem]">{topCardDefinition.name}</span>
+            <CardSymbol icon={topCardDefinition.icon} size={14} className="text-[var(--color-accent-light)] opacity-80" />
+            <span className="truncate max-w-[8rem] font-medium">{topCardDefinition.name}</span>
           </div>
         </div>
       ) : (
-        <div className="mt-1 flex min-h-[2.4rem] items-center justify-center rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.1)] text-xs text-[var(--color-text-muted)]">
-          捨て札なし
+        <div className="mt-2 ml-2 flex min-h-[2.8rem] items-center justify-center rounded-lg border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.15)] text-[10px] text-[var(--color-text-muted)] opacity-60">
+          No Discards
         </div>
       )}
 

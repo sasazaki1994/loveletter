@@ -83,7 +83,7 @@ export function GameEffectsProvider({ children }: GameEffectsProviderProps) {
 	return (
 		<div ref={scope as unknown as React.RefObject<HTMLDivElement>} className="relative will-change-transform">
 			<GameEffectsContext.Provider value={api}>
-				{/* フラッシュオーバーレイ */}
+				{/* フラッシュオーバーレイ (赤味を帯びたダメージ表現や白フラッシュ) */}
 				<FlashOverlay key={`flash-${flashToken}`} />
 				{/* 粒子 */}
 				<ParticlesCanvas ref={particlesRef as any} />
@@ -104,10 +104,10 @@ function FlashOverlay() {
 	return (
 		<div
 			aria-hidden
-			className="pointer-events-none fixed inset-0 z-[25] opacity-0 [--flash-duration:120ms]"
-			style={{}}
+			className="pointer-events-none fixed inset-0 z-[25] opacity-0 [--flash-duration:180ms]"
 		>
-			<div className="absolute inset-0 bg-white/70 will-change-opacity animate-[flash_var(--flash-duration)_ease-out_1]" />
+			<div className="absolute inset-0 bg-white/40 mix-blend-overlay will-change-opacity animate-[flash_var(--flash-duration)_ease-out_1]" />
+            <div className="absolute inset-0 bg-red-500/10 mix-blend-color-dodge will-change-opacity animate-[flash_var(--flash-duration)_ease-out_1]" />
 		</div>
 	);
 }

@@ -261,17 +261,7 @@ function renderGuessEffect(
                 transition={{ delay: 0.4, duration: 0.3, ease: 'easeOut' }}
                 className="flex items-center justify-center rounded-full bg-[rgba(255,100,80,0.25)] p-1"
               >
-                <svg
-                  viewBox="0 0 20 20"
-                  className="h-3.5 w-3.5 text-[rgba(255,140,120,0.9)]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M16 6L7 15l-5-5" />
-                </svg>
+                <div className="h-2 w-2 rounded-full bg-[var(--color-warn-light)] shadow-[0_0_8px_var(--color-warn-light)]" />
               </motion.div>
             )}
           </div>
@@ -313,7 +303,7 @@ function renderPeekEffect(
         exit={{ scale: 0.85, opacity: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
       >
-        <div className="relative w-64 rounded-3xl border border-[rgba(130,210,198,0.45)] bg-[rgba(12,36,34,0.92)] px-6 py-5 text-center shadow-[0_28px_52px_rgba(0,0,0,0.45)]">
+        <div className="relative w-64 rounded-3xl border border-[rgba(130,210,198,0.45)] bg-[rgba(12,36,34,0.92)] px-6 py-5 text-center shadow-[0_28px_52px_rgba(0,0,0,0.45)] backdrop-blur-md">
           <motion.div
             className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-[rgba(90,170,160,0.22)] via-transparent to-[rgba(20,60,55,0.55)]"
             initial={{ opacity: 0.35 }}
@@ -322,7 +312,7 @@ function renderPeekEffect(
           />
           <div className="relative text-[var(--color-accent-light)]">
             <div className="flex items-center justify-center gap-2">
-              <p className="text-[10px] uppercase tracking-[0.42em] opacity-75">Veil</p>
+              <p className="text-[10px] uppercase tracking-[0.42em] opacity-75">Insight</p>
               {isSuccess && (
                 <motion.div
                   initial={{ scale: 0, opacity: 0 }}
@@ -330,17 +320,7 @@ function renderPeekEffect(
                   transition={{ delay: 0.3, duration: 0.3, ease: 'easeOut' }}
                   className="flex items-center justify-center rounded-full bg-[rgba(90,200,170,0.25)] p-1"
                 >
-                  <svg
-                    viewBox="0 0 20 20"
-                    className="h-3.5 w-3.5 text-[rgba(90,240,200,0.9)]"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M16 6L7 15l-5-5" />
-                  </svg>
+                  <div className="h-1.5 w-1.5 rounded-full bg-[rgba(90,240,200,0.9)] shadow-[0_0_6px_rgba(90,240,200,0.8)]" />
                 </motion.div>
               )}
             </div>
@@ -352,8 +332,11 @@ function renderPeekEffect(
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.4, ease: 'easeOut' }}
               >
-                <span className="font-heading text-4xl drop-shadow">{revealedDefinition.rank}</span>
-                <span className="text-sm opacity-85">{revealedDefinition.name}</span>
+                <div className="relative">
+                   <div className="absolute inset-0 bg-[var(--color-accent)] opacity-20 blur-xl rounded-full" />
+                   <span className="relative font-heading text-5xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] text-shadow-gold">{revealedDefinition.rank}</span>
+                </div>
+                <span className="text-sm opacity-85 font-medium tracking-wide">{revealedDefinition.name}</span>
               </motion.div>
             ) : (
               <span className="mt-3 inline-block rounded-full border border-[rgba(255,255,255,0.22)] px-3 py-1 text-xs text-[rgba(255,255,255,0.72)]">

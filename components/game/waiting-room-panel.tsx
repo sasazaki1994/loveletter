@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, Crown } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
+import { ParticlesCanvas, type ParticleBurst } from "@/components/game/particles-canvas";
 import { usePlayerSession } from "@/lib/client/session";
+import { useSoundEffects } from "@/lib/hooks/use-sound-effects";
 
 type RoomStatePayload = {
   id: string;
@@ -32,9 +35,29 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
   const [nickname, setNickname] = useState("");
   const [joining, setJoining] = useState(false);
   const [starting, setStarting] = useState(false);
+  const particlesRef = useRef<{ emit: (burst: ParticleBurst) => void } | null>(null);
+  const { play } = useSoundEffects(0.3);
 
   const inRoomSession = session?.roomId === roomId;
   const hasOtherSession = Boolean(session && session.roomId !== roomId);
+
+  // Ambient particles
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() > 0.7) {
+        particlesRef.current?.emit({
+          kind: "dust",
+          count: 1,
+          hue: 45,
+          origin: {
+            x: Math.random() * window.innerWidth,
+            y: window.innerHeight + 20,
+          },
+        });
+      }
+    }, 400);
+    return () => clearInterval(interval);
+  }, []);
 
   const isHost = useMemo(() => {
     if (!inRoomSession) return false;
@@ -150,120 +173,158 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
   const shareId = room?.shortId ?? roomId;
 
   return (
-    <div className="grid h-screen w-full place-items-center overflow-hidden px-6">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <Users className="h-6 w-6 text-[var(--color-accent-light)]" />
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <p className="text-sm text-[var(--color-text-muted)]">
-            {room?.status === "waiting"
-              ? "参加人数が揃ったら、ホストがこの画面からゲームを開始できます。"
-              : room?.status === "active"
-                ? "このルームは進行中です。プレイヤーとしての参加はできません（観戦モード）。"
-                : "このルームは終了しています。"}
-          </p>
+    <div className="relative grid h-screen w-full place-items-center overflow-hidden px-6">
+      <ParticlesCanvas ref={particlesRef} />
+      
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative z-10 w-full max-w-2xl"
+      >
+        <Card className="border-[rgba(215,178,110,0.35)] bg-table-felt shadow-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-2xl text-shadow-gold">
+              <Users className="h-6 w-6 text-[var(--color-accent)]" />
+              {title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <p className="text-sm text-[var(--color-text-muted)]">
+              {room?.status === "waiting"
+                ? "参加人数が揃ったら、ホストがこの画面からゲームを開始できます。"
+                : room?.status === "active"
+                  ? "このルームは進行中です。プレイヤーとしての参加はできません（観戦モード）。"
+                  : "このルームは終了しています。"}
+            </p>
 
-          <div className="grid gap-4 lg:grid-cols-[1.25fr_auto] lg:items-start">
-            <RoomIdDisplay roomId={shareId} />
-            <RoomQrShare roomId={shareId} compact className="lg:justify-self-end" />
-          </div>
-
-          <div className="rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-4 py-3 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[var(--color-text-muted)]">参加人数</span>
-              <span className="font-mono text-[var(--color-accent-light)]">
-                {room ? `${room.playerCount} / 4` : "-- / 4"}
-              </span>
+            <div className="grid gap-4 lg:grid-cols-[1.25fr_auto] lg:items-start">
+              <RoomIdDisplay roomId={shareId} />
+              <RoomQrShare roomId={shareId} compact className="lg:justify-self-end" />
             </div>
-            <div className="mt-3 grid max-h-[12rem] gap-2 overflow-y-auto pr-1 scrollbar-thin">
-              {(room?.players ?? []).map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded border border-[rgba(215,178,110,0.18)] bg-[rgba(9,22,20,0.65)] px-3 py-2 text-xs"
-                >
-                  <span className="truncate text-[var(--color-text)]">
-                    {p.nickname} {p.isBot ? "(Bot)" : ""}
-                  </span>
-                  <span className="font-mono text-[var(--color-text-muted)]">Seat {p.seat + 1}</span>
-                </div>
-              ))}
-              {room && room.players.length === 0 && (
-                <p className="text-xs text-[var(--color-text-muted)]">まだ参加者がいません。</p>
-              )}
-            </div>
-          </div>
 
-          {!inRoomSession && room?.status === "waiting" && (
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                  ニックネーム
-                </label>
-                <Input
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder="例: Velvet Strategist"
-                  maxLength={24}
-                />
+            <div className="rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-5 py-4 text-sm shadow-inner">
+              <div className="flex items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.05)] pb-2 mb-2">
+                <span className="text-[var(--color-text-muted)] uppercase tracking-wider text-xs font-medium">参加人数</span>
+                <span className="font-mono text-[var(--color-accent-light)] font-bold">
+                  {room ? `${room.playerCount} / 4` : "-- / 4"}
+                </span>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button onClick={handleJoin} disabled={joining || loading} className="sm:flex-1">
-                  {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : "このルームに参加"}
-                </Button>
-                {hasOtherSession && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSession(null);
-                      setError(null);
-                    }}
-                    className="sm:flex-1"
+              <div className="mt-2 grid max-h-[12rem] gap-2 overflow-y-auto pr-1 scrollbar-thin">
+                {(room?.players ?? []).map((p) => (
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    key={p.id}
+                    className="flex items-center justify-between rounded-lg border border-[rgba(215,178,110,0.15)] bg-[rgba(9,22,20,0.65)] px-3 py-2.5 text-xs hover:bg-[rgba(15,35,33,0.8)] transition-colors"
                   >
-                    セッションを破棄
-                  </Button>
+                    <div className="flex items-center gap-2">
+                      {room?.hostPlayerId === p.id && <Crown className="h-3 w-3 text-[var(--color-accent)]" />}
+                      <span className="truncate text-[var(--color-text)] font-medium text-sm">
+                        {p.nickname}
+                      </span>
+                      {p.isBot && <span className="rounded bg-[rgba(255,255,255,0.1)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-muted)]">BOT</span>}
+                    </div>
+                    <span className="font-mono text-[var(--color-text-muted)] opacity-70">Seat {p.seat + 1}</span>
+                  </motion.div>
+                ))}
+                {room && room.players.length === 0 && (
+                  <p className="py-4 text-center text-xs text-[var(--color-text-muted)] opacity-60">まだ参加者がいません。</p>
                 )}
               </div>
             </div>
-          )}
 
-          {inRoomSession && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(9,22,20,0.65)] px-4 py-3 text-sm">
-                <span className="text-[var(--color-text-muted)]">あなた</span>
-                <span className="font-mono text-[var(--color-accent-light)]">{session?.nickname}</span>
-              </div>
-              {room?.status === "waiting" && (
+            {!inRoomSession && room?.status === "waiting" && (
+              <div className="space-y-3 pt-2">
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                    ニックネーム
+                  </label>
+                  <Input
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    placeholder="例: Velvet Strategist"
+                    maxLength={24}
+                    className="bg-[rgba(0,0,0,0.2)]"
+                  />
+                </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  {isHost ? (
-                    <Button onClick={handleStart} disabled={!canStart || starting || loading} className="sm:flex-1">
-                      {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ゲーム開始（ホスト）"}
-                    </Button>
-                  ) : (
-                    <Button variant="secondary" disabled className="sm:flex-1">
-                      ホストの開始待ち
+                  <Button 
+                    onClick={() => {
+                      play("confirm", { volume: 0.4 });
+                      handleJoin();
+                    }} 
+                    disabled={joining || loading} 
+                    className="sm:flex-1 h-11"
+                  >
+                    {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : "このルームに参加"}
+                  </Button>
+                  {hasOtherSession && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSession(null);
+                        setError(null);
+                      }}
+                      className="sm:flex-1 h-11"
+                    >
+                      セッションを破棄
                     </Button>
                   )}
-                  <Button variant="outline" onClick={fetchRoomState} disabled={loading} className="sm:flex-1">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "更新"}
-                  </Button>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {loading && (
-            <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-text-muted)]">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              状態を確認中...
-            </div>
-          )}
-          {error && <p className="text-sm text-[var(--color-warn-light)]">{error}</p>}
-        </CardContent>
-      </Card>
+            {inRoomSession && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between rounded-lg border border-[rgba(215,178,110,0.3)] bg-[rgba(20,45,40,0.4)] px-4 py-3 text-sm">
+                  <span className="text-[var(--color-text-muted)]">あなた</span>
+                  <span className="font-heading text-lg text-[var(--color-accent-light)]">{session?.nickname}</span>
+                </div>
+                {room?.status === "waiting" && (
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {isHost ? (
+                      <Button 
+                        onClick={() => {
+                          play("confirm", { volume: 0.5 });
+                          handleStart();
+                        }}
+                        disabled={!canStart || starting || loading} 
+                        className="sm:flex-1 h-11 shadow-[0_0_16px_rgba(215,178,110,0.3)]"
+                      >
+                        {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ゲーム開始（ホスト）"}
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" disabled className="sm:flex-1 h-11 opacity-70">
+                        ホストの開始待ち...
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={fetchRoomState} disabled={loading} className="sm:flex-1 h-11">
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "更新"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {loading && (
+              <div className="flex items-center justify-center gap-2 text-sm text-[var(--color-text-muted)] animate-pulse">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                状態を確認中...
+              </div>
+            )}
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-lg bg-[rgba(200,50,50,0.15)] p-3 text-sm text-[var(--color-warn-light)] border border-[rgba(200,50,50,0.3)]"
+              >
+                {error}
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

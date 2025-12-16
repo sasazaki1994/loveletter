@@ -245,70 +245,117 @@ export function ResultDialog() {
   }, [state]);
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="text-3xl">ラウンド終了</DialogTitle>
-          <DialogDescription>
-            {state?.result?.reason === "deck_exhausted"
-              ? "山札が尽きたため手札が高いプレイヤーが勝利しました。"
-              : state?.result?.reason === "elimination"
-                ? "最後の生存者が勝者となりました。"
-                : "次のラウンドが開始されるまでお待ちください。"}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 text-sm text-[var(--color-text-muted)]">
-          {placements.length > 0 ? (
-            <div>
-              <h4 className="font-heading text-xl text-[var(--color-accent-light)]">順位</h4>
-              <ol className="mt-3 space-y-3 text-base">
-                {placements.map((entry, index) => (
-                  <li key={`place-${entry.place}-${index}`}>
-                    <div className="flex items-center gap-2 font-semibold text-[var(--color-accent-light)]">
-                      {entry.place === 1 ? (
-                        <div className="relative mr-1 flex items-center justify-center">
-                          <div className="absolute inset-0 animate-ping rounded-full bg-yellow-400 opacity-20 blur-sm duration-1000" />
-                          <Crown className="relative h-5 w-5 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
-                        </div>
-                      ) : (
-                        <span className="inline-block w-6 text-center text-[var(--color-text-muted)]">
-                          {entry.place}.
-                        </span>
-                      )}
-                      <span className={cn(entry.place === 1 && "text-lg text-[var(--color-accent)] text-shadow-gold")}>
-                        {entry.place}位
-                      </span>
-                    </div>
-                    <ul className="mt-2 space-y-2 pl-8">
-                      {entry.players.map((player) => (
-                        <li 
-                          key={player.id} 
-                          className={cn(
-                            "rounded-md border px-3 py-2 text-sm backdrop-blur-sm",
-                            entry.place === 1 
-                              ? "border-[rgba(215,178,110,0.5)] bg-[rgba(215,178,110,0.1)] text-[var(--color-text)] shadow-[0_4px_12px_rgba(0,0,0,0.2)]" 
-                              : "border-transparent bg-[rgba(0,0,0,0.2)] text-[var(--color-text-muted)]"
-                          )}
-                        >
-                          {player.nickname}
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ) : (
-            <p>今回のラウンドは引き分けでした。</p>
-          )}
+      <DialogContent className="border-none bg-transparent p-0 shadow-none sm:max-w-md">
+        <div className="relative overflow-hidden rounded-3xl border border-[rgba(215,178,110,0.4)] bg-[rgba(12,28,26,0.95)] p-6 shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+          {/* Decorative background elements */}
+          <div className="pointer-events-none absolute inset-0 bg-app-pattern opacity-30" />
+          <div className="pointer-events-none absolute -top-20 left-1/2 h-64 w-64 -translate-x-1/2 bg-[radial-gradient(circle,rgba(215,178,110,0.15)_0%,transparent_70%)] blur-2xl" />
+          
+          <DialogHeader className="relative z-10 mb-6 text-center">
+            <DialogTitle className="font-heading text-4xl text-[var(--color-accent-light)] text-shadow-gold">
+              {state?.result?.reason === "deck_exhausted" ? "Round Finished" : "Round Finished"}
+            </DialogTitle>
+            <DialogDescription className="text-[var(--color-text-muted)]">
+              {state?.result?.reason === "deck_exhausted"
+                ? "山札が尽きました。手札の強さで勝敗を決します。"
+                : state?.result?.reason === "elimination"
+                  ? "生存者が1名となり、ラウンドが終了しました。"
+                  : "ラウンドが終了しました。"}
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="grid gap-2">
-            <Button fullWidth onClick={() => refetch()}>
-              最新状況を確認
-            </Button>
-            <Button variant="outline" fullWidth onClick={() => router.push("/")}>
-              ホームに戻る
-            </Button>
+          <div className="relative z-10 space-y-6">
+            {placements.length > 0 ? (
+              <div className="space-y-4">
+                <ol className="space-y-3">
+                  {placements.map((entry, index) => (
+                    <li 
+                      key={`place-${entry.place}-${index}`}
+                      className="relative"
+                    >
+                      {entry.place === 1 && (
+                         <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-[rgba(215,178,110,0.5)] via-transparent to-[rgba(215,178,110,0.5)] opacity-30 blur-sm" />
+                      )}
+                      
+                      <div className={cn(
+                        "relative flex flex-col gap-2 rounded-xl border p-3 transition-all",
+                        entry.place === 1
+                          ? "border-[rgba(215,178,110,0.6)] bg-[rgba(30,50,45,0.8)] shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
+                          : "border-[rgba(255,255,255,0.08)] bg-[rgba(20,35,33,0.4)]"
+                      )}>
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-heading text-xl font-bold",
+                            entry.place === 1
+                              ? "bg-gradient-to-br from-[var(--color-accent)] to-[#b08d55] text-[#0f2d2a] shadow-lg"
+                              : "bg-[rgba(255,255,255,0.1)] text-[var(--color-text-muted)]"
+                          )}>
+                            {entry.place === 1 ? <Crown className="h-5 w-5" /> : entry.place}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className={cn(
+                                "font-heading text-lg",
+                                entry.place === 1 ? "text-[var(--color-accent-light)]" : "text-[var(--color-text-muted)]"
+                              )}>
+                                {entry.place === 1 ? "Winner" : `${entry.place}th Place`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <ul className="space-y-2 pl-[3.25rem]">
+                          {entry.players.map((player) => (
+                            <li 
+                              key={player.id} 
+                              className="flex items-center justify-between rounded-lg bg-[rgba(0,0,0,0.2)] px-3 py-2 text-sm"
+                            >
+                              <span className={cn(entry.place === 1 ? "font-bold text-[var(--color-text)]" : "text-[var(--color-text-muted)]")}>
+                                {player.nickname}
+                              </span>
+                              {state?.result?.finalHands && state.result.finalHands[player.id] && (
+                                <div className="flex items-center gap-2 text-xs text-[var(--color-accent-light)]">
+                                  {state.result.finalHands[player.id].map((cardId) => {
+                                    const def = CARD_DEFINITIONS[cardId as keyof typeof CARD_DEFINITIONS];
+                                    return def ? (
+                                      <span key={cardId} className="flex items-center gap-1 rounded bg-[rgba(215,178,110,0.15)] px-1.5 py-0.5">
+                                        <span className="font-heading font-bold">{def.rank}</span>
+                                        <span className="truncate max-w-[4rem]">{def.name}</span>
+                                      </span>
+                                    ) : null;
+                                  })}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : (
+              <p className="text-center text-[var(--color-text-muted)]">今回のラウンドは引き分けでした。</p>
+            )}
+
+            <div className="grid gap-3 pt-2">
+              <Button 
+                fullWidth 
+                onClick={() => refetch()}
+                className="h-11 text-base shadow-[0_0_20px_rgba(215,178,110,0.25)]"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                最新状況を確認
+              </Button>
+              <Button 
+                variant="ghost" 
+                fullWidth 
+                onClick={() => router.push("/")}
+                className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              >
+                ホームに戻る
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

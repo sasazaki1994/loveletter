@@ -17,6 +17,7 @@ import { TurnBanner } from "@/components/game/turn-banner";
 import { WaitingRoomPanel } from "@/components/game/waiting-room-panel";
 import { useGameContext } from "@/components/game/game-provider";
 import { Badge } from "@/components/ui/badge";
+import { TurnCutin } from "@/components/game/turn-cutin";
 import { Button } from "@/components/ui/button";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
@@ -56,6 +57,17 @@ export function GameBoard() {
     refetch,
     loading,
   } = useGameContext();
+
+  // ターン開始検出用
+  const [showTurnCutin, setShowTurnCutin] = useState(false);
+  const prevTurnRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (isMyTurn && !prevTurnRef.current) {
+      setShowTurnCutin(true);
+    }
+    prevTurnRef.current = isMyTurn;
+  }, [isMyTurn]);
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
   const fx = useGameEffects();
@@ -562,8 +574,9 @@ export function GameBoard() {
   );
 
   return (
-    <div className={rootClasses}>
-      <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
+      <div className={rootClasses}>
+        <TurnCutin show={showTurnCutin} />
+        <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
       </div>

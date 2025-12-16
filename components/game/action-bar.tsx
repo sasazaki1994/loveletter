@@ -102,10 +102,10 @@ export function ActionBar() {
   }, [cardDefinition, guessedRank, isMyTurn, noAvailableTargets, requiresTarget, selectedTarget, targetOptions]);
 
   const containerClasses = cn(
-    "fixed z-30 flex flex-col gap-3 text-sm text-[var(--color-text-muted)] backdrop-blur-sm",
+    "fixed z-30 flex flex-col gap-3 text-sm text-[var(--color-text-muted)] backdrop-blur-md",
     isDockedLeft
-      ? "inset-y-0 right-0 w-full max-w-[20rem] border-l border-[rgba(215,178,110,0.18)] bg-gradient-to-l from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-4 py-4 shadow-[-24px_0_60px_rgba(0,0,0,0.45)]"
-      : "inset-x-0 bottom-0 w-full border-t border-[rgba(215,178,110,0.18)] bg-gradient-to-t from-[rgba(8,20,18,0.95)] to-[rgba(12,32,30,0.72)] px-4 py-3 shadow-[0_-24px_60px_rgba(0,0,0,0.45)] sm:px-6 sm:py-4",
+      ? "inset-y-0 right-0 w-full max-w-[20rem] border-l border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.92)] px-4 py-4 shadow-[-24px_0_60px_rgba(0,0,0,0.5)] bg-table-felt"
+      : "inset-x-0 bottom-0 w-full border-t border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.92)] px-4 py-3 shadow-[0_-24px_60px_rgba(0,0,0,0.5)] sm:px-6 sm:py-4 bg-table-felt",
     isDockedLeft
       ? "scrollbar-thin max-h-[calc(100vh-2.5rem)] overflow-y-auto pr-1"
       : "max-h-[min(70vh,36rem)] overflow-y-auto",
