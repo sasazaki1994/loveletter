@@ -29,7 +29,23 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
       animate={{ opacity: 1, y: 0, rotate: 0 }}
       exit={{ opacity: 0, y: -36, rotate: 6 }}
 			transition={{ duration: 0.2, ease: "easeOut" }}
-			variants={{ hover: { scale: 1.12, rotate: 0.6 } }}
+			variants={{
+        hover: {
+          scale: 1.12,
+          rotate: 0.6,
+          boxShadow: [
+            "0 18px 50px rgba(0,0,0,0.45)",
+            "0 0 25px rgba(215, 178, 110, 0.5)",
+            "0 0 15px rgba(215, 178, 110, 0.3)",
+            "0 0 25px rgba(215, 178, 110, 0.5)"
+          ],
+          transition: {
+            scale: { duration: 0.2, ease: "easeOut" },
+            rotate: { duration: 0.2, ease: "easeOut" },
+            boxShadow: { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
+          }
+        }
+      }}
       type="button"
 			className={cn(
 				"group relative h-[11rem] w-[7.6rem] origin-bottom rounded-[22px] border border-[rgba(215,178,110,0.45)] bg-gradient-to-br from-[rgba(28,68,63,0.92)] via-[rgba(22,52,47,0.95)] to-[rgba(14,32,29,0.98)] p-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.45)]",
@@ -37,7 +53,7 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
         selected && "scale-[1.05] -translate-y-3 border-(--color-accent) shadow-[0_0_20px_rgba(215,178,110,0.5)] ring-1 ring-(--color-accent)",
         disabled && "opacity-60 grayscale",
       )}
-      style={{ willChange: "transform" }}
+      style={{ willChange: "transform, box-shadow" }}
 			whileHover={disabled ? undefined : "hover"}
       whileTap={disabled ? undefined : { scale: 0.98 }}
       onClick={disabled ? undefined : onSelect}

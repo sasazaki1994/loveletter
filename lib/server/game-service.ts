@@ -1410,13 +1410,24 @@ function mapToClientState(
   const logsMapped = logRows
     .slice()
     .reverse()
-    .map((log) => ({
-      id: log.id,
-      timestamp: log.createdAt.toISOString(),
-      message: log.message,
-      actorId: log.actorId ?? undefined,
-      icon: (log.icon as ClientGameState["logs"][number]["icon"]) ?? "info",
-    }));
+    .map((log) => {
+      let type: string | undefined;
+      // メッセージ内容からログタイプを推定（DBにtypeカラムがないため）
+      if (log.message.includes("脱落") || log.message.includes("自滅")) {
+        type = "elimination";
+      } else if (log.message.includes("勝利")) {
+        type = "win";
+      }
+
+      return {
+        id: log.id,
+        timestamp: log.createdAt.toISOString(),
+        message: log.message,
+        type,
+        actorId: log.actorId ?? undefined,
+        icon: (log.icon as ClientGameState["logs"][number]["icon"]) ?? "info",
+      };
+    });
 
   const base: ClientGameState = {
     id: game.id,
