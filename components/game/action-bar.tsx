@@ -2,15 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Info, Volume2, VolumeX } from "lucide-react";
+import { Info, Volume2, VolumeX, Users, BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useGameContext } from "@/components/game/game-provider";
 import { cn } from "@/lib/utils";
+import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { CardSymbol } from "@/components/icons/card-symbol";
 
 type DockPosition = "left" | "bottom";
+
+const EXCLUDED_FROM_REFERENCE = ['feint', 'insight', 'standoff', 'wager', 'ambush', 'marquise'];
 
 export function ActionBar() {
   const {
@@ -238,7 +242,8 @@ export function ActionBar() {
                     onClick={() => setGameInfoVisible((prev) => !prev)}
                     aria-expanded={gameInfoVisible}
                   >
-                    {gameInfoVisible ? "ゲーム概要を隠す" : "ゲーム概要"}
+                    <BookOpen className="mr-2 h-3.5 w-3.5" />
+                    {gameInfoVisible ? "ガイドを閉じる" : "プレイガイド"}
                   </Button>
                 </div>
               </>
@@ -304,7 +309,8 @@ export function ActionBar() {
                     onClick={() => setGameInfoVisible((prev) => !prev)}
                     aria-expanded={gameInfoVisible}
                   >
-                    {gameInfoVisible ? "ゲーム概要を隠す" : "ゲーム概要"}
+                    <BookOpen className="mr-2 h-3.5 w-3.5" />
+                    {gameInfoVisible ? "ガイドを閉じる" : "プレイガイド"}
                   </Button>
                 </div>
               </>
@@ -330,28 +336,62 @@ export function ActionBar() {
           {gameInfoVisible && (
             <div
               className={cn(
-                "space-y-2 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)]",
-                isDockedLeft && "px-3 py-2 text-xs",
+                "flex flex-col gap-4 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.95)] px-4 py-3 text-sm text-[var(--color-text-muted)] shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-2 fade-in",
+                isDockedLeft ? "px-3 py-3 max-h-[60vh] overflow-y-auto scrollbar-thin" : "max-h-[24rem] overflow-y-auto scrollbar-thin",
               )}
             >
-              <p className={cn("font-heading text-[var(--color-accent-light)]", isDockedLeft ? "text-sm" : "text-lg")}>Love Letter Reverie</p>
-              <ul
-                className={cn(
-                  "list-disc space-y-1 pl-5 leading-relaxed",
-                  isDockedLeft && "pl-4",
-                )}
-              >
-                <li>各ターンで山札から1枚引き、手札2枚のうち1枚を公開して効果を解決します。</li>
-                <li>効果で相手を脱落させるか、自分が脱落しないように立ち回ります。</li>
-                <li>山札が尽きるか1人だけ残るとラウンド終了。生存者の中で最も高ランクのカードが勝利します。</li>
-              </ul>
+              <div>
+                <p className={cn("font-heading text-[var(--color-accent-light)] mb-2", isDockedLeft ? "text-sm" : "text-lg")}>Love Letter Reverie</p>
+                <ul
+                  className={cn(
+                    "list-disc space-y-1 pl-5 leading-relaxed text-xs",
+                    isDockedLeft && "pl-4",
+                  )}
+                >
+                  <li>山札から1枚引き、手札2枚のうち1枚を使用して効果を発動します。</li>
+                  <li>他者を脱落させるか、最後まで生き残り最強のカードを持つ者が勝利します。</li>
+                </ul>
+              </div>
+              
+              <div className="border-t border-[rgba(215,178,110,0.15)] pt-3">
+                <h4 className="mb-3 font-heading text-sm text-[var(--color-accent-light)] flex items-center gap-2">
+                  <Info className="h-3 w-3" />
+                  Card Reference
+                </h4>
+                <div className="grid gap-3">
+                  {Object.values(CARD_DEFINITIONS)
+                    .filter(c => c.rank <= 8 && !EXCLUDED_FROM_REFERENCE.includes(c.id))
+                    .sort((a, b) => a.rank - b.rank)
+                    .map((card) => (
+                      <div key={card.id} className="group flex gap-2.5 text-xs">
+                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-[rgba(215,178,110,0.3)] bg-[rgba(215,178,110,0.1)] font-heading font-bold text-[var(--color-accent)]">
+                          {card.rank}
+                        </div>
+                        <div className="flex-1 space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 font-medium text-[var(--color-accent-light)]">
+                               <CardSymbol icon={card.icon} size={12} className="opacity-80" />
+                               <span>{card.name}</span>
+                            </div>
+                            <span className="rounded bg-[rgba(255,255,255,0.1)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-muted)] group-hover:bg-[rgba(255,255,255,0.15)] transition-colors">
+                              x{card.copies}
+                            </span>
+                          </div>
+                          <p className="leading-tight opacity-70 group-hover:opacity-100 transition-opacity">
+                            {card.description}
+                          </p>
+                        </div>
+                      </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
-          {hintVisible && cardDefinition && (
+          {hintVisible && cardDefinition && !gameInfoVisible && (
             <div
               className={cn(
-                "rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)]",
+                "rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)] animate-in slide-in-from-bottom-2 fade-in",
                 isDockedLeft && "px-3 py-2",
               )}
             >
@@ -387,15 +427,16 @@ export function ActionBar() {
                       key={target.id}
                       variant={selectedTarget === target.id ? "primary" : "outline"}
                       className={cn(
-                        "px-3 text-xs",
+                        "gap-2 px-3 text-xs",
                         isDockedLeft || isCompactWidth ? "h-8 w-full justify-start" : "h-9",
                       )}
                       disabled={target.disabled}
                       onClick={() => setSelectedTarget(target.id)}
                     >
+                      <Users className="h-3.5 w-3.5 opacity-70" />
                       <span>{target.label}</span>
                       {target.badges.length > 0 && (
-                        <span className="ml-2 text-[10px] text-[var(--color-text-muted)]">
+                        <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
                           {target.badges.join(" / ")}
                         </span>
                       )}
@@ -479,4 +520,3 @@ export function ActionBar() {
     </motion.div>
   );
 }
-

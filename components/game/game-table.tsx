@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { Layers } from "lucide-react";
 
 import { CardSymbol } from "@/components/icons/card-symbol";
 import { CardArt } from "@/components/game/card-art";
@@ -84,7 +85,10 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
                       </span>
                     </div>
                   ) : (
-                    <span className="text-sm text-[var(--color-text-muted)]">捨て札なし</span>
+                    <div className="flex h-full flex-col items-center justify-center gap-2 text-[var(--color-text-muted)] opacity-50">
+                      <Layers className="h-8 w-8" />
+                      <span className="text-xs font-medium tracking-wider">DISCARD</span>
+                    </div>
                   )}
                 </motion.button>
               </PopoverTrigger>
