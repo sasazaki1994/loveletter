@@ -60,8 +60,9 @@ export function LogPanel() {
         <div ref={viewportRef} className="space-y-3 px-3 py-3">
           {state?.logs.map((log) => {
             const Icon = LOG_ICONS[log.icon || 'info'] ?? Info;
-            const isElimination = log.icon === 'flame' || log.message.includes("脱落");
-            const isWin = log.icon === 'crown';
+            // サーバー側でtypeが判定されるが、未反映の古いログや一時的な状態のためにフォールバックを残す
+            const isElimination = log.type === 'elimination' || log.icon === 'flame' || /脱落|自滅/.test(log.message);
+            const isWin = log.type === 'win' || log.icon === 'crown';
             
             return (
               <div

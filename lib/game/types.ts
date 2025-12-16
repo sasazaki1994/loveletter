@@ -91,6 +91,7 @@ export interface GameLogEntry {
   id: string;
   timestamp: string;
   message: string;
+  type?: string;
   actorId?: PlayerId;
   icon?: CardIconId | "info" | "alert";
 }
