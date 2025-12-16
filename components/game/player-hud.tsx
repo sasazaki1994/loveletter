@@ -38,7 +38,7 @@ export function PlayerHUD({
         "group flex w-[17rem] max-w-full flex-col gap-2 rounded-2xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)]/80 px-4 py-3 text-left transition-all",
         selectable && !isSelf && "hover:border-[var(--color-accent)] hover:bg-[rgba(18,42,39,0.8)]",
         selected && "border-[var(--color-accent)] shadow-[0_0_24px_rgba(215,178,110,0.35)]",
-        isActive && "ring-1 ring-[var(--color-accent)]",
+        isActive && "ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-[rgba(12,32,30,0.9)]",
         isSelf && "opacity-100",
         player.isEliminated && "opacity-60 grayscale",
         selectable && isDisabled && !player.isEliminated && "cursor-not-allowed opacity-70",
@@ -57,7 +57,7 @@ export function PlayerHUD({
           <p className="text-xs text-[var(--color-text-muted)]">座席 {player.seat + 1}</p>
         </div>
         <div className="flex gap-2">
-          {player.shield && <Badge variant="shield">防御中</Badge>}
+          {player.shield && <Badge variant="shield" className="animate-pulse">🛡️ 防御中</Badge>}
           {player.isEliminated && <Badge variant="danger">脱落</Badge>}
           {isActive && <Badge variant="default">手番</Badge>}
         </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Info, Volume2, VolumeX } from "lucide-react";
+import { Info, Volume2, VolumeX, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -387,15 +387,16 @@ export function ActionBar() {
                       key={target.id}
                       variant={selectedTarget === target.id ? "primary" : "outline"}
                       className={cn(
-                        "px-3 text-xs",
+                        "gap-2 px-3 text-xs",
                         isDockedLeft || isCompactWidth ? "h-8 w-full justify-start" : "h-9",
                       )}
                       disabled={target.disabled}
                       onClick={() => setSelectedTarget(target.id)}
                     >
+                      <Users className="h-3.5 w-3.5 opacity-70" />
                       <span>{target.label}</span>
                       {target.badges.length > 0 && (
-                        <span className="ml-2 text-[10px] text-[var(--color-text-muted)]">
+                        <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
                           {target.badges.join(" / ")}
                         </span>
                       )}
