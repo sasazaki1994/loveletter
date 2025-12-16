@@ -449,6 +449,7 @@ export function RoomLobby() {
                       className="rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-4 py-3"
                     >
                       <div className="flex flex-wrap items-baseline gap-3">
+                        <CardSymbol icon={card.icon} size={18} className="text-[var(--color-accent-light)] translate-y-0.5" />
                         <p className="font-heading text-base text-[var(--color-accent-light)]">
                           {card.name}
                         </p>
