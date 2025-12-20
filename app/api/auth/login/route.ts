@@ -7,8 +7,8 @@ import { buildUserSessionCookies, createUserSession, verifyPassword } from "@/li
 import { eq } from "drizzle-orm";
 
 const schema = z.object({
-  username: z.string().min(1).max(32),
-  password: z.string().min(1).max(128),
+  username: z.string().min(1, "ユーザー名を入力してください").max(32),
+  password: z.string().min(1, "パスワードを入力してください").max(128),
 });
 
 export async function POST(request: Request) {
@@ -28,7 +28,8 @@ export async function POST(request: Request) {
     return res;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "入力が不正です。" }, { status: 400 });
+      const detail = error.errors.map((e) => e.message).join(" ");
+      return NextResponse.json({ error: "入力が不正です。", detail }, { status: 400 });
     }
     const isDev = process.env.NODE_ENV === "development";
     const errorMessage = error instanceof Error ? error.message : String(error);

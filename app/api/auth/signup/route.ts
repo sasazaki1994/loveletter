@@ -9,10 +9,10 @@ import { eq } from "drizzle-orm";
 const schema = z.object({
   username: z
     .string()
-    .min(3)
-    .max(32)
+    .min(3, "ユーザー名は3文字以上である必要があります")
+    .max(32, "ユーザー名は32文字以下である必要があります")
     .regex(/^[a-zA-Z0-9_]+$/, "ユーザー名は英数字と_のみ使用できます"),
-  password: z.string().min(8).max(128),
+  password: z.string().min(8, "パスワードは8文字以上である必要があります").max(128),
 });
 
 export async function POST(request: Request) {
@@ -37,7 +37,8 @@ export async function POST(request: Request) {
     return res;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "入力が不正です。" }, { status: 400 });
+      const detail = error.errors.map((e) => e.message).join(" ");
+      return NextResponse.json({ error: "入力が不正です。", detail }, { status: 400 });
     }
     const isDev = process.env.NODE_ENV === "development";
     const errorMessage = error instanceof Error ? error.message : String(error);
