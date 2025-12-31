@@ -19,8 +19,8 @@ test.describe("QR join flow", () => {
     });
 
     await page.goto("/");
-    // マルチ用ニックネーム入力（同じプレースホルダが2つあるため末尾を使用）
-    await page.getByPlaceholder("例: Velvet Strategist").last().fill("QR Tester");
+    // ニックネームはBot/マルチ共通（どちらの入力欄でもOK）
+    await page.getByPlaceholder("例: Velvet Strategist").first().fill("QR Tester");
     await page.getByRole("button", { name: "QR読取" }).click();
     await page.evaluate(() =>
       // @ts-ignore

@@ -15,9 +15,12 @@ import { RoomQrScanner } from "@/components/ui/room-qr-scanner";
 import { CardSymbol } from "@/components/icons/card-symbol";
 import { ParticlesCanvas, type ParticleBurst } from "@/components/game/particles-canvas";
 import { usePlayerSession } from "@/lib/client/session";
+import { loadLastNickname, saveLastNickname } from "@/lib/client/nickname";
 import { useSoundEffects } from "@/lib/hooks/use-sound-effects";
 import { CARD_POOL } from "@/lib/game/cards";
 import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function RoomLobby() {
   const router = useRouter();
@@ -31,6 +34,7 @@ export function RoomLobby() {
   const [authUsername, setAuthUsername] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [user, setUser] = useState<{ id: string; username: string } | null>(null);
 
   const [nickname, setNickname] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
@@ -38,7 +42,6 @@ export function RoomLobby() {
   const [rulesOpen, setRulesOpen] = useState(false);
 
   // Multiplayer UI state
-  const [mpNickname, setMpNickname] = useState("");
   const [joinRoomId, setJoinRoomId] = useState("");
   const [mpError, setMpError] = useState<string | null>(null);
   const [mpLoading, setMpLoading] = useState(false);
@@ -66,6 +69,18 @@ export function RoomLobby() {
   const mpNicknameInputRef = useRef<HTMLInputElement | null>(null);
   const joinRoomIdInputRef = useRef<HTMLInputElement | null>(null);
   const multiLandingHandledRef = useRef(false);
+
+  // ニックネーム自動補完（session優先→lastNickname）
+  useEffect(() => {
+    if (nickname.trim()) return;
+    const fromSession = session?.nickname?.trim();
+    if (fromSession) {
+      setNickname(fromSession);
+      return;
+    }
+    const fromLast = loadLastNickname();
+    if (fromLast) setNickname(fromLast);
+  }, [nickname, session?.nickname]);
 
   // Ambient particles
   useEffect(() => {
@@ -165,30 +180,35 @@ export function RoomLobby() {
     }
   }, []);
 
+  const isValidRoomId = useCallback((normalized: string) => {
+    return isValidShortRoomId(normalized) || UUID_RE.test(normalized);
+  }, []);
+
   const extractRoomIdFromValue = useCallback((value: string): string | null => {
     const trimmed = value.trim();
     if (!trimmed) return null;
     try {
       const url = new URL(trimmed);
       const fromParams = url.searchParams.get("join") ?? url.searchParams.get("room");
-      if (fromParams) return normalizeRoomId(fromParams);
+      if (fromParams) {
+        const normalized = normalizeRoomId(fromParams);
+        return isValidRoomId(normalized) ? normalized : null;
+      }
       const pathParts = url.pathname.split("/").filter(Boolean);
       const maybeId = pathParts[pathParts.length - 1];
       if (maybeId) {
         const normalized = normalizeRoomId(maybeId);
-        if (isValidShortRoomId(normalized) || normalized.length >= 12) {
-          return normalized;
-        }
+        if (isValidRoomId(normalized)) return normalized;
       }
     } catch {
       // not a URL; fall through to raw handling
     }
     const normalizedRaw = normalizeRoomId(trimmed);
-    if (isValidShortRoomId(normalizedRaw) || normalizedRaw.length >= 12) {
-      return normalizedRaw;
-    }
-    return null;
-  }, []);
+    return isValidRoomId(normalizedRaw) ? normalizedRaw : null;
+  }, [isValidRoomId]);
+
+  const resolvedJoinRoomId = useMemo(() => extractRoomIdFromValue(joinRoomId), [extractRoomIdFromValue, joinRoomId]);
+  const joinRoomIdValid = Boolean(resolvedJoinRoomId);
 
   const handleQrDetected = useCallback(
     (rawValue: string) => {
@@ -237,6 +257,7 @@ export function RoomLobby() {
         throw new Error("無効なレスポンスです。");
       }
 
+      saveLastNickname(nickname.trim());
       setSession({
         roomId: payload.roomId,
         playerId: payload.playerId,
@@ -251,7 +272,7 @@ export function RoomLobby() {
   };
 
   const handleCreateHumanRoom = async () => {
-    if (!mpNickname.trim()) {
+    if (!nickname.trim()) {
       setMpError("ニックネームを入力してください");
       return;
     }
@@ -267,7 +288,7 @@ export function RoomLobby() {
       const response = await fetch("/api/room/create-human", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname: mpNickname.trim() }),
+        body: JSON.stringify({ nickname: nickname.trim() }),
       });
       const payload = (await response.json()) as {
         roomId?: string;
@@ -284,10 +305,11 @@ export function RoomLobby() {
       if (!payload.roomId || !payload.playerId) {
         throw new Error("無効なレスポンスです。");
       }
+      saveLastNickname(nickname.trim());
       setSession({
         roomId: payload.roomId,
         playerId: payload.playerId,
-        nickname: mpNickname.trim(),
+        nickname: nickname.trim(),
         shortId: payload.shortId,
       });
       // ルームIDを表示するダイアログを表示（短いIDを優先）
@@ -301,8 +323,13 @@ export function RoomLobby() {
   };
 
   const handleJoinRoom = async () => {
-    if (!mpNickname.trim() || !joinRoomId.trim()) {
+    const resolved = extractRoomIdFromValue(joinRoomId);
+    if (!nickname.trim() || !joinRoomId.trim()) {
       setMpError("ルームIDとニックネームを入力してください");
+      return;
+    }
+    if (!resolved) {
+      setMpError("ルームIDの形式が不正です（6文字IDまたはUUID）。");
       return;
     }
     if (session?.roomId) {
@@ -317,7 +344,7 @@ export function RoomLobby() {
       const response = await fetch("/api/room/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId: joinRoomId.trim(), nickname: mpNickname.trim() }),
+        body: JSON.stringify({ roomId: resolved, nickname: nickname.trim() }),
       });
       const payload = (await response.json()) as {
         roomId?: string;
@@ -335,10 +362,11 @@ export function RoomLobby() {
       if (!payload.roomId || !payload.playerId) {
         throw new Error("無効なレスポンスです。");
       }
+      saveLastNickname(nickname.trim());
       setSession({
         roomId: payload.roomId,
         playerId: payload.playerId,
-        nickname: mpNickname.trim(),
+        nickname: nickname.trim(),
         shortId: payload.shortId,
       });
       router.push(`/game/${payload.roomId}`);
@@ -375,23 +403,29 @@ export function RoomLobby() {
     }
   };
 
-  const handleLoadRooms = async () => {
-    if (showRooms) {
-      setShowRooms(false);
-      return;
-    }
+  const refreshRooms = useCallback(async () => {
     setRoomsLoading(true);
     try {
       const response = await fetch("/api/room/list");
       const data = await response.json();
       setRooms(Array.isArray(data) ? data : []);
-      setShowRooms(true);
+      setMpError(null);
     } catch (error) {
       setMpError("ルーム一覧の取得に失敗しました");
     } finally {
       setRoomsLoading(false);
     }
-  };
+  }, []);
+
+  // 公開ルーム一覧を表示中は自動更新
+  useEffect(() => {
+    if (!showRooms) return;
+    if (typeof window === "undefined") return;
+    const timer = window.setInterval(() => {
+      refreshRooms().catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [refreshRooms, showRooms]);
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden">
@@ -533,7 +567,7 @@ export function RoomLobby() {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                ニックネーム
+                ニックネーム（Bot/マルチ共通）
               </label>
               <Input
                 value={nickname}
@@ -642,11 +676,11 @@ export function RoomLobby() {
                 </p>
               </div>
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">マルチ用ニックネーム</label>
+                <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">ニックネーム（共通）</label>
                 <Input
                   ref={mpNicknameInputRef}
-                  value={mpNickname}
-                  onChange={(e) => setMpNickname(e.target.value)}
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
                   placeholder="例: Velvet Strategist"
                   maxLength={24}
                 />
@@ -656,15 +690,43 @@ export function RoomLobby() {
                   {mpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "マルチ部屋を作成"}
                 </Button>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input
-                    ref={joinRoomIdInputRef}
-                    value={joinRoomId}
-                    onChange={(e) => setJoinRoomId(e.target.value)}
-                    placeholder="Room ID を入力"
-                    className="sm:flex-1"
-                  />
+                  <div className="sm:flex-1 space-y-1">
+                    <Input
+                      ref={joinRoomIdInputRef}
+                      value={joinRoomId}
+                      onChange={(e) => setJoinRoomId(e.target.value)}
+                      onBlur={(e) => {
+                        const extracted = extractRoomIdFromValue(e.currentTarget.value);
+                        if (extracted) {
+                          setJoinRoomId(extracted);
+                          setMpError(null);
+                        }
+                      }}
+                      onPaste={(e) => {
+                        const text = e.clipboardData.getData("text");
+                        const extracted = extractRoomIdFromValue(text);
+                        if (extracted) {
+                          e.preventDefault();
+                          setJoinRoomId(extracted);
+                          setMpError(null);
+                          setTimeout(() => joinRoomIdInputRef.current?.focus({ preventScroll: true }), 0);
+                        }
+                      }}
+                      placeholder="Room ID を入力"
+                      className="w-full"
+                    />
+                    {joinRoomId.trim().length > 0 && (
+                      <p
+                        className={`text-[11px] ${
+                          joinRoomIdValid ? "text-[var(--color-success-light)]" : "text-[var(--color-warn-light)]"
+                        }`}
+                      >
+                        {joinRoomIdValid ? "形式: OK" : "6文字ID または UUID を入力（招待URL貼り付け可）"}
+                      </p>
+                    )}
+                  </div>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                  <Button onClick={handleJoinRoom} disabled={mpLoading} className="w-full sm:w-auto">
+                  <Button onClick={handleJoinRoom} disabled={mpLoading || !nickname.trim() || !joinRoomIdValid} className="w-full sm:w-auto">
                     参加
                   </Button>
                   <Button
@@ -694,20 +756,38 @@ export function RoomLobby() {
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">公開ルーム</label>
-                <Button
-                  variant="outline"
-                  className="h-8 px-3 text-xs"
-                  onClick={handleLoadRooms}
-                  disabled={roomsLoading}
-                >
-                  {roomsLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : showRooms ? (
-                    "非表示"
-                  ) : (
-                    "表示"
-                  )}
-                </Button>
+                {showRooms ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => refreshRooms()}
+                      disabled={roomsLoading}
+                    >
+                      {roomsLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "更新"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => setShowRooms(false)}
+                      disabled={roomsLoading}
+                    >
+                      非表示
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="h-8 px-3 text-xs"
+                    onClick={async () => {
+                      await refreshRooms();
+                      setShowRooms(true);
+                    }}
+                    disabled={roomsLoading}
+                  >
+                    {roomsLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "表示"}
+                  </Button>
+                )}
               </div>
               {showRooms && (
                 <div className="grid gap-2">
@@ -715,21 +795,40 @@ export function RoomLobby() {
                     <p className="text-sm text-[var(--color-text-muted)]">現在参加可能なルームはありません。</p>
                   )}
                 {rooms.map((r) => (
+                  (() => {
+                    const statusLabel =
+                      r.status === "waiting" ? "募集中" : r.status === "active" ? "進行中" : r.status;
+                    const canJoin = r.status === "waiting";
+                    return (
                   <div
                     key={r.id}
                     className="flex flex-col gap-2 rounded border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                   >
                     <span className="truncate">
-                      Room {r.shortId ?? r.id.slice(0, 8)} · {r.status} · {r.playerCount} 人
+                      Room {r.shortId ?? r.id.slice(0, 8)} · {statusLabel} · {r.playerCount} 人
                     </span>
                     <Button
                       variant="ghost"
                       className="h-8 w-full px-3 text-xs sm:w-auto"
-                      onClick={() => setJoinRoomId(r.shortId ?? r.id)}
+                      onClick={() => {
+                        if (canJoin) {
+                          setJoinRoomId(r.shortId ?? r.id);
+                          setMpError(null);
+                          const scrollTarget = multiSectionRef.current;
+                          window.requestAnimationFrame(() => {
+                            scrollTarget?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            setTimeout(() => joinRoomIdInputRef.current?.focus({ preventScroll: true }), 120);
+                          });
+                        } else {
+                          router.push(`/game/${r.id}`);
+                        }
+                      }}
                     >
-                      参加準備
+                      {canJoin ? "参加準備" : "観戦"}
                     </Button>
                   </div>
+                    );
+                  })()
                 ))}
                 </div>
               )}

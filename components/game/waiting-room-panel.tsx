@@ -12,6 +12,7 @@ import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
 import { ParticlesCanvas, type ParticleBurst } from "@/components/game/particles-canvas";
 import { usePlayerSession } from "@/lib/client/session";
+import { loadLastNickname, saveLastNickname } from "@/lib/client/nickname";
 import { useSoundEffects } from "@/lib/hooks/use-sound-effects";
 
 type RoomStatePayload = {
@@ -40,6 +41,18 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
 
   const inRoomSession = session?.roomId === roomId;
   const hasOtherSession = Boolean(session && session.roomId !== roomId);
+
+  // ニックネーム自動補完（session優先→lastNickname）
+  useEffect(() => {
+    if (nickname.trim()) return;
+    const fromSession = session?.nickname?.trim();
+    if (fromSession) {
+      setNickname(fromSession);
+      return;
+    }
+    const fromLast = loadLastNickname();
+    if (fromLast) setNickname(fromLast);
+  }, [nickname, session?.nickname]);
 
   // Ambient particles
   useEffect(() => {
@@ -128,6 +141,7 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
         const detail = json.detail ? ` (${json.detail})` : "";
         throw new Error((json.error ?? "参加に失敗しました") + detail);
       }
+      saveLastNickname(nickname.trim());
       setSession({ roomId: json.roomId, playerId: json.playerId, nickname: nickname.trim(), shortId: json.shortId });
       setError(null);
       // 待機UIはそのまま、ゲーム開始後に自動遷移（stateが生える）

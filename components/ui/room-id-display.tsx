@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from "react";
-import { Check, Copy, Loader2 } from "lucide-react";
+import { AlertCircle, Check, Copy, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/client/clipboard";
 
 interface RoomIdDisplayProps {
   roomId: string;
@@ -23,19 +24,23 @@ export function RoomIdDisplay({
 }: RoomIdDisplayProps) {
   const [copied, setCopied] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const handleCopy = async () => {
     if (copying) return;
     
     setCopying(true);
     try {
-      await navigator.clipboard.writeText(roomId);
-      setCopied(true);
-      setTimeout(() => {
+      setCopyFailed(false);
+      const result = await copyToClipboard(roomId);
+      if (!result.ok) {
+        setCopyFailed(true);
         setCopied(false);
-      }, 2000);
-    } catch (error) {
-      console.error('Failed to copy room ID:', error);
+        setTimeout(() => setCopyFailed(false), 2200);
+        return;
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } finally {
       setCopying(false);
     }
@@ -74,6 +79,8 @@ export function RoomIdDisplay({
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : copied ? (
               <Check className="h-3 w-3 text-[var(--color-success-light)]" />
+            ) : copyFailed ? (
+              <AlertCircle className="h-3 w-3 text-[var(--color-warn-light)]" />
             ) : (
               <Copy className="h-3 w-3" />
             )}
@@ -104,6 +111,8 @@ export function RoomIdDisplay({
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : copied ? (
               <Check className="h-3.5 w-3.5 text-[var(--color-success-light)]" />
+            ) : copyFailed ? (
+              <AlertCircle className="h-3.5 w-3.5 text-[var(--color-warn-light)]" />
             ) : (
               <Copy className="h-3.5 w-3.5" />
             )}
@@ -140,6 +149,11 @@ export function RoomIdDisplay({
               <>
                 <Check className="mr-2 h-4 w-4 text-[var(--color-success-light)]" />
                 コピーしました
+              </>
+            ) : copyFailed ? (
+              <>
+                <AlertCircle className="mr-2 h-4 w-4 text-[var(--color-warn-light)]" />
+                コピー失敗
               </>
             ) : (
               <>

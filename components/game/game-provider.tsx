@@ -7,6 +7,7 @@ import type { CardDefinition, CardId, ClientGameState, PlayerId } from "@/lib/ga
 import { useBackgroundMusic } from "@/lib/hooks/use-background-music";
 import { useGameStream } from "@/lib/hooks/use-game-stream";
 import { useSoundEffects, type SoundKey } from "@/lib/hooks/use-sound-effects";
+import { useTempoSettings, type TempoMode } from "@/lib/hooks/use-tempo-settings";
 import { usePlayerSession } from "@/lib/client/session";
 
 const BGM_TRACKS = [
@@ -51,6 +52,12 @@ interface GameContextValue {
   loading: boolean;
   error: string | null;
   lastUpdated: string | null;
+  tempo: TempoMode;
+  setTempo: (next: TempoMode) => void;
+  toggleTempo: () => void;
+  effectScale: number;
+  botTurnDelayMs: number;
+  turnCutinMs: number;
   selectedCard: CardId | null;
   setSelectedCard: React.Dispatch<React.SetStateAction<CardId | null>>;
   selectedTarget: PlayerId | null;
@@ -85,6 +92,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     roomId,
     playerId,
   });
+  const { tempo, setTempo, toggleTempo, effectScale, botTurnDelayMs, turnCutinMs } = useTempoSettings();
   const { session } = usePlayerSession();
   const shortId = session?.shortId;
   const [selectedCard, setSelectedCard] = useState<CardId | null>(null);
@@ -374,6 +382,12 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       loading,
       error,
       lastUpdated,
+      tempo,
+      setTempo,
+      toggleTempo,
+      effectScale,
+      botTurnDelayMs,
+      turnCutinMs,
       selectedCard,
       setSelectedCard,
       selectedTarget,
@@ -425,6 +439,12 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       noAvailableTargets,
       actionError,
       clearActionError,
+      tempo,
+      setTempo,
+      toggleTempo,
+      effectScale,
+      botTurnDelayMs,
+      turnCutinMs,
     ],
   );
 

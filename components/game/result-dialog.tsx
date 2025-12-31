@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { Crown } from "lucide-react";
+import { Crown, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useGameContext } from "@/components/game/game-provider";
@@ -68,7 +68,9 @@ export function ResultDialog() {
     }
 
     // それ以外は軽い遅延後に表示
-    const timer = setTimeout(() => setOpen(true), 1000);
+    const timer = setTimeout(() => {
+        setOpen(true);
+    }, 1000);
     return () => clearTimeout(timer);
   }, [state?.result, state?.id, dismissedResultId, scheduledId]);
 
@@ -245,6 +247,7 @@ export function ResultDialog() {
   }, [state]);
 
   return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="border-none bg-transparent p-0 shadow-none sm:max-w-md">
         <div className="relative overflow-hidden rounded-3xl border border-[rgba(215,178,110,0.4)] bg-[rgba(12,28,26,0.95)] p-6 shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl">
           {/* Decorative background elements */}
@@ -362,4 +365,3 @@ export function ResultDialog() {
     </Dialog>
   );
 }
-

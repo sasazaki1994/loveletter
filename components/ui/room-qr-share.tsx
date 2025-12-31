@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useState } from "react";
-import { Check, Copy, Link2, Loader2 } from "lucide-react";
+import { AlertCircle, Check, Copy, Link2, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { copyToClipboard } from "@/lib/client/clipboard";
 
 interface RoomQrShareProps {
   roomId: string;
@@ -34,6 +35,7 @@ const buildJoinUrl = (roomId: string) => {
 export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareProps) {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const joinUrl = useMemo(() => buildJoinUrl(roomId), [roomId]);
 
@@ -41,11 +43,16 @@ export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareP
     if (copying) return;
     setCopying(true);
     try {
-      await navigator.clipboard.writeText(joinUrl);
+      setCopyFailed(false);
+      const result = await copyToClipboard(joinUrl);
+      if (!result.ok) {
+        setCopyFailed(true);
+        setCopied(false);
+        setTimeout(() => setCopyFailed(false), 2200);
+        return;
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
-    } catch (error) {
-      console.error("Failed to copy join URL:", error);
     } finally {
       setCopying(false);
     }
@@ -82,6 +89,11 @@ export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareP
               <Check className="mr-2 h-3.5 w-3.5 text-[var(--color-success-light)]" />
               コピー済み
             </>
+          ) : copyFailed ? (
+            <>
+              <AlertCircle className="mr-2 h-3.5 w-3.5 text-[var(--color-warn-light)]" />
+              コピー失敗
+            </>
           ) : (
             <>
               <Copy className="mr-2 h-3.5 w-3.5" />
@@ -102,7 +114,7 @@ export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareP
           />
         </div>
         <div className="flex-1 space-y-2 text-xs text-[var(--color-text-muted)]">
-          <p className="break-all font-mono text-sm text-[var(--color-accent-light)]">{joinUrl}</p>
+          <p className="break-all font-mono text-sm text-[var(--color-accent-light)] select-all">{joinUrl}</p>
           <p className="text-[11px] leading-relaxed">
             共有用URLにはルームID <span className="font-mono text-[var(--color-accent-light)]">{roomId}</span> を埋め込んでいます。
             ブラウザのカメラからアクセスすると参加フォームが開きます。

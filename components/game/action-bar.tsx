@@ -37,6 +37,9 @@ export function ActionBar() {
     toggleMute,
     volume,
     setVolume,
+    tempo,
+    setTempo,
+    toggleTempo,
   } = useGameContext();
 
   const [dockPosition, setDockPosition] = useState<DockPosition>("left");
@@ -221,6 +224,31 @@ export function ActionBar() {
                       </span>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2 px-1.5">
+                    <span className="text-[10px] uppercase tracking-[0.3em] text-[rgba(215,178,110,0.75)]">
+                      Tempo
+                    </span>
+                    <div className="ml-auto flex gap-1">
+                      <Button
+                        type="button"
+                        variant={tempo === "normal" ? "primary" : "outline"}
+                        className="h-7 px-2 py-1 text-[10px]"
+                        onClick={() => setTempo("normal")}
+                        aria-pressed={tempo === "normal"}
+                      >
+                        Normal
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={tempo === "fast" ? "primary" : "outline"}
+                        className="h-7 px-2 py-1 text-[10px]"
+                        onClick={() => setTempo("fast")}
+                        aria-pressed={tempo === "fast"}
+                      >
+                        Fast
+                      </Button>
+                    </div>
+                  </div>
                   <Button
                     variant="ghost"
                     className="h-7 w-full justify-start px-2 text-xs"
@@ -288,6 +316,16 @@ export function ActionBar() {
                       {Math.round(volume * 100)}%
                     </span>
                   </div>
+                  <Button
+                    type="button"
+                    variant={tempo === "fast" ? "primary" : "outline"}
+                    className="h-8 px-3 text-xs"
+                    onClick={toggleTempo}
+                    aria-pressed={tempo === "fast"}
+                    aria-label={tempo === "fast" ? "テンポを通常に戻す" : "テンポを高速にする"}
+                  >
+                    Tempo: {tempo === "fast" ? "Fast" : "Normal"}
+                  </Button>
                   <Button
                     variant="ghost"
                     className="h-8 px-3 text-xs"
