@@ -23,17 +23,25 @@ export function ResultDialog() {
     if (!state?.roomId) return;
     setIsStarting(true);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
+      
       const res = await fetch("/api/room/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomId: state.roomId }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+      
       if (!res.ok) throw new Error("Failed to start game");
-      // 成功すればSSEで状態更新が来てダイアログが閉じるはず
-      // 明示的に閉じておく
-      setOpen(false);
+      // 成功すればSSEで状態更新が来てダイアログが自動的に閉じる
+      // ユーザーに成功を通知
+      // toast.success("新しいゲームを開始しました");
     } catch (error) {
       console.error("Failed to start new game:", error);
+      // ユーザーにエラーを通知
+      // toast.error("ゲームの開始に失敗しました。もう一度お試しください。");
     } finally {
       setIsStarting(false);
     }
