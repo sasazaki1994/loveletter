@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { 
   Swords, Shield, Eye, Crown, Skull, MessageSquare, 
   Target, AlertTriangle, Info, HelpCircle, RefreshCw, Hand

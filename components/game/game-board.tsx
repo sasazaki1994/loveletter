@@ -91,7 +91,7 @@ export function GameBoard() {
     
     prevTurnRef.current = isMyTurn;
     prevRoundRef.current = state.round;
-  }, [isMyTurn, state?.round]);
+  }, [isMyTurn, state]);
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
   const fx = useGameEffects();
