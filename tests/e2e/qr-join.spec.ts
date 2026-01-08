@@ -34,7 +34,6 @@ test.describe("QR join flow", () => {
 
   test("BarcodeDetector未対応ブラウザではエラー表示する", async ({ page }) => {
     await page.addInitScript(() => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       delete window.BarcodeDetector;
     });

@@ -25,8 +25,9 @@ import { SoundControls } from "@/components/game/sound-controls";
 import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { ErrorAlert } from "@/components/game/error-alert";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
-import { AlertCircle, Loader2, RefreshCw, Users, X } from "lucide-react";
+import { X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
@@ -58,6 +59,7 @@ export function GameBoard() {
     error,
     refetch,
     loading,
+    clearError,
   } = useGameContext();
 
   // ターン開始検出用
@@ -584,7 +586,24 @@ export function GameBoard() {
 
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {
-    return <WaitingRoomPanel roomId={roomId} />;
+    return (
+      <>
+        <AnimatePresence>
+          {error && (
+            <ErrorAlert
+              error={error}
+              loading={loading}
+              onRetry={() => {
+                refetch().catch(() => {});
+              }}
+              onReload={() => window.location.reload()}
+              onDismiss={clearError}
+            />
+          )}
+        </AnimatePresence>
+        <WaitingRoomPanel roomId={roomId} />
+      </>
+    );
   }
 
   const rootClasses = cn(
@@ -623,51 +642,15 @@ export function GameBoard() {
 
       <AnimatePresence>
         {error && (
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            className="pointer-events-auto fixed left-1/2 top-4 z-40 w-full max-w-md -translate-x-1/2"
-            role="alert"
-            aria-live="assertive"
-          >
-            <div className="mx-4 flex items-start gap-3 rounded-xl border border-[rgba(215,120,110,0.4)] bg-[rgba(60,20,18,0.85)] px-4 py-3 shadow-lg backdrop-blur-sm">
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-warn-light)]" />
-              <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-[var(--color-warn-light)]">{error}</p>
-                {error.includes("接続が回復") && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        refetch().catch(() => {});
-                      }}
-                      disabled={loading}
-                      className="h-7 text-xs"
-                    >
-                      <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-                      再試行
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => window.location.reload()}
-                      className="h-7 text-xs"
-                    >
-                      ページを再読み込み
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => {}}
-                className="h-7 w-7 shrink-0 p-0 text-[var(--color-warn-light)] hover:bg-[rgba(215,120,110,0.15)]"
-                aria-label="エラーを閉じる"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </motion.div>
+          <ErrorAlert
+            error={error}
+            loading={loading}
+            onRetry={() => {
+              refetch().catch(() => {});
+            }}
+            onReload={() => window.location.reload()}
+            onDismiss={clearError}
+          />
         )}
       </AnimatePresence>
 
