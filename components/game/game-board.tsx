@@ -60,14 +60,30 @@ export function GameBoard() {
 
   // ターン開始検出用
   const [showTurnCutin, setShowTurnCutin] = useState(false);
+  const [cutinText, setCutinText] = useState("YOUR TURN");
   const prevTurnRef = useRef<boolean>(false);
+  const prevRoundRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (isMyTurn && !prevTurnRef.current) {
+    if (!state) return;
+    
+    // ラウンド開始検出
+    // 初回ロード時(prevRoundRef.current === null)は表示しない
+    if (prevRoundRef.current !== null && state.round !== prevRoundRef.current) {
+       setCutinText(`ROUND ${state.round}`);
+       setShowTurnCutin(true);
+       // ラウンド開始表示後に自分のターン表示が被らないように少し遅延させるなどの制御が必要かも
+       // ただし、ラウンド開始直後は必ず「スタートプレイヤーのターン」になる。
+       // スタートプレイヤーが自分だった場合、"ROUND X" -> "YOUR TURN" と連続する可能性がある。
+    } else if (isMyTurn && !prevTurnRef.current) {
+      // ラウンド開始直後でない場合、またはラウンド開始演出が終わった後
+      setCutinText("YOUR TURN");
       setShowTurnCutin(true);
     }
+    
     prevTurnRef.current = isMyTurn;
-  }, [isMyTurn]);
+    prevRoundRef.current = state.round;
+  }, [isMyTurn, state?.round]);
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
   const fx = useGameEffects();
@@ -575,7 +591,7 @@ export function GameBoard() {
 
   return (
       <div className={rootClasses}>
-        <TurnCutin show={showTurnCutin} />
+        <TurnCutin show={showTurnCutin} text={cutinText} />
         <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
