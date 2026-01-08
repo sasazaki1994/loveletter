@@ -21,6 +21,7 @@ import { TurnCutin } from "@/components/game/turn-cutin";
 import { Button } from "@/components/ui/button";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
+import { SoundControls } from "@/components/game/sound-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
@@ -598,8 +599,14 @@ export function GameBoard() {
       </div>
 
       {!isBotGame && (
-        <div className="pointer-events-auto fixed left-3 top-4 z-30 sm:left-6 sm:top-6 lg:left-10">
+        <div className="pointer-events-auto fixed left-3 top-4 z-30 flex items-center gap-3 sm:left-6 sm:top-6 lg:left-10">
           <RoomIdDisplay roomId={shortId ?? roomId} variant="compact" />
+          <SoundControls />
+        </div>
+      )}
+      {isBotGame && (
+        <div className="pointer-events-auto fixed left-3 top-4 z-30 sm:left-6 sm:top-6 lg:left-10">
+           <SoundControls />
         </div>
       )}
 
