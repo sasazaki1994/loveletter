@@ -21,6 +21,8 @@ import { TurnCutin } from "@/components/game/turn-cutin";
 import { Button } from "@/components/ui/button";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
+import { SoundControls } from "@/components/game/sound-controls";
+import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
@@ -60,14 +62,36 @@ export function GameBoard() {
 
   // ターン開始検出用
   const [showTurnCutin, setShowTurnCutin] = useState(false);
+  const [cutinText, setCutinText] = useState("YOUR TURN");
   const prevTurnRef = useRef<boolean>(false);
+  const prevRoundRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (isMyTurn && !prevTurnRef.current) {
+    if (!state) return;
+    
+    // ラウンド開始検出
+    // 初回ロード時(prevRoundRef.current === null)は表示しない
+    if (prevRoundRef.current !== null && state.round !== prevRoundRef.current) {
+       setCutinText(`ROUND ${state.round}`);
+       setShowTurnCutin(true);
+       
+       // ラウンド開始直後、かつ自分のターンの場合は、少し遅延させてYOUR TURNを表示
+       if (isMyTurn) {
+         const timer = setTimeout(() => {
+           setCutinText("YOUR TURN");
+           setShowTurnCutin(true);
+         }, 2500);
+         return () => clearTimeout(timer);
+       }
+    } else if (isMyTurn && !prevTurnRef.current) {
+      // ラウンド開始直後でない場合、またはラウンド開始演出が終わった後
+      setCutinText("YOUR TURN");
       setShowTurnCutin(true);
     }
+    
     prevTurnRef.current = isMyTurn;
-  }, [isMyTurn]);
+    prevRoundRef.current = state.round;
+  }, [isMyTurn, state]);
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
   const fx = useGameEffects();
@@ -575,15 +599,25 @@ export function GameBoard() {
 
   return (
       <div className={rootClasses}>
-        <TurnCutin show={showTurnCutin} />
+        <TurnCutin show={showTurnCutin} text={cutinText} />
         <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
       </div>
 
       {!isBotGame && (
-        <div className="pointer-events-auto fixed left-3 top-4 z-30 sm:left-6 sm:top-6 lg:left-10">
+        <div className="pointer-events-auto fixed left-3 top-4 z-30 flex items-center gap-3 sm:left-6 sm:top-6 lg:left-10">
           <RoomIdDisplay roomId={shortId ?? roomId} variant="compact" />
+          <div className="flex gap-1.5">
+            <SoundControls />
+            <CardReferenceDialog />
+          </div>
+        </div>
+      )}
+      {isBotGame && (
+        <div className="pointer-events-auto fixed left-3 top-4 z-30 flex gap-1.5 sm:left-6 sm:top-6 lg:left-10">
+           <SoundControls />
+           <CardReferenceDialog />
         </div>
       )}
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { 
   Swords, Shield, Eye, Crown, Skull, MessageSquare, 
   Target, AlertTriangle, Info, HelpCircle, RefreshCw, Hand
@@ -65,8 +66,11 @@ export function LogPanel() {
             const isWin = log.type === 'win' || log.icon === 'crown';
             
             return (
-              <div
+              <motion.div
                 key={log.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
                 className={cn(
                   "relative flex gap-3 rounded-lg border p-3 text-sm transition-all shadow-sm",
                   isElimination 
@@ -106,7 +110,7 @@ export function LogPanel() {
                     {log.message}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
           
