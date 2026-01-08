@@ -266,7 +266,7 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
-                  <CardReferenceDialog variant="full" />
+                  <CardReferenceDialog />
                 </div>
               </>
             ) : (
@@ -335,7 +335,7 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
-                  <CardReferenceDialog variant="full" className="h-8 px-3 text-xs w-auto" />
+                  <CardReferenceDialog />
                 </div>
               </>
             )}
