@@ -25,6 +25,7 @@ import { SoundControls } from "@/components/game/sound-controls";
 import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { ErrorAlert } from "@/components/game/error-alert";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
 import { X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -582,8 +583,6 @@ export function GameBoard() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [cancelSelection, hand, isMyTurn, playCard, selectedCard, setSelectedCard]);
-
-import { ErrorAlert } from "@/components/game/error-alert";
 
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {
