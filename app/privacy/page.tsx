@@ -90,7 +90,6 @@ export default function PrivacyPolicyPage() {
           <h2 className="font-heading text-xl font-semibold">6. お問い合わせ</h2>
           <p className="mt-3 leading-relaxed text-[var(--color-text-muted)]">
             本ポリシーに関するお問い合わせは、運営者の連絡手段（フォーム/メール等）にて受け付けます。
-            現時点で窓口が未整備の場合は、公開時に追記してください。
           </p>
         </div>
 
