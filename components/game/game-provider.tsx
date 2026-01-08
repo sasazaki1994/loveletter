@@ -442,8 +442,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       actionError,
       clearActionError,
       clearError,
-    ],
-  );
+      tempo,
       setTempo,
       toggleTempo,
       effectScale,
