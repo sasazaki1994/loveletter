@@ -375,7 +375,7 @@ export function ResultDialog() {
                 fullWidth 
                 onClick={handleStartNewGame}
                 disabled={isStarting}
-                className="h-12 text-lg font-bold shadow-[0_0_25px_rgba(215,178,110,0.3)] bg-gradient-to-r from-[var(--color-accent)] to-[#b08d55] text-[#0f2d2a] hover:brightness-110 border-0"
+                className="h-12 text-lg font-bold shadow-[0_0_25px_rgba(215,178,110,0.3)] bg-gradient-to-r from-(--color-accent) to-[#b08d55] text-[#0f2d2a] hover:brightness-110 border-0"
               >
                 {isStarting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5 fill-current" />}
                 次のゲームを始める
@@ -385,7 +385,7 @@ export function ResultDialog() {
                   variant="outline" 
                   fullWidth 
                   onClick={() => refetch()}
-                  className="h-10 text-sm border-[rgba(215,178,110,0.3)] hover:bg-[rgba(215,178,110,0.1)] hover:text-[var(--color-accent-light)]"
+                  className="h-10 text-sm border-[rgba(215,178,110,0.3)] hover:bg-[rgba(215,178,110,0.1)] hover:text-(--color-accent-light)"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   最新状況
@@ -394,7 +394,7 @@ export function ResultDialog() {
                   variant="ghost" 
                   fullWidth 
                   onClick={() => router.push("/")}
-                  className="h-10 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[rgba(255,255,255,0.05)]"
+                  className="h-10 text-sm text-(--color-text-muted) hover:text-(--color-text) hover:bg-[rgba(255,255,255,0.05)]"
                 >
                   ホームへ
                 </Button>
