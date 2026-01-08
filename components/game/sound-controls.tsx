@@ -56,7 +56,6 @@ export function SoundControls() {
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
                   className="h-8 w-8 p-0 text-[var(--color-accent-light)] hover:bg-[rgba(255,255,255,0.1)]"
                   onClick={toggleMute}
                   aria-pressed={muted}
