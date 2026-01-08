@@ -1,6 +1,6 @@
 'use client';
 
-import { Volume2, VolumeX, Settings, Music, Check } from "lucide-react";
+import { Volume2, VolumeX, Settings, Check } from "lucide-react";
 import { useState } from "react";
 
 import { useGameContext } from "@/components/game/game-provider";
@@ -12,16 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 
 export function SoundControls() {
   const { 
