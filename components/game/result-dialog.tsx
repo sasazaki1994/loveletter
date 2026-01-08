@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { Crown, RefreshCw } from "lucide-react";
+import { Crown, RefreshCw, Play, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useGameContext } from "@/components/game/game-provider";
@@ -17,6 +17,27 @@ export function ResultDialog() {
   const [dismissedResultId, setDismissedResultId] = useState<string | null>(null);
   const [scheduledId, setScheduledId] = useState<string | null>(null);
   const [firstSeenAt, setFirstSeenAt] = useState<number | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+
+  const handleStartNewGame = async () => {
+    if (!state?.roomId) return;
+    setIsStarting(true);
+    try {
+      const res = await fetch("/api/room/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: state.roomId }),
+      });
+      if (!res.ok) throw new Error("Failed to start game");
+      // 成功すればSSEで状態更新が来てダイアログが閉じるはず
+      // 明示的に閉じておく
+      setOpen(false);
+    } catch (error) {
+      console.error("Failed to start new game:", error);
+    } finally {
+      setIsStarting(false);
+    }
+  };
 
   useEffect(() => {
     if (!state?.result) {
@@ -344,20 +365,32 @@ export function ResultDialog() {
             <div className="grid gap-3 pt-2">
               <Button 
                 fullWidth 
-                onClick={() => refetch()}
-                className="h-11 text-base shadow-[0_0_20px_rgba(215,178,110,0.25)]"
+                onClick={handleStartNewGame}
+                disabled={isStarting}
+                className="h-12 text-lg font-bold shadow-[0_0_25px_rgba(215,178,110,0.3)] bg-gradient-to-r from-[var(--color-accent)] to-[#b08d55] text-[#0f2d2a] hover:brightness-110 border-0"
               >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                最新状況を確認
+                {isStarting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5 fill-current" />}
+                次のゲームを始める
               </Button>
-              <Button 
-                variant="ghost" 
-                fullWidth 
-                onClick={() => router.push("/")}
-                className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-              >
-                ホームに戻る
-              </Button>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  fullWidth 
+                  onClick={() => refetch()}
+                  className="h-10 text-sm border-[rgba(215,178,110,0.3)] hover:bg-[rgba(215,178,110,0.1)] hover:text-[var(--color-accent-light)]"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  最新状況
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  fullWidth 
+                  onClick={() => router.push("/")}
+                  className="h-10 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[rgba(255,255,255,0.05)]"
+                >
+                  ホームへ
+                </Button>
+              </div>
             </div>
           </div>
         </div>
