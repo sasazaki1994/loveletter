@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Crimson_Text, Work_Sans } from "next/font/google";
 
 import "./globals.css";
@@ -27,6 +28,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+
   return (
     <html lang="ja" suppressHydrationWarning>
       <body
@@ -35,6 +38,15 @@ export default function RootLayout({
         <div className="min-h-screen bg-app-pattern text-[var(--color-text)]">
           {children}
         </div>
+        {adsenseClient ? (
+          <Script
+            id="adsbygoogle-init"
+            strategy="afterInteractive"
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
+            crossOrigin="anonymous"
+          />
+        ) : null}
       </body>
     </html>
   );
