@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { CardSymbol } from "@/components/icons/card-symbol";
 
+import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
+
 type DockPosition = "left" | "bottom";
 
 const EXCLUDED_FROM_REFERENCE = ['feint', 'insight', 'standoff', 'wager', 'ambush', 'marquise'];
@@ -264,15 +266,7 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="h-7 w-full justify-start px-2 text-xs"
-                    onClick={() => setGameInfoVisible((prev) => !prev)}
-                    aria-expanded={gameInfoVisible}
-                  >
-                    <BookOpen className="mr-2 h-3.5 w-3.5" />
-                    {gameInfoVisible ? "ガイドを閉じる" : "プレイガイド"}
-                  </Button>
+                  <CardReferenceDialog variant="full" />
                 </div>
               </>
             ) : (
@@ -341,15 +335,7 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="h-8 px-3 text-xs"
-                    onClick={() => setGameInfoVisible((prev) => !prev)}
-                    aria-expanded={gameInfoVisible}
-                  >
-                    <BookOpen className="mr-2 h-3.5 w-3.5" />
-                    {gameInfoVisible ? "ガイドを閉じる" : "プレイガイド"}
-                  </Button>
+                  <CardReferenceDialog variant="full" className="h-8 px-3 text-xs w-auto" />
                 </div>
               </>
             )}
