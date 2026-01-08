@@ -74,9 +74,15 @@ export function GameBoard() {
     if (prevRoundRef.current !== null && state.round !== prevRoundRef.current) {
        setCutinText(`ROUND ${state.round}`);
        setShowTurnCutin(true);
-       // ラウンド開始表示後に自分のターン表示が被らないように少し遅延させるなどの制御が必要かも
-       // ただし、ラウンド開始直後は必ず「スタートプレイヤーのターン」になる。
-       // スタートプレイヤーが自分だった場合、"ROUND X" -> "YOUR TURN" と連続する可能性がある。
+       
+       // ラウンド開始直後、かつ自分のターンの場合は、少し遅延させてYOUR TURNを表示
+       if (isMyTurn) {
+         const timer = setTimeout(() => {
+           setCutinText("YOUR TURN");
+           setShowTurnCutin(true);
+         }, 2500);
+         return () => clearTimeout(timer);
+       }
     } else if (isMyTurn && !prevTurnRef.current) {
       // ラウンド開始直後でない場合、またはラウンド開始演出が終わった後
       setCutinText("YOUR TURN");
