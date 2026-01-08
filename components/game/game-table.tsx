@@ -8,6 +8,7 @@ import { CardSymbol } from "@/components/icons/card-symbol";
 import { CardArt } from "@/components/game/card-art";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CARD_DEFINITIONS, ORDERED_CARD_IDS } from "@/lib/game/cards";
 import type { CardId } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,23 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
             </div>
             <p className="text-xs text-[var(--color-text-muted)]">残り {drawPileCount} 枚</p>
           </div>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="absolute left-1/2 top-1/2 flex -translate-x-[240%] -translate-y-1/2 flex-col items-center gap-2 opacity-80 hover:opacity-100 transition-opacity cursor-help">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-muted)] opacity-60">Burn</span>
+                  <div className="relative h-[8rem] w-[5.4rem] rounded-[14px] border border-[rgba(215,178,110,0.15)] bg-[rgba(8,20,18,0.7)] shadow-inner flex items-center justify-center">
+                    <div className="absolute inset-1.5 rounded-[10px] border border-dashed border-[rgba(215,178,110,0.1)]" />
+                    <CardSymbol icon="mask" size={24} className="text-[rgba(215,178,110,0.15)]" />
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="border-[rgba(215,178,110,0.2)] bg-[rgba(10,24,22,0.95)] text-xs text-[var(--color-text)]">
+                <p>ゲーム開始時にランダムに除外された1枚（非公開）</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <div className="absolute left-1/2 top-1/2 flex -translate-y-1/2 translate-x-[20%] flex-col items-center gap-2">
             <Popover open={open} onOpenChange={setOpen}>
