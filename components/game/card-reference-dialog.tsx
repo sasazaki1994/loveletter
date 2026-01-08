@@ -83,8 +83,7 @@ export function CardReferenceDialog() {
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="h-9 w-9 rounded-full border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.7)] text-[var(--color-accent-light)] shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:bg-[rgba(20,45,40,0.8)]"
+          className="h-9 w-9 rounded-full border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.7)] p-0 text-[var(--color-accent-light)] shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:bg-[rgba(20,45,40,0.8)]"
           aria-label="カード一覧"
         >
           <BookOpen className="h-4 w-4" />
