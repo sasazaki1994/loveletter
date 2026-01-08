@@ -26,10 +26,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "そのユーザー名は既に使用されています。" }, { status: 409 });
     }
 
-    const [user] = await db
+    await db
       .insert(users)
-      .values({ username, passwordHash: await hashPassword(parsed.password) })
-      .returning({ id: users.id, username: users.username });
+      .values({ username, passwordHash: await hashPassword(parsed.password) });
+    
+    const [user] = await db.select({ id: users.id, username: users.username }).from(users).where(eq(users.username, username));
 
     const { sessionToken } = await createUserSession(user.id);
     const res = NextResponse.json({ user }, { status: 200, headers: { "Cache-Control": "no-store" } });

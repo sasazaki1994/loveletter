@@ -117,13 +117,20 @@ export async function createRoomWithBot(
 ) {
   return db.transaction(async (tx) => {
     const shortId = await generateUniqueShortId(tx);
-    const [room] = await tx
+    // Workaround for pg-mem/drizzle returning issue: perform separate insert and select
+    await tx
       .insert(rooms)
-      .values({ shortId })
-      .returning();
+      .values({ shortId });
+    
+    const [room] = await tx.select().from(rooms).where(eq(rooms.shortId, shortId));
+
+    console.log('DEBUG: room keys:', Object.keys(room || {}));
+    console.log('DEBUG: room id:', room?.id);
+    console.log('DEBUG: room shortId:', room?.shortId);
+    console.log('DEBUG: room result:', JSON.stringify(room));
 
     const hostAvatar = randomAvatarSeed();
-    const [host] = await tx
+    await tx
       .insert(players)
       .values({
         roomId: room.id,
@@ -131,8 +138,9 @@ export async function createRoomWithBot(
         seat: 0,
         role: "player",
         avatarSeed: hostAvatar,
-      })
-      .returning();
+      });
+    
+    const [host] = await tx.select().from(players).where(and(eq(players.roomId, room.id), eq(players.seat, 0)));
 
     const shuffledBotNames = [...BOT_NAMES].sort(() => Math.random() - 0.5);
     const botValues = Array.from({ length: 3 }, (_, index) => ({
@@ -144,7 +152,9 @@ export async function createRoomWithBot(
       avatarSeed: randomAvatarSeed(),
     }));
 
-    const botRows = await tx.insert(players).values(botValues).returning();
+    await tx.insert(players).values(botValues);
+    
+    const botRows = await tx.select().from(players).where(and(eq(players.roomId, room.id), eq(players.isBot, true))).orderBy(players.seat);
 
     const variantConfig: VariantConfig = buildVariantConfigFromIds(variantIds ?? []);
     const setup = await setupNewGame(
@@ -173,17 +183,18 @@ export async function createRoomWithBot(
 export async function createHumanRoom(nickname: string, userId?: string | null) {
   return db.transaction(async (tx) => {
     const shortId = await generateUniqueShortId(tx);
-    const [room] = await tx
+    await tx
       .insert(rooms)
-      .values({ status: "waiting", shortId })
-      .returning();
+      .values({ status: "waiting", shortId });
+    
+    const [room] = await tx.select().from(rooms).where(eq(rooms.shortId, shortId));
 
     const avatarSeed = randomAvatarSeed();
     const isAccountMode = Boolean(userId);
     const token = isAccountMode ? null : generateOpaqueToken(32);
     const tokenHash = isAccountMode || !token ? null : hashToken(token);
 
-    const [host] = await tx
+    await tx
       .insert(players)
       .values({
         roomId: room.id,
@@ -194,8 +205,9 @@ export async function createHumanRoom(nickname: string, userId?: string | null) 
         isBot: false,
         avatarSeed,
         authTokenHash: tokenHash ?? null,
-      })
-      .returning();
+      });
+    
+    const [host] = await tx.select().from(players).where(and(eq(players.roomId, room.id), eq(players.seat, 0)));
 
     // ルーム作成者をホストとして固定（seat 依存をやめる）
     await tx
@@ -268,7 +280,7 @@ export async function joinRoomAsPlayer(roomId: string, nickname: string, userId?
         const token = isAccountMode ? null : generateOpaqueToken(32);
         const tokenHash = isAccountMode || !token ? null : hashToken(token);
 
-        const [player] = await tx
+        await tx
           .insert(players)
           .values({
             roomId: room.id,
@@ -279,8 +291,8 @@ export async function joinRoomAsPlayer(roomId: string, nickname: string, userId?
             isBot: false,
             avatarSeed,
             authTokenHash: tokenHash ?? null,
-          })
-          .returning();
+          });
+        const [player] = await tx.select().from(players).where(and(eq(players.roomId, room.id), eq(players.seat, seat)));
 
         return {
           roomId: room.id,
@@ -962,7 +974,7 @@ async function setupNewGame(
     handsToInsert.push({ playerId: player.id, cards: [drawResult.card] });
   }
 
-  const [game] = await tx
+  await tx
     .insert(games)
     .values({
       roomId,
@@ -972,8 +984,8 @@ async function setupNewGame(
       discardPile: [],
       revealedSetupCards: revealed,
       activePlayerId: playerRows[0]?.id,
-    })
-    .returning();
+    });
+  const [game] = await tx.select().from(games).where(eq(games.roomId, roomId));
 
   await tx.insert(hands).values(
     handsToInsert.map((h) => ({

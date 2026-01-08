@@ -89,6 +89,8 @@ export async function GET(request: NextRequest) {
             const etag: string = result.etag;
             const lastUpdated: string | null = result.lastUpdated;
 
+            console.log(`[SSE Debug] sendState: roomId=${parsed.roomId}, playerId=${effectivePlayerId}, hasState=${!!state}, etag=${etag}`);
+
             // 状態が変更された場合のみ送信
             if (lastEtag !== etag) {
               lastEtag = etag;

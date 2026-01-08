@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS "players" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "rooms" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"short_id" text NOT NULL UNIQUE,
 	"status" "room_status" DEFAULT 'waiting' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
