@@ -78,9 +78,17 @@ interface CardEffectLayerProps {
   tableSize: { width: number; height: number };
   getSeatPosition: (seat: number) => SeatPosition;
   onEventComplete: (eventId: string) => void;
+  /** 表示時間スケール（Tempo設定などで短縮/延長） */
+  durationScale?: number;
 }
 
-export function CardEffectLayer({ events, tableSize, getSeatPosition, onEventComplete }: CardEffectLayerProps) {
+export function CardEffectLayer({
+  events,
+  tableSize,
+  getSeatPosition,
+  onEventComplete,
+  durationScale,
+}: CardEffectLayerProps) {
   const cappedEvents = events.length > 5 ? events.slice(-5) : events;
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
@@ -92,6 +100,7 @@ export function CardEffectLayer({ events, tableSize, getSeatPosition, onEventCom
             tableSize={tableSize}
             getSeatPosition={getSeatPosition}
             onEventComplete={onEventComplete}
+            durationScale={durationScale}
           />
         ))}
       </AnimatePresence>
@@ -104,9 +113,10 @@ interface EffectItemProps {
   tableSize: { width: number; height: number };
   getSeatPosition: (seat: number) => SeatPosition;
   onEventComplete: (eventId: string) => void;
+  durationScale?: number;
 }
 
-function EffectItem({ event, tableSize, getSeatPosition, onEventComplete }: EffectItemProps) {
+function EffectItem({ event, tableSize, getSeatPosition, onEventComplete, durationScale }: EffectItemProps) {
   const prefersReducedMotion = useReducedMotion();
   // エフェクトが結果を持っているかどうかを判定
   const hasResult = useMemo(() => {
@@ -125,12 +135,13 @@ function EffectItem({ event, tableSize, getSeatPosition, onEventComplete }: Effe
   }, [event.effectType, event.metadata, event.eliminatedSeats]);
 
   useEffect(() => {
+    const scale = Math.min(1.25, Math.max(0.35, durationScale ?? 1));
     const duration = Math.round(
-      getDisplayDuration(event.effectType, hasResult) * (prefersReducedMotion ? 0.6 : 1),
+      getDisplayDuration(event.effectType, hasResult) * scale * (prefersReducedMotion ? 0.6 : 1),
     );
     const timer = window.setTimeout(() => onEventComplete(event.id), duration);
     return () => window.clearTimeout(timer);
-  }, [event.id, event.effectType, hasResult, onEventComplete, prefersReducedMotion]);
+  }, [durationScale, event.id, event.effectType, hasResult, onEventComplete, prefersReducedMotion]);
 
   const actorPos = useMemo(() => resolveSeatPosition(event.actorSeat, getSeatPosition), [event.actorSeat, getSeatPosition]);
   const targetPos = useMemo(() => resolveSeatPosition(event.targetSeat, getSeatPosition), [event.targetSeat, getSeatPosition]);

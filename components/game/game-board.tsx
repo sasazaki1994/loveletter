@@ -43,18 +43,21 @@ export function GameBoard() {
     roomId,
     shortId,
     state,
+    optimisticHand,
     selectedCard,
     setSelectedCard,
     selectedTarget,
     setSelectedTarget,
     isMyTurn,
     selfId,
+    effectScale,
     playCard,
     cancelSelection,
     requiresTarget,
     targetOptions,
     error,
     refetch,
+    reconnect,
     loading,
   } = useGameContext();
 
@@ -78,7 +81,10 @@ export function GameBoard() {
   const [showHandReveal, setShowHandReveal] = useState(false);
   const [handRevealComplete, setHandRevealComplete] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
-  const hand = useMemo(() => state?.hand ?? state?.self?.hand ?? [], [state?.hand, state?.self?.hand]);
+  const hand = useMemo(
+    () => optimisticHand ?? state?.hand ?? state?.self?.hand ?? [],
+    [optimisticHand, state?.hand, state?.self?.hand],
+  );
   const orderedPlayers = useMemo(() => {
     if (!state) return [];
     return state.players.slice().sort((a, b) => a.seat - b.seat);
@@ -439,49 +445,52 @@ export function GameBoard() {
 
               (async () => {
                 const preset = CARD_FX_PRESETS[playedCardId as keyof typeof CARD_FX_PRESETS];
+                const durationScale = Math.min(1, Math.max(0.45, effectScale || 1));
+                const scaleMs = (ms: number) => Math.max(0, Math.round(ms * durationScale));
+                const scaleCount = (count: number) => Math.max(1, Math.round(count * durationScale));
                 switch (resolvedEffectType) {
                   case "guess_eliminate": {
-                    await fx.triggerHitstop({ holdMs: preset?.hitstop?.holdMs ?? 90, flash: preset?.hitstop?.flash ?? true });
-                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 14, durationMs: 180 });
-                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 22, hue: preset?.particles?.hue ?? 45, origin: targetPt });
+                    await fx.triggerHitstop({ holdMs: scaleMs(preset?.hitstop?.holdMs ?? 90), flash: preset?.hitstop?.flash ?? true });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 14, durationMs: scaleMs(180) });
+                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: scaleCount(preset?.particles?.count ?? 22), hue: preset?.particles?.hue ?? 45, origin: targetPt });
                     break;
                   }
                   case "peek": {
-                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 6, durationMs: 140 });
-                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 14, hue: preset?.particles?.hue ?? 190, origin: targetPt });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 6, durationMs: scaleMs(140) });
+                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: scaleCount(preset?.particles?.count ?? 14), hue: preset?.particles?.hue ?? 190, origin: targetPt });
                     break;
                   }
                   case "compare": {
-                    await fx.triggerHitstop({ holdMs: preset?.hitstop?.holdMs ?? 80, flash: preset?.hitstop?.flash ?? true });
-                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 12, durationMs: 180 });
-                    if (midpoint) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 24, hue: preset?.particles?.hue ?? 35, origin: midpoint });
+                    await fx.triggerHitstop({ holdMs: scaleMs(preset?.hitstop?.holdMs ?? 80), flash: preset?.hitstop?.flash ?? true });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 12, durationMs: scaleMs(180) });
+                    if (midpoint) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: scaleCount(preset?.particles?.count ?? 24), hue: preset?.particles?.hue ?? 35, origin: midpoint });
                     break;
                   }
                   case "shield": {
-                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 8, durationMs: 160 });
-                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "dust", count: preset?.particles?.count ?? 18, hue: preset?.particles?.hue ?? 160, origin: actorPt });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 8, durationMs: scaleMs(160) });
+                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "dust", count: scaleCount(preset?.particles?.count ?? 18), hue: preset?.particles?.hue ?? 160, origin: actorPt });
                     break;
                   }
                   case "force_discard": {
-                    await fx.triggerHitstop({ holdMs: preset?.hitstop?.holdMs ?? 90, flash: preset?.hitstop?.flash ?? false });
-                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 12, durationMs: 180 });
-                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 20, hue: preset?.particles?.hue ?? 25, origin: targetPt });
+                    await fx.triggerHitstop({ holdMs: scaleMs(preset?.hitstop?.holdMs ?? 90), flash: preset?.hitstop?.flash ?? false });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 12, durationMs: scaleMs(180) });
+                    if (targetPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: scaleCount(preset?.particles?.count ?? 20), hue: preset?.particles?.hue ?? 25, origin: targetPt });
                     break;
                   }
                   case "swap_hands": {
-                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 10, durationMs: 180 });
-                    if (midpoint) fx.emitParticles({ kind: preset?.particles?.kind ?? "confetti", count: preset?.particles?.count ?? 26, hue: preset?.particles?.hue ?? 45, origin: midpoint });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 10, durationMs: scaleMs(180) });
+                    if (midpoint) fx.emitParticles({ kind: preset?.particles?.kind ?? "confetti", count: scaleCount(preset?.particles?.count ?? 26), hue: preset?.particles?.hue ?? 45, origin: midpoint });
                     break;
                   }
                   case "conditional_discard": {
-                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 6, durationMs: 140 });
-                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "dust", count: preset?.particles?.count ?? 14, hue: preset?.particles?.hue ?? 280, origin: actorPt });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 6, durationMs: scaleMs(140) });
+                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "dust", count: scaleCount(preset?.particles?.count ?? 14), hue: preset?.particles?.hue ?? 280, origin: actorPt });
                     break;
                   }
                   case "self_eliminate": {
-                    await fx.triggerHitstop({ holdMs: preset?.hitstop?.holdMs ?? 110, flash: preset?.hitstop?.flash ?? true });
-                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 16, durationMs: 200 });
-                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: preset?.particles?.count ?? 28, hue: preset?.particles?.hue ?? 5, origin: actorPt });
+                    await fx.triggerHitstop({ holdMs: scaleMs(preset?.hitstop?.holdMs ?? 110), flash: preset?.hitstop?.flash ?? true });
+                    void fx.triggerScreenShake({ intensity: preset?.shake?.intensity ?? 16, durationMs: scaleMs(200) });
+                    if (actorPt) fx.emitParticles({ kind: preset?.particles?.kind ?? "spark", count: scaleCount(preset?.particles?.count ?? 28), hue: preset?.particles?.hue ?? 5, origin: actorPt });
                     break;
                   }
                   default:
@@ -495,7 +504,7 @@ export function GameBoard() {
     }
 
     prevStateRef.current = state;
-  }, [fx, generateEventId, getSeatPosition, pushEffectEvent, resolveEffectType, state]);
+  }, [effectScale, fx, generateEventId, getSeatPosition, pushEffectEvent, resolveEffectType, state]);
 
   // deck_exhausted時の手札公開を検出
   useEffect(() => {
@@ -606,7 +615,7 @@ export function GameBoard() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        refetch().catch(() => {});
+                        reconnect().catch(() => {});
                       }}
                       disabled={loading}
                       className="h-7 text-xs"
@@ -657,6 +666,7 @@ export function GameBoard() {
                   events={effectEvents}
                   tableSize={tableSize}
                   getSeatPosition={getSeatPosition}
+                  durationScale={effectScale}
                   onEventComplete={handleEventComplete}
                 />
                 {showHandReveal && state?.result?.finalHands && (

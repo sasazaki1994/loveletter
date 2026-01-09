@@ -58,6 +58,7 @@ interface GameContextValue {
   effectScale: number;
   botTurnDelayMs: number;
   turnCutinMs: number;
+  optimisticHand: CardId[] | null;
   selectedCard: CardId | null;
   setSelectedCard: React.Dispatch<React.SetStateAction<CardId | null>>;
   selectedTarget: PlayerId | null;
@@ -69,6 +70,7 @@ interface GameContextValue {
   acting: boolean;
   isMyTurn: boolean;
   refetch: () => Promise<void>;
+  reconnect: () => Promise<void>;
   selfId?: string;
   playSound: (key: SoundKey) => void;
   muted: boolean;
@@ -88,7 +90,7 @@ const GameContext = createContext<GameContextValue | undefined>(undefined);
 const ACTION_TIMEOUT_MS = 6500;
 
 export function GameProvider({ roomId, playerId, children }: GameProviderProps) {
-  const { state, loading, error, refetch, lastUpdated } = useGameStream({
+  const { state, loading, error, refetch, reconnect, lastUpdated } = useGameStream({
     roomId,
     playerId,
   });
@@ -101,6 +103,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const clearActionError = useCallback(() => setActionError(null), []);
+  const [optimisticHand, setOptimisticHand] = useState<CardId[] | null>(null);
 
   const prevStateRef = useRef<ClientGameState | null>(null);
 
@@ -294,6 +297,16 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     }, ACTION_TIMEOUT_MS);
 
     try {
+      // Optimistic UI: 手札から選択カードを即時で取り除く（表示のみ）
+      const idx = currentHand.findIndex((c) => c === selectedCard);
+      if (idx >= 0) {
+        const next = currentHand.slice();
+        next.splice(idx, 1);
+        setOptimisticHand(next);
+      } else {
+        setOptimisticHand(null);
+      }
+
       setActing(true);
       setActionError(null);
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -331,6 +344,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       playSound("card_place");
       cancelSelection();
       await refetch();
+      setOptimisticHand(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "アクションに失敗しました";
       const isAbortError = error instanceof DOMException && error.name === "AbortError";
@@ -339,6 +353,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       } else {
         setActionError(message);
       }
+      setOptimisticHand(null);
       if (!isAbortError) {
         console.error(error);
       }
@@ -388,6 +403,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       effectScale,
       botTurnDelayMs,
       turnCutinMs,
+      optimisticHand,
       selectedCard,
       setSelectedCard,
       selectedTarget,
@@ -399,6 +415,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       acting,
       isMyTurn,
       refetch,
+      reconnect,
       selfId,
       playSound,
       muted,
@@ -426,6 +443,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       playCard,
       playSound,
       refetch,
+      reconnect,
       selectedCard,
       selectedTarget,
       selfId,
@@ -445,6 +463,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       effectScale,
       botTurnDelayMs,
       turnCutinMs,
+      optimisticHand,
     ],
   );
 

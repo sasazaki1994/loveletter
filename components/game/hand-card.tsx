@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 import { CardSymbol } from "@/components/icons/card-symbol";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
@@ -20,6 +20,7 @@ interface HandCardProps {
 export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: HandCardProps) {
   const definition = CARD_DEFINITIONS[cardId];
   const { play } = useSoundEffects(0.4);
+  const prefersReducedMotion = useReducedMotion();
   if (!definition) return null;
 
   return (
@@ -33,17 +34,13 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
         hover: {
           scale: 1.12,
           rotate: 0.6,
-          boxShadow: [
-            "0 18px 50px rgba(0,0,0,0.45)",
-            "0 0 25px rgba(215, 178, 110, 0.5)",
-            "0 0 15px rgba(215, 178, 110, 0.3)",
-            "0 0 25px rgba(215, 178, 110, 0.5)"
-          ],
+          boxShadow:
+            "0 18px 50px rgba(0,0,0,0.5), 0 0 22px rgba(215, 178, 110, 0.35)",
           transition: {
-            scale: { duration: 0.2, ease: "easeOut" },
-            rotate: { duration: 0.2, ease: "easeOut" },
-            boxShadow: { duration: 2.5, repeat: Infinity, ease: "easeInOut" }
-          }
+            scale: { duration: 0.18, ease: "easeOut" },
+            rotate: { duration: 0.18, ease: "easeOut" },
+            boxShadow: { duration: 0.18, ease: "easeOut" },
+          },
         }
       }}
       type="button"
@@ -54,8 +51,8 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
         disabled && "opacity-60 grayscale",
       )}
       style={{ willChange: "transform, box-shadow" }}
-			whileHover={disabled ? undefined : "hover"}
-      whileTap={disabled ? undefined : { scale: 0.98 }}
+			whileHover={disabled || prefersReducedMotion ? undefined : "hover"}
+      whileTap={disabled ? undefined : { scale: 0.985 }}
       onClick={disabled ? undefined : onSelect}
 			onHoverStart={disabled ? undefined : () => play("card_draw", { volume: 0.3, interrupt: true })}
 			onFocus={disabled ? undefined : () => play("card_draw", { volume: 0.25, interrupt: true })}

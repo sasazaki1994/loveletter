@@ -306,7 +306,7 @@ export async function joinRoomAsPlayer(roomId: string, nickname: string, userId?
 }
 
 export async function startHumanGame(roomId: string, hostId: string) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const roomRows = await tx.select().from(rooms).where(eq(rooms.id, roomId)).for("update");
     const room = roomRows[0];
     if (!room) throw new Error("ルームが見つかりません");
@@ -348,6 +348,11 @@ export async function startHumanGame(roomId: string, hostId: string) {
 
     return { gameId: setup.game.id } as const;
   });
+
+  // SSE購読者へ即時通知（waiting→active の体感ラグを短縮）
+  invalidateStateCache(roomId);
+
+  return result;
 }
 
 

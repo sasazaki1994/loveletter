@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
 import { Layers } from "lucide-react";
 
@@ -21,6 +21,7 @@ interface GameTableProps {
 export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: GameTableProps) {
   const topDiscard = discardPile[discardPile.length - 1];
   const [open, setOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   const cardDefinition = topDiscard ? CARD_DEFINITIONS[topDiscard] : undefined;
   const discardKey = cardDefinition ? `${cardDefinition.id}-${discardPile.length}` : "empty";
@@ -55,8 +56,8 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
               <motion.div
                 className="relative h-full w-full rounded-[18px] border border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.95)] shadow-[0_12px_30px_rgba(0,0,0,0.35)] flex items-center justify-center overflow-hidden"
                 style={{ willChange: "transform" }}
-                animate={{ rotate: [0, -1.5, 1.5, 0] }}
-                transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
+                animate={prefersReducedMotion ? { rotate: 0 } : { rotate: [0, -1.5, 1.5, 0] }}
+                transition={prefersReducedMotion ? undefined : { repeat: Infinity, duration: 8, ease: "easeInOut" }}
               >
                 <div className="absolute inset-2 rounded-[12px] border border-dashed border-[rgba(215,178,110,0.15)]" />
                 <div className="text-[rgba(215,178,110,0.1)]">
