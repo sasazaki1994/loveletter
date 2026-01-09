@@ -83,6 +83,7 @@ interface GameContextValue {
   noAvailableTargets: boolean;
   actionError: string | null;
   clearActionError: () => void;
+  clearError: () => void;
 }
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
@@ -90,7 +91,7 @@ const GameContext = createContext<GameContextValue | undefined>(undefined);
 const ACTION_TIMEOUT_MS = 6500;
 
 export function GameProvider({ roomId, playerId, children }: GameProviderProps) {
-  const { state, loading, error, refetch, reconnect, lastUpdated } = useGameStream({
+  const { state, loading, error, refetch, reconnect, lastUpdated, clearError } = useGameStream({
     roomId,
     playerId,
   });
@@ -428,6 +429,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       noAvailableTargets,
       actionError,
       clearActionError,
+      clearError,
     }),
     [
       roomId,
@@ -457,6 +459,7 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       noAvailableTargets,
       actionError,
       clearActionError,
+      clearError,
       tempo,
       setTempo,
       toggleTempo,

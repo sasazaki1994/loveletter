@@ -16,6 +16,7 @@ interface UseGameStreamResult {
   refetch: () => Promise<void>;
   reconnect: () => Promise<void>;
   lastUpdated: string | null;
+  clearError: () => void;
 }
 
 const MAX_RETRIES = 5;
@@ -328,9 +329,13 @@ export function useGameStream({
     }
   }, [connect, fetchOnce]);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   return useMemo(
-    () => ({ state, loading, error, refetch, reconnect, lastUpdated }),
-    [state, loading, error, refetch, reconnect, lastUpdated],
+    () => ({ state, loading, error, refetch, reconnect, lastUpdated, clearError }),
+    [state, loading, error, refetch, reconnect, lastUpdated, clearError],
   );
 }
 

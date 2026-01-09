@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { GameBoard } from "@/components/game/game-board";
 import { GameEffectsProvider } from "@/components/game/game-effects-provider";
 import { GameProvider } from "@/components/game/game-provider";
+import { StatusIndicator } from "@/components/game/status-indicator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePlayerSession } from "@/lib/client/session";
@@ -113,6 +114,7 @@ export function GameClient({ roomId }: GameClientProps) {
           </div>
         )}
         <GameBoard />
+        <StatusIndicator />
       </GameEffectsProvider>
     </GameProvider>
   );

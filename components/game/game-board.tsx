@@ -21,10 +21,13 @@ import { TurnCutin } from "@/components/game/turn-cutin";
 import { Button } from "@/components/ui/button";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
+import { SoundControls } from "@/components/game/sound-controls";
+import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { ErrorAlert } from "@/components/game/error-alert";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
-import { AlertCircle, Loader2, RefreshCw, Users, X } from "lucide-react";
+import { X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
@@ -59,18 +62,41 @@ export function GameBoard() {
     refetch,
     reconnect,
     loading,
+    clearError,
   } = useGameContext();
 
   // ターン開始検出用
   const [showTurnCutin, setShowTurnCutin] = useState(false);
+  const [cutinText, setCutinText] = useState("YOUR TURN");
   const prevTurnRef = useRef<boolean>(false);
+  const prevRoundRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (isMyTurn && !prevTurnRef.current) {
+    if (!state) return;
+    
+    // ラウンド開始検出
+    // 初回ロード時(prevRoundRef.current === null)は表示しない
+    if (prevRoundRef.current !== null && state.round !== prevRoundRef.current) {
+       setCutinText(`ROUND ${state.round}`);
+       setShowTurnCutin(true);
+       
+       // ラウンド開始直後、かつ自分のターンの場合は、少し遅延させてYOUR TURNを表示
+       if (isMyTurn) {
+         const timer = setTimeout(() => {
+           setCutinText("YOUR TURN");
+           setShowTurnCutin(true);
+         }, 2500);
+         return () => clearTimeout(timer);
+       }
+    } else if (isMyTurn && !prevTurnRef.current) {
+      // ラウンド開始直後でない場合、またはラウンド開始演出が終わった後
+      setCutinText("YOUR TURN");
       setShowTurnCutin(true);
     }
+    
     prevTurnRef.current = isMyTurn;
-  }, [isMyTurn]);
+    prevRoundRef.current = state.round;
+  }, [isMyTurn, state]);
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
   const fx = useGameEffects();
@@ -569,7 +595,24 @@ export function GameBoard() {
 
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {
-    return <WaitingRoomPanel roomId={roomId} />;
+    return (
+      <>
+        <AnimatePresence>
+          {error && (
+            <ErrorAlert
+              error={error}
+              loading={loading}
+              onRetry={() => {
+                refetch().catch(() => {});
+              }}
+              onReload={() => window.location.reload()}
+              onDismiss={clearError}
+            />
+          )}
+        </AnimatePresence>
+        <WaitingRoomPanel roomId={roomId} />
+      </>
+    );
   }
 
   const rootClasses = cn(
@@ -584,65 +627,39 @@ export function GameBoard() {
 
   return (
       <div className={rootClasses}>
-        <TurnCutin show={showTurnCutin} />
+        <TurnCutin show={showTurnCutin} text={cutinText} />
         <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
         <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
         <LogPanel />
       </div>
 
       {!isBotGame && (
-        <div className="pointer-events-auto fixed left-3 top-4 z-30 sm:left-6 sm:top-6 lg:left-10">
+        <div className="pointer-events-auto fixed left-3 top-4 z-30 flex items-center gap-3 sm:left-6 sm:top-6 lg:left-10">
           <RoomIdDisplay roomId={shortId ?? roomId} variant="compact" />
+          <div className="flex gap-1.5">
+            <SoundControls />
+            <CardReferenceDialog />
+          </div>
+        </div>
+      )}
+      {isBotGame && (
+        <div className="pointer-events-auto fixed left-3 top-4 z-30 flex gap-1.5 sm:left-6 sm:top-6 lg:left-10">
+           <SoundControls />
+           <CardReferenceDialog />
         </div>
       )}
 
       <AnimatePresence>
         {error && (
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            className="pointer-events-auto fixed left-1/2 top-4 z-40 w-full max-w-md -translate-x-1/2"
-            role="alert"
-            aria-live="assertive"
-          >
-            <div className="mx-4 flex items-start gap-3 rounded-xl border border-[rgba(215,120,110,0.4)] bg-[rgba(60,20,18,0.85)] px-4 py-3 shadow-lg backdrop-blur-sm">
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-warn-light)]" />
-              <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-[var(--color-warn-light)]">{error}</p>
-                {error.includes("接続が回復") && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        reconnect().catch(() => {});
-                      }}
-                      disabled={loading}
-                      className="h-7 text-xs"
-                    >
-                      <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-                      再試行
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => window.location.reload()}
-                      className="h-7 text-xs"
-                    >
-                      ページを再読み込み
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => {}}
-                className="h-7 w-7 shrink-0 p-0 text-[var(--color-warn-light)] hover:bg-[rgba(215,120,110,0.15)]"
-                aria-label="エラーを閉じる"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </motion.div>
+          <ErrorAlert
+            error={error}
+            loading={loading}
+            onRetry={() => {
+              reconnect().catch(() => {});
+            }}
+            onReload={() => window.location.reload()}
+            onDismiss={clearError}
+          />
         )}
       </AnimatePresence>
 

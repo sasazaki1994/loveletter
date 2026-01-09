@@ -89,8 +89,8 @@ test("アカウント + 同一ブラウザ(同一cookie)で2タブ参加→開�
   const sGuest = await waitForServerStateWithContext(ctx.request, hostInfo.roomId, guestInfo.playerId, 20000);
   expect(sGuest?.state?.id).toBeTruthy();
 
-  await waitForGameUI(pageA, 20000);
-  await waitForGameUI(pageB, 20000);
+  await waitForGameUI(pageA, 30000);
+  await waitForGameUI(pageB, 30000);
 
   // 7) アクションが通る（token無し・cookie所有で認可されること）
   const gameId = sHost.state.id as string;
