@@ -11,35 +11,61 @@ import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { cn } from "@/lib/utils";
 
 export function ResultDialog() {
-  const { state, refetch } = useGameContext();
+  const { state, refetch, selfId } = useGameContext();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [dismissedResultId, setDismissedResultId] = useState<string | null>(null);
   const [scheduledId, setScheduledId] = useState<string | null>(null);
   const [firstSeenAt, setFirstSeenAt] = useState<number | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const handleStartNewGame = async () => {
     if (!state?.roomId) return;
+    if (!selfId) {
+      setStartError("プレイヤーセッションが見つかりません。ロビーから参加し直してください。");
+      return;
+    }
     setIsStarting(true);
+    setStartError(null);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
       
       const res = await fetch("/api/room/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Player-Id": selfId },
         body: JSON.stringify({ roomId: state.roomId }),
         signal: controller.signal,
+        credentials: "include",
       });
       clearTimeout(timeoutId);
       
-      if (!res.ok) throw new Error("Failed to start game");
+      let parsed: unknown = undefined;
+      try {
+        parsed = await res.clone().json();
+      } catch {
+        parsed = undefined;
+      }
+      const payload = (parsed ?? {}) as { error?: string; detail?: string };
+      if (!res.ok) {
+        const msg = payload.error ?? payload.detail ?? `HTTP ${res.status} ${res.statusText}`;
+        throw new Error(msg);
+      }
       // 成功すればSSEで状態更新が来てダイアログが自動的に閉じる
       // ユーザーに成功を通知
       // toast.success("新しいゲームを開始しました");
+      await refetch();
     } catch (error) {
       console.error("Failed to start new game:", error);
+      const isAbortError = error instanceof DOMException && error.name === "AbortError";
+      setStartError(
+        isAbortError
+          ? "開始がタイムアウトしました。通信状況をご確認ください。"
+          : error instanceof Error
+            ? error.message
+            : "ゲームの開始に失敗しました。もう一度お試しください。",
+      );
       // ユーザーにエラーを通知
       // toast.error("ゲームの開始に失敗しました。もう一度お試しください。");
     } finally {
@@ -371,10 +397,15 @@ export function ResultDialog() {
             )}
 
             <div className="grid gap-3 pt-2">
+              {startError && (
+                <div className="rounded-lg border border-[rgba(255,120,120,0.25)] bg-[rgba(90,10,10,0.25)] px-3 py-2 text-sm text-[rgba(255,190,190,0.95)]">
+                  {startError}
+                </div>
+              )}
               <Button 
                 fullWidth 
                 onClick={handleStartNewGame}
-                disabled={isStarting}
+                disabled={isStarting || !selfId}
                 className="h-12 text-lg font-bold shadow-[0_0_25px_rgba(215,178,110,0.3)] bg-gradient-to-r from-(--color-accent) to-[#b08d55] text-[#0f2d2a] hover:brightness-110 border-0"
               >
                 {isStarting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5 fill-current" />}

@@ -45,6 +45,39 @@ type PlayerRole = (typeof playerRoleEnum.enumValues)[number];
 
 type TransactionClient = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
 
+const BASE_CARD_BY_RANK: Record<1 | 2 | 3 | 4 | 5 | 6 | 7, CardId> = {
+  1: "sentinel",
+  2: "oracle",
+  3: "duelist",
+  4: "warder",
+  5: "legate",
+  6: "arbiter",
+  7: "vizier",
+};
+
+function inferVariantConfigFromCards(cards: CardId[]): VariantConfig {
+  const seenByRank = new Map<number, Set<CardId>>();
+  for (const card of cards) {
+    const def = CARD_DEFINITIONS[card];
+    if (!def) continue;
+    const rank = def.rank;
+    if (rank < 1 || rank > 7) continue;
+    const set = seenByRank.get(rank) ?? new Set<CardId>();
+    set.add(card);
+    seenByRank.set(rank, set);
+  }
+
+  const cfg: VariantConfig = {};
+  for (const rank of [1, 2, 3, 4, 5, 6, 7] as const) {
+    const set = seenByRank.get(rank);
+    if (!set) continue;
+    const base = BASE_CARD_BY_RANK[rank];
+    const variant = Array.from(set).find((id) => id !== base);
+    if (variant) cfg[rank] = variant;
+  }
+  return cfg;
+}
+
 export async function cleanupStaleActiveRooms(maxAgeMinutes = 60) {
   const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
 
@@ -310,24 +343,20 @@ export async function startHumanGame(roomId: string, hostId: string) {
     const roomRows = await tx.select().from(rooms).where(eq(rooms.id, roomId)).for("update");
     const room = roomRows[0];
     if (!room) throw new Error("ルームが見つかりません");
-    if (room.status !== "waiting") throw new Error("すでに開始済みです");
 
-    // 既存ゲームの多重作成を防止
-    const existingGames = await tx
-      .select()
-      .from(games)
-      .where(eq(games.roomId, roomId))
-      .for("update");
-    if (existingGames.length > 0) {
-      throw new Error("すでにゲームが存在します");
-    }
+    // ゲーム行をロック（room_id は unique）
+    const existingGames = await tx.select().from(games).where(eq(games.roomId, roomId)).for("update");
+    const existingGame = existingGames[0] ?? null;
 
     const playerRows = await tx
       .select()
       .from(players)
       .where(eq(players.roomId, roomId))
       .for("update");
-    if (playerRows.length < 2) throw new Error("開始には2人以上が必要です");
+    const orderedPlayers = playerRows
+      .filter((p) => p.role === "player")
+      .sort((a, b) => a.seat - b.seat);
+    if (orderedPlayers.length < 2) throw new Error("開始には2人以上が必要です");
 
     const host = playerRows.find((p) => p.id === hostId);
     if (!host) throw new Error("ホストのみ開始できます");
@@ -335,11 +364,67 @@ export async function startHumanGame(roomId: string, hostId: string) {
     const expectedHostId = (room as any).hostPlayerId ?? playerRows.find((p) => p.seat === 0)?.id ?? null;
     if (!expectedHostId || host.id !== expectedHostId) throw new Error("ホストのみ開始できます");
 
-    const ordered = playerRows
-      .filter((p) => p.role === "player")
-      .sort((a, b) => a.seat - b.seat);
+    const isRestart = Boolean(
+      existingGame && (existingGame.phase === "finished" || room.status === "finished"),
+    );
 
-    const setup = await setupNewGame(tx, roomId, ordered);
+    if (room.status === "active" && !isRestart) {
+      throw new Error("ゲーム進行中です");
+    }
+
+    // 初回開始: waiting かつ games が存在しない
+    if (!isRestart) {
+      if (room.status !== "waiting") {
+        throw new Error("すでに開始済みです");
+      }
+      if (existingGames.length > 0) {
+        throw new Error("すでにゲームが存在します");
+      }
+      const setup = await setupNewGame(tx, roomId, orderedPlayers);
+      await tx
+        .update(rooms)
+        .set({ status: "active", updatedAt: new Date() })
+        .where(eq(rooms.id, roomId));
+      return { gameId: setup.game.id } as const;
+    }
+
+    // 次ゲーム開始: 既存ゲームのデータを掃除し、新しいゲームを作成する
+    if (!existingGame) {
+      throw new Error("ゲームが見つかりません");
+    }
+    if (existingGame.phase !== "finished") {
+      throw new Error("ゲームが終了していません");
+    }
+
+    // 次ラウンド番号（クライアント演出/表示用）
+    const nextRound = (existingGame.round ?? 1) + 1;
+
+    // 直前ゲームのデッキ内容からバリアント置換を推定（DBに永続化していないため）
+    const handRows = await tx.select().from(hands).where(eq(hands.gameId, existingGame.id));
+    const deckState = existingGame.deckState as DeckState;
+    const cardBag: CardId[] = [];
+    cardBag.push(...((existingGame.discardPile ?? []) as CardId[]));
+    cardBag.push(...((existingGame.revealedSetupCards ?? []) as CardId[]));
+    cardBag.push(...((deckState?.drawPile ?? []) as CardId[]));
+    if (deckState?.burnCard) cardBag.push(deckState.burnCard as CardId);
+    for (const h of handRows) {
+      cardBag.push(...((h.cards ?? []) as CardId[]));
+    }
+    const inferredVariants = inferVariantConfigFromCards(cardBag);
+
+    // プレイヤー状態をリセット（脱落/守護を解除）
+    await tx
+      .update(players)
+      .set({ isEliminated: false, shield: false, lastActiveAt: new Date() })
+      .where(eq(players.roomId, roomId));
+
+    // 既存ゲームを削除（hands/actions/logs は CASCADE）
+    await tx.delete(games).where(eq(games.id, existingGame.id));
+
+    const resetPlayers = orderedPlayers.map((p) => ({ ...p, isEliminated: false, shield: false }));
+    const setup = await setupNewGame(tx, roomId, resetPlayers, inferredVariants, undefined, {
+      round: nextRound,
+    });
 
     await tx
       .update(rooms)
@@ -931,9 +1016,11 @@ async function setupNewGame(
   playerRows: typeof players.$inferSelect[],
   variants?: VariantConfig,
   overrides?: TestDeckOverrides,
+  options?: { round?: number },
 ) {
   const envOverrides = getTestDeckOverrides() ?? undefined;
   const ov = overrides ?? envOverrides;
+  const round = options?.round ?? 1;
 
   let deck: CardId[];
   if (ov?.fixedDeck && ov.fixedDeck.length > 0) {
@@ -971,6 +1058,7 @@ async function setupNewGame(
     .insert(games)
     .values({
       roomId,
+      round,
       phase: "draw",
       turnIndex: 0,
       deckState: { drawPile: workingDeck, burnCard: burnCard ?? null },
