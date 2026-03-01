@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { useGameEffects } from "@/components/game/game-effects-provider";
 
 import { ActionBar } from "@/components/game/action-bar";
@@ -18,16 +18,12 @@ import { WaitingRoomPanel } from "@/components/game/waiting-room-panel";
 import { useGameContext } from "@/components/game/game-provider";
 import { Badge } from "@/components/ui/badge";
 import { TurnCutin } from "@/components/game/turn-cutin";
-import { Button } from "@/components/ui/button";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
-import { RoomQrShare } from "@/components/ui/room-qr-share";
 import { SoundControls } from "@/components/game/sound-controls";
 import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { ErrorAlert } from "@/components/game/error-alert";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
-import { X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
@@ -125,6 +121,7 @@ export function GameBoard() {
   const [showHandReveal, setShowHandReveal] = useState(false);
   const [handRevealComplete, setHandRevealComplete] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const [useOverlayInfoRail, setUseOverlayInfoRail] = useState(false);
   const hand = useMemo(
     () => optimisticHand ?? state?.hand ?? state?.self?.hand ?? [],
     [optimisticHand, state?.hand, state?.self?.hand],
@@ -147,7 +144,9 @@ export function GameBoard() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const evaluateViewport = () => {
-      setIsCompactViewport(window.innerHeight < 960 || window.innerWidth < 1024);
+      const compact = window.innerHeight < 960 || window.innerWidth < 1024;
+      setIsCompactViewport(compact);
+      setUseOverlayInfoRail(window.innerWidth >= 1280 && !compact);
     };
     evaluateViewport();
     window.addEventListener("resize", evaluateViewport);
@@ -588,7 +587,7 @@ export function GameBoard() {
             activeElement.tagName === "SELECT" ||
             activeElement.isContentEditable),
       );
-      if (isTypingField && event.key !== "Escape" && event.key !== "Enter") {
+      if (isTypingField && event.key !== "Escape") {
         return;
       }
 
@@ -706,18 +705,27 @@ export function GameBoard() {
 
   const contentClasses = cn(
     "mx-auto flex w-full max-w-6xl flex-1 flex-col",
-    isCompactViewport ? "px-4 pt-10 pb-32" : "px-6 pt-14 pb-20",
+    useOverlayInfoRail
+      ? isCompactViewport
+        ? "px-4 pt-10 pb-32"
+        : "px-6 pt-14 pb-20"
+      : isCompactViewport
+        ? "px-4 pt-6 pb-32"
+        : "px-5 pt-8 pb-24",
   );
 
   return (
-      <div className={rootClasses}>
-        <TurnCutin show={showTurnCutin} text={cutinText} />
-        <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
-        <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
-        <LogPanel />
-      </div>
+    <div className={rootClasses}>
+      <TurnCutin show={showTurnCutin} text={cutinText} />
 
-      {!isBotGame && (
+      {useOverlayInfoRail && (
+        <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
+          <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
+          <LogPanel />
+        </div>
+      )}
+
+      {useOverlayInfoRail && !isBotGame && (
         <div className="pointer-events-auto fixed left-3 top-4 z-30 flex items-center gap-3 sm:left-6 sm:top-6 lg:left-10">
           <RoomIdDisplay roomId={shortId ?? roomId} variant="compact" />
           <div className="flex gap-1.5">
@@ -726,10 +734,10 @@ export function GameBoard() {
           </div>
         </div>
       )}
-      {isBotGame && (
+      {useOverlayInfoRail && isBotGame && (
         <div className="pointer-events-auto fixed left-3 top-4 z-30 flex gap-1.5 sm:left-6 sm:top-6 lg:left-10">
-           <SoundControls />
-           <CardReferenceDialog />
+          <SoundControls />
+          <CardReferenceDialog />
         </div>
       )}
 
@@ -751,6 +759,20 @@ export function GameBoard() {
 
       <div className={contentClasses}>
         <div className="flex flex-1 flex-col items-center gap-6">
+          {!useOverlayInfoRail && (
+            <div className="w-full max-w-3xl space-y-3">
+              <div className="flex items-center gap-2 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.78)] px-3 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
+                {!isBotGame && <RoomIdDisplay roomId={shortId ?? roomId} variant="compact" />}
+                <div className="ml-auto flex gap-1.5">
+                  <SoundControls />
+                  <CardReferenceDialog />
+                </div>
+              </div>
+              <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
+              <LogPanel />
+            </div>
+          )}
+
           <div className="flex flex-1 items-center justify-center">
             <div
               ref={tableContainerRef}

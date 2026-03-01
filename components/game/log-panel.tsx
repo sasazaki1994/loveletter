@@ -92,12 +92,12 @@ export function LogPanel() {
 
   return (
     <aside
-      className="pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.3)] bg-[rgba(10,24,22,0.85)] shadow-[0_18px_46px_rgba(0,0,0,0.45)] backdrop-blur-md"
+      className="pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.24)] bg-[rgba(10,24,22,0.82)] shadow-[0_10px_24px_rgba(0,0,0,0.32)] backdrop-blur-md"
       role="log"
       aria-live="polite"
       aria-relevant="additions"
     >
-      <div className="flex items-center justify-between border-b border-[rgba(215,178,110,0.2)] bg-[rgba(16,36,33,0.9)] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-[rgba(215,178,110,0.16)] bg-[rgba(16,36,33,0.82)] px-4 py-2.5">
         <div className="min-w-0">
           <h3 className="font-heading text-lg text-[var(--color-accent-light)] flex items-center gap-2 drop-shadow-sm">
             <MessageSquare className="h-4 w-4 opacity-80" />
@@ -144,27 +144,27 @@ export function LogPanel() {
                   key={log.id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.22 }}
                   className={cn(
-                    "relative flex gap-3 rounded-lg border p-3 text-sm transition-all shadow-sm",
+                    "relative flex gap-3 rounded-lg border p-2.5 text-sm transition-colors",
                     isElimination
-                      ? "border-[rgba(247,184,184,0.35)] bg-[rgba(60,20,20,0.55)] shadow-[inset_0_0_12px_rgba(200,50,50,0.1)]"
+                      ? "border-[rgba(247,184,184,0.28)] bg-[rgba(56,22,22,0.42)]"
                       : isWin
-                        ? "border-[rgba(215,178,110,0.6)] bg-[rgba(215,178,110,0.15)] shadow-[0_0_12px_rgba(215,178,110,0.1)]"
-                        : "border-[rgba(215,178,110,0.15)] bg-[rgba(16,36,33,0.6)] hover:bg-[rgba(20,40,38,0.7)]",
+                        ? "border-[rgba(215,178,110,0.42)] bg-[rgba(70,56,28,0.34)]"
+                        : "border-[rgba(215,178,110,0.14)] bg-[rgba(16,36,33,0.56)] hover:bg-[rgba(20,40,38,0.64)]",
                   )}
                 >
                   <div
                     className={cn(
-                      "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-md",
+                      "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
                       isElimination
-                        ? "border-[rgba(247,184,184,0.5)] bg-[rgba(60,20,20,0.8)] text-[var(--color-warn-light)]"
+                        ? "border-[rgba(247,184,184,0.4)] bg-[rgba(60,20,20,0.62)] text-[var(--color-warn-light)]"
                         : isWin
-                          ? "border-[var(--color-accent)] bg-gradient-to-br from-[var(--color-accent)] to-[#b08d55] text-[#0f2d2a]"
-                          : "border-[rgba(215,178,110,0.25)] bg-[rgba(20,45,40,0.8)] text-[var(--color-accent-light)]",
+                          ? "border-[rgba(215,178,110,0.55)] bg-[rgba(120,94,43,0.55)] text-[var(--color-accent-light)]"
+                          : "border-[rgba(215,178,110,0.24)] bg-[rgba(20,45,40,0.7)] text-[var(--color-accent-light)]",
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-3.5 w-3.5" />
                   </div>
 
                   <div className="flex-1 space-y-1">
@@ -177,7 +177,7 @@ export function LogPanel() {
                       >
                         {log.icon?.toUpperCase() ?? "INFO"}
                       </span>
-                      <span className="text-[10px] text-[var(--color-text-muted)] opacity-60 font-mono">
+                      <span className="font-mono text-[10px] text-[var(--color-text-muted)] opacity-55">
                         {new Date(log.timestamp).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",

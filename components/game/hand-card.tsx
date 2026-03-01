@@ -32,7 +32,7 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
 			transition={{ duration: 0.2, ease: "easeOut" }}
 			variants={{
         hover: {
-          scale: 1.12,
+          scale: 1.08,
           rotate: 0.6,
           boxShadow:
             "0 18px 50px rgba(0,0,0,0.5), 0 0 22px rgba(215, 178, 110, 0.35)",
@@ -47,7 +47,8 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
 			className={cn(
 				"group relative h-[11rem] w-[7.6rem] origin-bottom rounded-[22px] border border-[rgba(215,178,110,0.45)] bg-gradient-to-br from-[rgba(28,68,63,0.92)] via-[rgba(22,52,47,0.95)] to-[rgba(14,32,29,0.98)] p-4 text-left shadow-[0_18px_50px_rgba(0,0,0,0.45)]",
         "transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]",
-        selected && "scale-[1.05] -translate-y-3 border-(--color-accent) shadow-[0_0_20px_rgba(215,178,110,0.5)] ring-1 ring-(--color-accent)",
+        selected &&
+          "scale-[1.03] -translate-y-2 border-[var(--color-accent)] shadow-[0_0_20px_rgba(215,178,110,0.45)] ring-1 ring-[var(--color-accent)]",
         disabled && "opacity-60 grayscale",
       )}
       style={{ willChange: "transform, box-shadow" }}
@@ -106,7 +107,7 @@ export function HandCard({ cardId, onSelect, disabled, selected, ariaLabel }: Ha
 		<motion.p
 			className="pointer-events-none absolute left-3 right-3 bottom-3 z-20 max-h-20 overflow-hidden text-xs leading-relaxed text-[var(--color-text-muted)]"
 			initial="rest"
-			variants={{ rest: { opacity: 0, scale: 0.96 }, hover: { opacity: 1, scale: 1.12 } }}
+			variants={{ rest: { opacity: 0, scale: 0.96 }, hover: { opacity: 1, scale: 1.04 } }}
 			transition={{ duration: 0.2, ease: "easeOut" }}
 		>
 			{definition.description}
