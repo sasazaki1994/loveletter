@@ -37,23 +37,31 @@ export function PlayerHUD({
       type="button"
       onClick={isTargetable ? () => onSelectTarget?.(player.id) : undefined}
       className={cn(
-        "group relative flex w-[17rem] max-w-full flex-col gap-2 rounded-2xl border transition-all duration-300 px-4 py-3 text-left backdrop-blur-sm",
+        "group relative flex w-[17rem] max-w-full flex-col gap-2 rounded-xl border px-3.5 py-3 text-left backdrop-blur-sm transition-all duration-200",
         "bg-[rgba(12,32,30,0.65)]/90 border-[rgba(215,178,110,0.25)]",
-        
-        // Targetable (Pulse animation)
-        isTargetable && "animate-[pulse-gold_2s_ease-in-out_infinite] hover:bg-[rgba(25,50,45,0.9)] cursor-pointer hover:border-[var(--color-accent)] hover:shadow-[0_0_16px_rgba(215,178,110,0.15)]",
-        
+
+        // Targetable
+        isTargetable &&
+          "cursor-pointer hover:border-[rgba(215,178,110,0.65)] hover:bg-[rgba(22,45,41,0.92)] hover:shadow-[0_8px_18px_rgba(0,0,0,0.22)]",
+
         // Selected
-        selected && "border-[var(--color-accent)] bg-[rgba(20,45,40,0.95)] shadow-[0_0_24px_rgba(215,178,110,0.4)] scale-[1.02] z-10",
-        
+        selected &&
+          "z-10 border-[rgba(215,178,110,0.8)] bg-[rgba(26,52,46,0.96)] shadow-[0_0_0_1px_rgba(215,178,110,0.25),0_10px_20px_rgba(0,0,0,0.22)]",
+
         // Active Turn
-        isActive && !selected && "ring-1 ring-[var(--color-accent)] ring-offset-2 ring-offset-[rgba(10,20,18,0.8)] border-[rgba(215,178,110,0.6)] shadow-[0_0_15px_rgba(215,178,110,0.2)]",
-        
+        isActive &&
+          !selected &&
+          "border-[rgba(215,178,110,0.55)] ring-1 ring-[rgba(215,178,110,0.5)] ring-offset-2 ring-offset-[rgba(10,20,18,0.8)]",
+
         // Eliminated
-        player.isEliminated && "opacity-50 grayscale border-dashed bg-black/40",
-        
+        player.isEliminated && "border-dashed bg-black/40 opacity-50 grayscale",
+
         // Disabled but in selection mode (e.g. Shielded)
-        selectable && isDisabled && !isSelf && !player.isEliminated && "cursor-not-allowed opacity-80 grayscale-[0.3] border-[rgba(247,184,184,0.3)] bg-[rgba(60,20,20,0.2)]"
+        selectable &&
+          isDisabled &&
+          !isSelf &&
+          !player.isEliminated &&
+          "cursor-not-allowed border-[rgba(247,184,184,0.28)] bg-[rgba(60,20,20,0.2)] opacity-80 grayscale-[0.25]"
       )}
       disabled={isDisabled}
       aria-pressed={selected}
@@ -61,17 +69,19 @@ export function PlayerHUD({
       {/* Floating Shield Icon */}
       {player.shield && !player.isEliminated && (
         <div className={cn(
-          "absolute -right-3 -top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full border bg-[var(--color-surface)] shadow-lg transition-transform duration-300",
+          "absolute -right-2.5 -top-2.5 z-20 flex h-7 w-7 items-center justify-center rounded-full border bg-[var(--color-surface)] shadow-lg",
           isTargetable ? "border-[var(--color-accent)]" : "border-[var(--color-border)]",
-          selectable && isDisabled ? "scale-110 border-[var(--color-warn-light)] text-[var(--color-warn-light)] bg-[rgba(60,20,20,0.9)]" : "text-[var(--color-accent)]"
+          selectable && isDisabled
+            ? "border-[var(--color-warn-light)] bg-[rgba(60,20,20,0.9)] text-[var(--color-warn-light)]"
+            : "text-[var(--color-accent)]"
         )}>
-          <Shield className="h-4 w-4" />
+          <Shield className="h-3.5 w-3.5" />
         </div>
       )}
 
       {/* Active Indicator Line */}
       {isActive && !player.isEliminated && (
-        <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-[var(--color-accent)] shadow-[0_0_8px_rgba(215,178,110,0.6)]" />
+        <div className="absolute bottom-4 left-0 top-4 w-[3px] rounded-r-full bg-[var(--color-accent)] shadow-[0_0_8px_rgba(215,178,110,0.5)]" />
       )}
 
       <div className="flex items-start justify-between gap-3 pl-2">
@@ -86,7 +96,7 @@ export function PlayerHUD({
         </div>
         <div className="flex gap-1.5 flex-wrap justify-end">
           {player.isEliminated && <Badge variant="danger" className="text-[10px] h-5 shadow-sm">Eliminated</Badge>}
-          {isActive && <Badge variant="default" className="text-[10px] h-5 shadow-[0_0_10px_rgba(215,178,110,0.4)] animate-pulse">Turn</Badge>}
+          {isActive && <Badge variant="default" className="text-[10px] h-5 shadow-[0_0_10px_rgba(215,178,110,0.35)]">Turn</Badge>}
         </div>
       </div>
 

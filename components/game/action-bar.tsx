@@ -9,14 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useGameContext } from "@/components/game/game-provider";
 import { cn } from "@/lib/utils";
-import { CARD_DEFINITIONS } from "@/lib/game/cards";
-import { CardSymbol } from "@/components/icons/card-symbol";
-
 import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
 
 type DockPosition = "left" | "bottom";
-
-const EXCLUDED_FROM_REFERENCE = ['feint', 'insight', 'standoff', 'wager', 'ambush', 'marquise'];
 
 export function ActionBar() {
   const {
@@ -178,9 +173,21 @@ export function ActionBar() {
                 <div className="flex flex-wrap gap-2 text-xs">
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
-                      Tab
+                      ← / →
                     </Badge>
-                    <span>移動</span>
+                    <span>カード</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                      ↑ / ↓
+                    </Badge>
+                    <span>対象</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                      2-8
+                    </Badge>
+                    <span>推測</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
@@ -266,6 +273,15 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-7 w-full justify-start gap-2 px-2 text-xs"
+                    onClick={() => setGameInfoVisible((prev) => !prev)}
+                    aria-expanded={gameInfoVisible}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    {gameInfoVisible ? "ガイドを隠す" : "ゲームガイド"}
+                  </Button>
                   <CardReferenceDialog />
                 </div>
               </>
@@ -275,8 +291,12 @@ export function ActionBar() {
                   <Info className="h-4 w-4 text-[var(--color-accent-light)]" />
                   {isMyTurn ? "カードを選択して Enter で使用できます" : "他プレイヤーの行動を待機中"}
                 </span>
-                <Badge variant="outline">Tab</Badge>
-                <span>フォーカス移動</span>
+                <Badge variant="outline">← / →</Badge>
+                <span>カード</span>
+                <Badge variant="outline">↑ / ↓</Badge>
+                <span>対象</span>
+                <Badge variant="outline">2-8</Badge>
+                <span>推測</span>
                 <Badge variant="outline">Enter</Badge>
                 <span>使用</span>
                 <Badge variant="outline">Esc</Badge>
@@ -335,6 +355,15 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-8 gap-2 px-3 text-xs"
+                    onClick={() => setGameInfoVisible((prev) => !prev)}
+                    aria-expanded={gameInfoVisible}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    {gameInfoVisible ? "ガイドを隠す" : "ゲームガイド"}
+                  </Button>
                   <CardReferenceDialog />
                 </div>
               </>
@@ -361,7 +390,7 @@ export function ActionBar() {
             <div
               className={cn(
                 "flex flex-col gap-4 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.95)] px-4 py-3 text-sm text-[var(--color-text-muted)] shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-2 fade-in",
-                isDockedLeft ? "px-3 py-3 max-h-[60vh] overflow-y-auto scrollbar-thin" : "max-h-[24rem] overflow-y-auto scrollbar-thin",
+                isDockedLeft ? "px-3 py-3 max-h-[60vh] overflow-y-auto scrollbar-thin" : "max-h-[18rem] overflow-y-auto scrollbar-thin",
               )}
             >
               <div>
@@ -372,42 +401,27 @@ export function ActionBar() {
                     isDockedLeft && "pl-4",
                   )}
                 >
-                  <li>山札から1枚引き、手札2枚のうち1枚を使用して効果を発動します。</li>
-                  <li>他者を脱落させるか、最後まで生き残り最強のカードを持つ者が勝利します。</li>
+                  <li>山札から1枚引き、手札2枚のうち1枚を使います。</li>
+                  <li>最後まで生き残るか、山札切れ時に最強ランクを持つと勝利です。</li>
+                  <li>守護状態の相手は対象にできません。</li>
                 </ul>
               </div>
-              
+
               <div className="border-t border-[rgba(215,178,110,0.15)] pt-3">
-                <h4 className="mb-3 font-heading text-sm text-[var(--color-accent-light)] flex items-center gap-2">
+                <h4 className="mb-2 flex items-center gap-2 font-heading text-sm text-[var(--color-accent-light)]">
                   <Info className="h-3 w-3" />
-                  Card Reference
+                  操作キー
                 </h4>
-                <div className="grid gap-3">
-                  {Object.values(CARD_DEFINITIONS)
-                    .filter(c => c.rank <= 8 && !EXCLUDED_FROM_REFERENCE.includes(c.id))
-                    .sort((a, b) => a.rank - b.rank)
-                    .map((card) => (
-                      <div key={card.id} className="group flex gap-2.5 text-xs">
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-[rgba(215,178,110,0.3)] bg-[rgba(215,178,110,0.1)] font-heading font-bold text-[var(--color-accent)]">
-                          {card.rank}
-                        </div>
-                        <div className="flex-1 space-y-0.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5 font-medium text-[var(--color-accent-light)]">
-                               <CardSymbol icon={card.icon} size={12} className="opacity-80" />
-                               <span>{card.name}</span>
-                            </div>
-                            <span className="rounded bg-[rgba(255,255,255,0.1)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-muted)] group-hover:bg-[rgba(255,255,255,0.15)] transition-colors">
-                              x{card.copies}
-                            </span>
-                          </div>
-                          <p className="leading-tight opacity-70 group-hover:opacity-100 transition-opacity">
-                            {card.description}
-                          </p>
-                        </div>
-                      </div>
-                  ))}
+                <div className="grid gap-1.5 text-xs">
+                  <p>←/→: カード選択</p>
+                  <p>↑/↓: 対象選択</p>
+                  <p>2-8: 推測ランク入力</p>
+                  <p>Enter: 使用 / Esc: キャンセル</p>
                 </div>
+              </div>
+
+              <div className="rounded-lg border border-[rgba(215,178,110,0.2)] bg-[rgba(10,24,22,0.7)] px-3 py-2 text-xs">
+                詳細なカード効果は「カード一覧」ボタンで確認できます。
               </div>
             </div>
           )}

@@ -72,15 +72,26 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="absolute left-1/2 top-1/2 flex -translate-x-[240%] -translate-y-1/2 flex-col items-center gap-2 opacity-80 hover:opacity-100 transition-opacity cursor-help">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-muted)] opacity-60">Burn</span>
-                  <div className="relative h-[8rem] w-[5.4rem] rounded-[14px] border border-[rgba(215,178,110,0.15)] bg-[rgba(8,20,18,0.7)] shadow-inner flex items-center justify-center">
-                    <div className="absolute inset-1.5 rounded-[10px] border border-dashed border-[rgba(215,178,110,0.1)]" />
-                    <CardSymbol icon="mask" size={24} className="text-[rgba(215,178,110,0.15)]" />
+                <button
+                  type="button"
+                  className="absolute left-1/2 top-1/2 flex -translate-x-[118%] -translate-y-[158%] items-center gap-2 rounded-full border border-[rgba(215,178,110,0.28)] bg-[rgba(10,24,22,0.86)] px-2.5 py-1.5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] transition hover:border-[rgba(215,178,110,0.5)] hover:bg-[rgba(13,30,28,0.92)]"
+                  aria-label="Burned card info"
+                >
+                  <div className="relative h-9 w-6 rounded-[7px] border border-[rgba(215,178,110,0.18)] bg-[rgba(8,20,18,0.8)]">
+                    <div className="absolute inset-1 rounded-[4px] border border-dashed border-[rgba(215,178,110,0.12)]" />
+                    <div className="absolute inset-0 grid place-items-center">
+                      <CardSymbol icon="mask" size={12} className="text-[rgba(215,178,110,0.22)]" />
+                    </div>
                   </div>
-                </div>
+                  <div className="text-left leading-none">
+                    <span className="block text-[9px] uppercase tracking-[0.22em] text-[rgba(215,178,110,0.72)]">
+                      Burn
+                    </span>
+                    <span className="block pt-1 text-[10px] text-[var(--color-text-muted)]">非公開 1枚</span>
+                  </div>
+                </button>
               </TooltipTrigger>
-              <TooltipContent side="left" className="border-[rgba(215,178,110,0.2)] bg-[rgba(10,24,22,0.95)] text-xs text-[var(--color-text)]">
+              <TooltipContent side="top" className="border-[rgba(215,178,110,0.2)] bg-[rgba(10,24,22,0.95)] text-xs text-[var(--color-text)]">
                 <p>ゲーム開始時にランダムに除外された1枚（非公開）</p>
               </TooltipContent>
             </Tooltip>
