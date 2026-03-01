@@ -239,7 +239,7 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
                       </span>
                       {p.isBot && <span className="rounded bg-[rgba(255,255,255,0.1)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-muted)]">BOT</span>}
                     </div>
-                    <span className="font-mono text-[var(--color-text-muted)] opacity-70">Seat {p.seat + 1}</span>
+                    <span className="font-mono text-[var(--color-text-muted)] opacity-70">{p.seat + 1}番席</span>
                   </motion.div>
                 ))}
                 {room && room.players.length === 0 && (

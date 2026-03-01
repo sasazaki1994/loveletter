@@ -4,32 +4,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardDefinition, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
-import { useBackgroundMusic } from "@/lib/hooks/use-background-music";
 import { useGameStream } from "@/lib/hooks/use-game-stream";
 import { useSoundEffects, type SoundKey } from "@/lib/hooks/use-sound-effects";
 import { useTempoSettings, type TempoMode } from "@/lib/hooks/use-tempo-settings";
 import { usePlayerSession } from "@/lib/client/session";
-
-const BGM_TRACKS = [
-  "/sounds/bgm/celtic_bgm_1.mp3",
-  "/sounds/bgm/celtic_bgm_2.mp3",
-  "/sounds/bgm/celtic_bgm_3.mp3",
-  "/sounds/bgm/celtic_bgm_4.mp3",
-  "/sounds/bgm/celtic_bgm_5.mp3",
-  "/sounds/bgm/celtic_bgm_6.mp3",
-  "/sounds/bgm/celtic_bgm_7.mp3",
-  "/sounds/bgm/celtic_bgm_8.mp3",
-  "/sounds/bgm/celtic_bgm_9.mp3",
-  "/sounds/bgm/celtic_bgm_10.mp3",
-  "/sounds/bgm/celtic_bgm_11.mp3",
-  "/sounds/bgm/celtic_bgm_12.mp3",
-  "/sounds/bgm/celtic_bgm_13.mp3",
-  "/sounds/bgm/celtic_bgm_14.mp3",
-  "/sounds/bgm/celtic_bgm_15.mp3",
-  "/sounds/bgm/celtic_bgm_16.mp3",
-  "/sounds/bgm/celtic_bgm_17.mp3",
-  "/sounds/bgm/celtic_bgm_18.mp3",
-];
 
 interface GameProviderProps {
   roomId: string;
@@ -109,8 +87,6 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
   const prevStateRef = useRef<ClientGameState | null>(null);
 
   const { play: playSound, muted, toggleMute, volume, setVolume } = useSoundEffects(0.4);
-
-  useBackgroundMusic(!muted, volume, { volumeMultiplier: 0.45, tracks: BGM_TRACKS });
 
   const selfId = state?.self?.id ?? playerId;
   const isMyTurn = Boolean(selfId && state?.activePlayerId === selfId && state.phase === "choose_card");

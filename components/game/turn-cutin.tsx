@@ -10,10 +10,10 @@ interface TurnCutinProps {
   text?: string;
 }
 
-export function TurnCutin({ show, text = "YOUR TURN" }: TurnCutinProps) {
+export function TurnCutin({ show, text = "あなたの番" }: TurnCutinProps) {
   const { play } = useSoundEffects(0.6);
   const [visible, setVisible] = useState(false);
-  const isRoundCutin = useMemo(() => /^ROUND\s+\d+/i.test(text.trim()), [text]);
+  const isRoundCutin = useMemo(() => /^ラウンド\s+\d+/i.test(text.trim()), [text]);
 
   useEffect(() => {
     if (show) {
@@ -64,7 +64,7 @@ export function TurnCutin({ show, text = "YOUR TURN" }: TurnCutinProps) {
             </motion.p>
             {!isRoundCutin && (
               <p className="pt-1 text-[11px] uppercase tracking-[0.24em] text-[rgba(215,178,110,0.72)]">
-                Play your card
+                カードを選択してください
               </p>
             )}
           </motion.div>

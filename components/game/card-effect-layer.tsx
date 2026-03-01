@@ -263,7 +263,7 @@ function renderGuessEffect(
         >
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-[rgba(255,210,160,0.42)] bg-[rgba(28,18,12,0.72)] px-3 py-1 text-xs uppercase tracking-[0.36em] text-[var(--color-accent-light)]">
-              Guess
+              推測
             </span>
             {guessSuccess && (
               <motion.div
@@ -323,7 +323,7 @@ function renderPeekEffect(
           />
           <div className="relative text-[var(--color-accent-light)]">
             <div className="flex items-center justify-center gap-2">
-              <p className="text-[10px] uppercase tracking-[0.42em] opacity-75">Insight</p>
+              <p className="text-[10px] uppercase tracking-[0.42em] opacity-75">透視</p>
               {isSuccess && (
                 <motion.div
                   initial={{ scale: 0, opacity: 0 }}
@@ -335,7 +335,7 @@ function renderPeekEffect(
                 </motion.div>
               )}
             </div>
-            <p className="mt-1 text-sm opacity-80">{peekMeta?.targetNickname ?? event.targetNickname ?? 'Unknown'} の手札</p>
+            <p className="mt-1 text-sm opacity-80">{peekMeta?.targetNickname ?? event.targetNickname ?? '不明'} の手札</p>
             {revealedDefinition ? (
               <motion.div
                 className="mt-3 flex flex-col items-center gap-1"
@@ -351,7 +351,7 @@ function renderPeekEffect(
               </motion.div>
             ) : (
               <span className="mt-3 inline-block rounded-full border border-[rgba(255,255,255,0.22)] px-3 py-1 text-xs text-[rgba(255,255,255,0.72)]">
-                Hidden
+                非公開
               </span>
             )}
           </div>
@@ -566,7 +566,7 @@ function renderSwapEffect(
         transition={{ duration: 0.35, ease: 'easeOut' }}
       >
         <div className="flex items-center gap-2 rounded-full border border-[rgba(255,205,150,0.42)] bg-[rgba(30,18,12,0.7)] px-4 py-1 text-xs uppercase tracking-[0.32em] text-[var(--color-accent-light)]">
-          Swap
+          交換
           {icon && <CardSymbol icon={icon} size={20} className="text-[var(--color-accent-light)]" />}
         </div>
       </motion.div>

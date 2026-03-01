@@ -20,7 +20,7 @@ const bodyFont = Work_Sans({
 
 export const metadata: Metadata = {
   title: "Love Letter Reverie",
-  description: "Steam風の質感を備えたラブレター系ブラウザゲーム MVP",
+  description: "ブラウザで遊べるラブレター系カードゲーム — リアルタイム対戦＆Bot対戦",
 };
 
 export default function RootLayout({

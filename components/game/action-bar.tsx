@@ -235,7 +235,7 @@ export function ActionBar() {
                   </div>
                   <div className="flex items-center gap-2 px-1.5">
                     <span className="text-[10px] uppercase tracking-[0.3em] text-[rgba(215,178,110,0.75)]">
-                      Tempo
+                      テンポ
                     </span>
                     <div className="ml-auto flex gap-1">
                       <Button
@@ -245,7 +245,7 @@ export function ActionBar() {
                         onClick={() => setTempo("normal")}
                         aria-pressed={tempo === "normal"}
                       >
-                        Normal
+                        通常
                       </Button>
                       <Button
                         type="button"
@@ -254,7 +254,7 @@ export function ActionBar() {
                         onClick={() => setTempo("fast")}
                         aria-pressed={tempo === "fast"}
                       >
-                        Fast
+                        高速
                       </Button>
                     </div>
                   </div>
@@ -338,7 +338,7 @@ export function ActionBar() {
                     aria-pressed={tempo === "fast"}
                     aria-label={tempo === "fast" ? "テンポを通常に戻す" : "テンポを高速にする"}
                   >
-                    Tempo: {tempo === "fast" ? "Fast" : "Normal"}
+                    テンポ: {tempo === "fast" ? "高速" : "通常"}
                   </Button>
                   <Button
                     variant="ghost"

@@ -42,7 +42,7 @@ export function TurnBanner({ state, isMyTurn }: TurnBannerProps) {
       >
         <div className="flex items-center justify-between gap-4">
           <p className="text-xs uppercase tracking-[0.6em] text-[rgba(215,178,110,0.8)] font-medium">
-            Round {state?.round ?? 1} / <span className="tracking-widest">Deck {state?.drawPileCount ?? 0}</span>
+            ラウンド {state?.round ?? 1} / <span className="tracking-widest">残り {state?.drawPileCount ?? 0} 枚</span>
           </p>
           {state && (
             <span className={cn(
