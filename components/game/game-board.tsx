@@ -74,32 +74,46 @@ export function GameBoard() {
   const [cutinText, setCutinText] = useState("YOUR TURN");
   const prevTurnRef = useRef<boolean>(false);
   const prevRoundRef = useRef<number | null>(null);
+  const cutinInitializedRef = useRef(false);
 
   useEffect(() => {
     if (!state) return;
-    
-    // ラウンド開始検出
-    // 初回ロード時(prevRoundRef.current === null)は表示しない
-    if (prevRoundRef.current !== null && state.round !== prevRoundRef.current) {
-       setCutinText(`ROUND ${state.round}`);
-       setShowTurnCutin(true);
-       
-       // ラウンド開始直後、かつ自分のターンの場合は、少し遅延させてYOUR TURNを表示
-       if (isMyTurn) {
-         const timer = setTimeout(() => {
-           setCutinText("YOUR TURN");
-           setShowTurnCutin(true);
-         }, 2500);
-         return () => clearTimeout(timer);
-       }
-    } else if (isMyTurn && !prevTurnRef.current) {
-      // ラウンド開始直後でない場合、またはラウンド開始演出が終わった後
+
+    // 初回表示時はカットインを出さず、前回値のみ初期化する
+    if (!cutinInitializedRef.current) {
+      cutinInitializedRef.current = true;
+      prevTurnRef.current = isMyTurn;
+      prevRoundRef.current = state.round;
+      return;
+    }
+
+    let delayedTurnTimer: number | null = null;
+    const roundChanged = prevRoundRef.current !== null && state.round !== prevRoundRef.current;
+
+    if (roundChanged) {
+      setCutinText(`ROUND ${state.round}`);
+      setShowTurnCutin(true);
+
+      // ラウンド開始直後かつ自分の入力フェーズに入っている場合のみ追従表示
+      if (isMyTurn && state.phase === "choose_card") {
+        delayedTurnTimer = window.setTimeout(() => {
+          setCutinText("YOUR TURN");
+          setShowTurnCutin(true);
+        }, 1800);
+      }
+    } else if (isMyTurn && !prevTurnRef.current && state.phase === "choose_card") {
       setCutinText("YOUR TURN");
       setShowTurnCutin(true);
     }
-    
+
     prevTurnRef.current = isMyTurn;
     prevRoundRef.current = state.round;
+
+    return () => {
+      if (delayedTurnTimer) {
+        window.clearTimeout(delayedTurnTimer);
+      }
+    };
   }, [isMyTurn, state]);
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
