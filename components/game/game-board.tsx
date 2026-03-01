@@ -51,13 +51,17 @@ export function GameBoard() {
     setSelectedCard,
     selectedTarget,
     setSelectedTarget,
+    guessedRank,
+    setGuessedRank,
     isMyTurn,
     selfId,
     effectScale,
     playCard,
     cancelSelection,
+    cardDefinition,
     requiresTarget,
     targetOptions,
+    noAvailableTargets,
     error,
     refetch,
     reconnect,
@@ -562,6 +566,18 @@ export function GameBoard() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isMyTurn) return;
 
+      const activeElement = document.activeElement as HTMLElement | null;
+      const isTypingField = Boolean(
+        activeElement &&
+          (activeElement.tagName === "INPUT" ||
+            activeElement.tagName === "TEXTAREA" ||
+            activeElement.tagName === "SELECT" ||
+            activeElement.isContentEditable),
+      );
+      if (isTypingField && event.key !== "Escape" && event.key !== "Enter") {
+        return;
+      }
+
       if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
         event.preventDefault();
         if (hand.length === 0) return;
@@ -569,6 +585,45 @@ export function GameBoard() {
         const currentIndex = selectedCard ? hand.findIndex((card) => card === selectedCard) : -1;
         const nextIndex = currentIndex === -1 ? (direction === 1 ? 0 : hand.length - 1) : (currentIndex + direction + hand.length) % hand.length;
         setSelectedCard(hand[nextIndex]);
+        return;
+      }
+
+      if (requiresTarget && !noAvailableTargets && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+        event.preventDefault();
+        const selectableTargets = targetOptions.filter((option) => !option.disabled);
+        if (selectableTargets.length === 0) return;
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        const currentIndex = selectedTarget
+          ? selectableTargets.findIndex((option) => option.id === selectedTarget)
+          : -1;
+        const nextIndex =
+          currentIndex === -1
+            ? direction === 1
+              ? 0
+              : selectableTargets.length - 1
+            : (currentIndex + direction + selectableTargets.length) % selectableTargets.length;
+        setSelectedTarget(selectableTargets[nextIndex].id);
+        return;
+      }
+
+      const numericKey = Number.parseInt(event.key, 10);
+      if (
+        cardDefinition?.requiresGuess &&
+        Number.isInteger(numericKey) &&
+        numericKey >= 2 &&
+        numericKey <= 8
+      ) {
+        event.preventDefault();
+        if (guessedRank !== numericKey) {
+          setGuessedRank(numericKey);
+        }
+        return;
+      }
+
+      if (cardDefinition?.requiresGuess && (event.key === "Backspace" || event.key === "Delete")) {
+        event.preventDefault();
+        setGuessedRank(null);
+        return;
       }
 
       if (event.key === "Enter" || event.key === " ") {
@@ -591,7 +646,22 @@ export function GameBoard() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [cancelSelection, hand, isMyTurn, playCard, selectedCard, setSelectedCard]);
+  }, [
+    cancelSelection,
+    cardDefinition?.requiresGuess,
+    guessedRank,
+    hand,
+    isMyTurn,
+    noAvailableTargets,
+    playCard,
+    requiresTarget,
+    selectedCard,
+    selectedTarget,
+    setGuessedRank,
+    setSelectedCard,
+    setSelectedTarget,
+    targetOptions,
+  ]);
 
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {

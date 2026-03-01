@@ -178,9 +178,21 @@ export function ActionBar() {
                 <div className="flex flex-wrap gap-2 text-xs">
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
-                      Tab
+                      ← / →
                     </Badge>
-                    <span>移動</span>
+                    <span>カード</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                      ↑ / ↓
+                    </Badge>
+                    <span>対象</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                      2-8
+                    </Badge>
+                    <span>推測</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
@@ -266,6 +278,15 @@ export function ActionBar() {
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-7 w-full justify-start gap-2 px-2 text-xs"
+                    onClick={() => setGameInfoVisible((prev) => !prev)}
+                    aria-expanded={gameInfoVisible}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    {gameInfoVisible ? "ガイドを隠す" : "ゲームガイド"}
+                  </Button>
                   <CardReferenceDialog />
                 </div>
               </>
@@ -275,8 +296,12 @@ export function ActionBar() {
                   <Info className="h-4 w-4 text-[var(--color-accent-light)]" />
                   {isMyTurn ? "カードを選択して Enter で使用できます" : "他プレイヤーの行動を待機中"}
                 </span>
-                <Badge variant="outline">Tab</Badge>
-                <span>フォーカス移動</span>
+                <Badge variant="outline">← / →</Badge>
+                <span>カード</span>
+                <Badge variant="outline">↑ / ↓</Badge>
+                <span>対象</span>
+                <Badge variant="outline">2-8</Badge>
+                <span>推測</span>
                 <Badge variant="outline">Enter</Badge>
                 <span>使用</span>
                 <Badge variant="outline">Esc</Badge>
@@ -334,6 +359,15 @@ export function ActionBar() {
                     aria-expanded={hintVisible}
                   >
                     {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-8 gap-2 px-3 text-xs"
+                    onClick={() => setGameInfoVisible((prev) => !prev)}
+                    aria-expanded={gameInfoVisible}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    {gameInfoVisible ? "ガイドを隠す" : "ゲームガイド"}
                   </Button>
                   <CardReferenceDialog />
                 </div>
