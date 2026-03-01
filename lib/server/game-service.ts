@@ -1155,14 +1155,20 @@ async function advanceTurn(
   await beginTurn(tx, freshGame, nextPlayer);
 }
 
-const BOT_THINK_TIME_MS = 4000; // base think time for bots
+const BOT_FALLBACK_THINK_TIME_MS = 2500; // fallback think time when no client-side trigger is available
 const BOT_THINK_JITTER_RATIO = 0.4; // +/-20% around base (0.8x - 1.2x)
 
-export async function executeBotTurn(roomId: string) {
-  // Add thinking delay so bot turns are not instantaneous
-  const jitterMultiplier = 1 - BOT_THINK_JITTER_RATIO / 2 + Math.random() * BOT_THINK_JITTER_RATIO;
-  const thinkDelay = Math.max(0, Math.round(BOT_THINK_TIME_MS * jitterMultiplier));
-  await new Promise<void>((resolve) => setTimeout(resolve, thinkDelay));
+export async function executeBotTurn(
+  roomId: string,
+  options?: { skipThinkDelay?: boolean },
+) {
+  if (!options?.skipThinkDelay) {
+    // Add thinking delay so bot turns are not instantaneous.
+    // This path acts as a fallback when client-driven trigger is unavailable.
+    const jitterMultiplier = 1 - BOT_THINK_JITTER_RATIO / 2 + Math.random() * BOT_THINK_JITTER_RATIO;
+    const thinkDelay = Math.max(0, Math.round(BOT_FALLBACK_THINK_TIME_MS * jitterMultiplier));
+    await new Promise<void>((resolve) => setTimeout(resolve, thinkDelay));
+  }
   const botAction = await db.transaction(async (tx) => {
     const [game] = await tx
       .select()
