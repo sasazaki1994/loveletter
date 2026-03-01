@@ -311,7 +311,7 @@ export function ResultDialog() {
           
           <DialogHeader className="relative z-10 mb-6 text-center">
             <DialogTitle className="font-heading text-4xl text-[var(--color-accent-light)] text-shadow-gold">
-              {state?.result?.reason === "deck_exhausted" ? "Round Finished" : "Round Finished"}
+              ラウンド終了
             </DialogTitle>
             <DialogDescription className="text-[var(--color-text-muted)]">
               {state?.result?.reason === "deck_exhausted"
@@ -356,7 +356,7 @@ export function ResultDialog() {
                                 "font-heading text-lg",
                                 entry.place === 1 ? "text-[var(--color-accent-light)]" : "text-[var(--color-text-muted)]"
                               )}>
-                                {entry.place === 1 ? "Winner" : `${entry.place}th Place`}
+                                {entry.place === 1 ? "勝者" : `${entry.place}位`}
                               </span>
                             </div>
                           </div>

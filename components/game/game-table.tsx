@@ -46,7 +46,7 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
 
         <div className="relative h-full w-full">
           <div className="absolute left-1/2 top-1/2 flex -translate-x-[120%] -translate-y-1/2 flex-col items-center gap-2">
-            <span className="text-xs uppercase tracking-[0.4em] text-[var(--color-text-muted)]">Draw</span>
+            <span className="text-xs uppercase tracking-[0.4em] text-[var(--color-text-muted)]">山札</span>
             <div className="relative h-[9.6rem] w-[6.5rem]">
               {drawPileCount > 2 && (
                 <div className="absolute left-1 top-1 h-full w-full rounded-[18px] border border-[rgba(215,178,110,0.1)] bg-[rgba(8,20,18,0.8)]" />
@@ -75,7 +75,7 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
                 <button
                   type="button"
                   className="absolute left-1/2 top-1/2 flex -translate-x-[118%] -translate-y-[158%] items-center gap-2 rounded-full border border-[rgba(215,178,110,0.28)] bg-[rgba(10,24,22,0.86)] px-2.5 py-1.5 shadow-[0_10px_20px_rgba(0,0,0,0.25)] transition hover:border-[rgba(215,178,110,0.5)] hover:bg-[rgba(13,30,28,0.92)]"
-                  aria-label="Burned card info"
+                  aria-label="除外カード情報"
                 >
                   <div className="relative h-9 w-6 rounded-[7px] border border-[rgba(215,178,110,0.18)] bg-[rgba(8,20,18,0.8)]">
                     <div className="absolute inset-1 rounded-[4px] border border-dashed border-[rgba(215,178,110,0.12)]" />
@@ -85,7 +85,7 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
                   </div>
                   <div className="text-left leading-none">
                     <span className="block text-[9px] uppercase tracking-[0.22em] text-[rgba(215,178,110,0.72)]">
-                      Burn
+                      除外
                     </span>
                     <span className="block pt-1 text-[10px] text-[var(--color-text-muted)]">非公開 1枚</span>
                   </div>
@@ -130,7 +130,7 @@ export function GameTable({ drawPileCount, discardPile, revealedSetupCards }: Ga
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center gap-2 text-[var(--color-text-muted)] opacity-50">
                       <Layers className="h-8 w-8" />
-                      <span className="text-xs font-medium tracking-wider">DISCARD</span>
+                      <span className="text-xs font-medium tracking-wider">捨て札</span>
                     </div>
                   )}
                 </motion.button>

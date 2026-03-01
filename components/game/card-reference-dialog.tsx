@@ -93,15 +93,15 @@ export function CardReferenceDialog() {
         <DialogHeader className="px-6 py-4 border-b border-[rgba(255,255,255,0.1)]">
           <DialogTitle className="flex items-center gap-2 font-heading text-xl text-[var(--color-accent-light)]">
             <BookOpen className="h-5 w-5" />
-            Card Reference
+            カード一覧
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="h-full max-h-[calc(85vh-4rem)] px-6 py-4">
           <div className="space-y-4 pb-4">
             <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] px-2">
-              <span>Card Rank & Effect</span>
-              <span>Remaining / Total</span>
+              <span>ランク / 効果</span>
+              <span>残り / 合計</span>
             </div>
             
             <div className="space-y-2">

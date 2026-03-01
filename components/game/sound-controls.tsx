@@ -40,7 +40,7 @@ export function SoundControls() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-heading text-xl text-[var(--color-accent-light)]">
             <Settings className="h-5 w-5" />
-            Settings
+            設定
           </DialogTitle>
         </DialogHeader>
 
@@ -48,10 +48,10 @@ export function SoundControls() {
           {/* Volume Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-[var(--color-text-muted)]">Master Volume</Label>
+              <Label className="text-sm font-medium text-[var(--color-text-muted)]">効果音</Label>
               <div className="flex items-center gap-2">
                 <span className="w-8 text-right text-xs text-[var(--color-accent-light)]">
-                  {muted ? "Mute" : `${Math.round(volume * 100)}%`}
+                  {muted ? "消音" : `${Math.round(volume * 100)}%`}
                 </span>
                 <Button
                   type="button"
@@ -80,7 +80,7 @@ export function SoundControls() {
 
           {/* Tempo Section */}
           <div className="space-y-3 border-t border-[rgba(255,255,255,0.1)] pt-4">
-            <Label className="text-sm font-medium text-[var(--color-text-muted)]">Game Tempo</Label>
+            <Label className="text-sm font-medium text-[var(--color-text-muted)]">ゲームテンポ</Label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -92,7 +92,7 @@ export function SoundControls() {
                     : "border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.03)] text-[var(--color-text-muted)] hover:bg-[rgba(255,255,255,0.05)]"}
                 `}
               >
-                <span>Normal</span>
+                <span>通常</span>
                 {tempo === "normal" && <Check className="h-3.5 w-3.5" />}
               </button>
               <button
@@ -105,12 +105,12 @@ export function SoundControls() {
                     : "border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.03)] text-[var(--color-text-muted)] hover:bg-[rgba(255,255,255,0.05)]"}
                 `}
               >
-                <span>Fast</span>
+                <span>高速</span>
                 {tempo === "fast" && <Check className="h-3.5 w-3.5" />}
               </button>
             </div>
             <p className="text-[10px] text-[var(--color-text-muted)] opacity-70">
-              * Fastモードでは演出時間が短縮され、Botの思考時間が早くなります。
+              * 高速モードでは演出時間が短縮され、Botの思考時間が早くなります。
             </p>
           </div>
         </div>

@@ -101,12 +101,12 @@ export function LogPanel() {
         <div className="min-w-0">
           <h3 className="font-heading text-lg text-[var(--color-accent-light)] flex items-center gap-2 drop-shadow-sm">
             <MessageSquare className="h-4 w-4 opacity-80" />
-            Battle Log
+            ゲームログ
           </h3>
         </div>
         <div className="ml-2 flex items-center gap-2">
           <span className="rounded bg-[rgba(255,255,255,0.08)] px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] opacity-80">
-            Latest {logs.length}
+            {logs.length}件
           </span>
           {collapsed && unreadCount > 0 && (
             <span className="rounded bg-[rgba(215,178,110,0.25)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent-light)]">
@@ -175,7 +175,7 @@ export function LogPanel() {
                           isElimination ? "text-[var(--color-warn-light)]" : "text-[rgba(215,178,110,0.8)]",
                         )}
                       >
-                        {log.icon?.toUpperCase() ?? "INFO"}
+                        {log.icon?.toUpperCase() ?? "情報"}
                       </span>
                       <span className="font-mono text-[10px] text-[var(--color-text-muted)] opacity-55">
                         {new Date(log.timestamp).toLocaleTimeString([], {

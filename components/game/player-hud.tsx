@@ -92,11 +92,11 @@ export function PlayerHUD({
             </p>
             {player.isBot && <Badge variant="outline" className="text-[9px] h-4 px-1 border-[rgba(255,255,255,0.2)] text-[var(--color-text-muted)]">BOT</Badge>}
           </div>
-          <p className="text-xs text-[var(--color-text-muted)] opacity-70 font-mono tracking-wide">Seat {player.seat + 1}</p>
+          <p className="text-xs text-[var(--color-text-muted)] opacity-70 font-mono tracking-wide">{player.seat + 1}番席</p>
         </div>
         <div className="flex gap-1.5 flex-wrap justify-end">
-          {player.isEliminated && <Badge variant="danger" className="text-[10px] h-5 shadow-sm">Eliminated</Badge>}
-          {isActive && <Badge variant="default" className="text-[10px] h-5 shadow-[0_0_10px_rgba(215,178,110,0.35)]">Turn</Badge>}
+          {player.isEliminated && <Badge variant="danger" className="text-[10px] h-5 shadow-sm">脱落</Badge>}
+          {isActive && <Badge variant="default" className="text-[10px] h-5 shadow-[0_0_10px_rgba(215,178,110,0.35)]">手番</Badge>}
         </div>
       </div>
 
@@ -116,7 +116,7 @@ export function PlayerHUD({
         </div>
       ) : (
         <div className="mt-2 ml-2 flex min-h-[2.8rem] items-center justify-center rounded-lg border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.15)] text-[10px] text-[var(--color-text-muted)] opacity-60">
-          No Discards
+          捨て札なし
         </div>
       )}
 

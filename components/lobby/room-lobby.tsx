@@ -455,7 +455,7 @@ export function RoomLobby() {
             transition={{ delay: 0.4 }}
             className="max-w-2xl text-sm text-[var(--color-text-muted)]"
           >
-            高級感あるフェルト卓で繰り広げられるミニマルな駆け引き。ニックネームを入力して即座にBot対戦を開始できます。
+            手札1枚の読み合いで繰り広げるミニマルな駆け引き。ニックネームを入力してすぐにBot対戦を開始できます。
           </motion.p>
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <Button

@@ -67,7 +67,7 @@ export function GameBoard() {
 
   // ターン開始検出用
   const [showTurnCutin, setShowTurnCutin] = useState(false);
-  const [cutinText, setCutinText] = useState("YOUR TURN");
+  const [cutinText, setCutinText] = useState("あなたの番");
   const prevTurnRef = useRef<boolean>(false);
   const prevRoundRef = useRef<number | null>(null);
   const cutinInitializedRef = useRef(false);
@@ -87,18 +87,18 @@ export function GameBoard() {
     const roundChanged = prevRoundRef.current !== null && state.round !== prevRoundRef.current;
 
     if (roundChanged) {
-      setCutinText(`ROUND ${state.round}`);
+      setCutinText(`ラウンド ${state.round}`);
       setShowTurnCutin(true);
 
       // ラウンド開始直後かつ自分の入力フェーズに入っている場合のみ追従表示
       if (isMyTurn && state.phase === "choose_card") {
         delayedTurnTimer = window.setTimeout(() => {
-          setCutinText("YOUR TURN");
+          setCutinText("あなたの番");
           setShowTurnCutin(true);
         }, 1800);
       }
     } else if (isMyTurn && !prevTurnRef.current && state.phase === "choose_card") {
-      setCutinText("YOUR TURN");
+      setCutinText("あなたの番");
       setShowTurnCutin(true);
     }
 
