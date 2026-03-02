@@ -1162,7 +1162,31 @@ export async function executeBotTurn(
   roomId: string,
   options?: { skipThinkDelay?: boolean },
 ) {
+  let delayedTurnSnapshot:
+    | { gameId: string; activePlayerId: string; turnIndex: number }
+    | null = null;
+
   if (!options?.skipThinkDelay) {
+    const [beforeDelayGame] = await db
+      .select({
+        id: games.id,
+        activePlayerId: games.activePlayerId,
+        turnIndex: games.turnIndex,
+        phase: games.phase,
+      })
+      .from(games)
+      .where(eq(games.roomId, roomId));
+
+    if (!beforeDelayGame || beforeDelayGame.phase !== "choose_card" || !beforeDelayGame.activePlayerId) {
+      return;
+    }
+
+    delayedTurnSnapshot = {
+      gameId: beforeDelayGame.id,
+      activePlayerId: beforeDelayGame.activePlayerId,
+      turnIndex: beforeDelayGame.turnIndex,
+    };
+
     // Add thinking delay so bot turns are not instantaneous.
     // This path acts as a fallback when client-driven trigger is unavailable.
     const jitterMultiplier = 1 - BOT_THINK_JITTER_RATIO / 2 + Math.random() * BOT_THINK_JITTER_RATIO;
@@ -1173,9 +1197,21 @@ export async function executeBotTurn(
     const [game] = await tx
       .select()
       .from(games)
-      .where(eq(games.roomId, roomId));
+      .where(
+        delayedTurnSnapshot
+          ? eq(games.id, delayedTurnSnapshot.gameId)
+          : eq(games.roomId, roomId),
+      );
 
     if (!game || game.phase !== "choose_card" || !game.activePlayerId) {
+      return null;
+    }
+
+    if (
+      delayedTurnSnapshot &&
+      (game.activePlayerId !== delayedTurnSnapshot.activePlayerId ||
+        game.turnIndex !== delayedTurnSnapshot.turnIndex)
+    ) {
       return null;
     }
 
