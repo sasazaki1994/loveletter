@@ -355,16 +355,17 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
 
     // Serverless environments might cut off the async bot execution.
     // We trigger it from the client side as a reliable driver.
+    const triggerDelayMs = Math.max(0, botTurnDelayMs);
     const timer = setTimeout(() => {
       fetch("/api/game/bot-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId }),
+        body: JSON.stringify({ roomId, skipThinkDelay: true }),
       }).catch((err) => console.error("Failed to trigger bot turn", err));
-    }, 2000);
+    }, triggerDelayMs);
 
     return () => clearTimeout(timer);
-  }, [isBotTurn, roomId, state?.turnIndex]);
+  }, [botTurnDelayMs, isBotTurn, roomId, state?.turnIndex]);
 
   const value = useMemo<GameContextValue>(
     () => ({

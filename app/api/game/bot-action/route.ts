@@ -7,12 +7,13 @@ import { rateLimit } from "@/lib/server/rate-limit";
 
 const schema = z.object({
   roomId: z.string().uuid(),
+  skipThinkDelay: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
-    const r = rateLimit(`bot-turn:${ip}`, 20, 10_000);
+    const r = rateLimit(`bot-turn:${ip}`, 80, 10_000);
     if (!r.ok) {
       return NextResponse.json(
         { error: "Too Many Requests" },
@@ -24,7 +25,9 @@ export async function POST(request: NextRequest) {
     const parsed = schema.parse(body);
 
     // バックグラウンドではなく、awaitして完了を待つことで確実に実行させる
-    await executeBotTurn(parsed.roomId);
+    await executeBotTurn(parsed.roomId, {
+      skipThinkDelay: parsed.skipThinkDelay ?? false,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
