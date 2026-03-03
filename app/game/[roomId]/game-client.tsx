@@ -76,10 +76,10 @@ export function GameClient({ roomId }: GameClientProps) {
                 </p>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
-                    onClick={() => router.push(`/?join=${encodeURIComponent(roomId)}&mode=multi`)}
+                    onClick={() => router.push("/")}
                     className="sm:flex-1"
                   >
-                    ロビーに戻って参加する
+                    ロビーに戻る
                   </Button>
                   <Button variant="outline" onClick={() => router.refresh()} className="sm:flex-1">
                     再読み込み

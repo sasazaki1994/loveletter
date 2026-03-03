@@ -1,16 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Crown, Loader2, QrCode } from "lucide-react";
+import { BookOpen, Crown, Loader2, QrCode, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RoomIdDisplay } from "@/components/ui/room-id-display";
-import { RoomQrShare } from "@/components/ui/room-qr-share";
 import { RoomQrScanner } from "@/components/ui/room-qr-scanner";
 import { CardSymbol } from "@/components/icons/card-symbol";
 import { ParticlesCanvas, type ParticleBurst } from "@/components/game/particles-canvas";
@@ -46,8 +43,6 @@ export function RoomLobby() {
   const [mpError, setMpError] = useState<string | null>(null);
   const [mpLoading, setMpLoading] = useState(false);
   const [rooms, setRooms] = useState<Array<{ id: string; shortId?: string; status: string; createdAt: string; playerCount: number }>>([]);
-  const [showRoomCreatedDialog, setShowRoomCreatedDialog] = useState(false);
-  const [createdRoomId, setCreatedRoomId] = useState<string | null>(null);
   const [showRooms, setShowRooms] = useState(false);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
@@ -100,15 +95,18 @@ export function RoomLobby() {
     return () => clearInterval(interval);
   }, []);
 
-  // 招待リンク (?join=XXXX) からルームIDを埋め込む
+  // 招待リンク (?join=XXXX) → ゲームページへ直接リダイレクト
   useEffect(() => {
     const invite = searchParams.get("join") ?? searchParams.get("room");
-    const mode = searchParams.get("mode");
     if (invite) {
       const normalized = normalizeRoomId(invite);
-      setJoinRoomId((prev) => (prev ? prev : normalized));
+      if (normalized) {
+        router.replace(`/game/${normalized}`);
+        return;
+      }
     }
-    const shouldSurfaceMulti = invite || mode?.toLowerCase() === "multi";
+    const mode = searchParams.get("mode");
+    const shouldSurfaceMulti = mode?.toLowerCase() === "multi";
     if (shouldSurfaceMulti && !multiLandingHandledRef.current) {
       multiLandingHandledRef.current = true;
       const scrollTarget = multiSectionRef.current;
@@ -120,7 +118,7 @@ export function RoomLobby() {
         }, 120);
       });
     }
-  }, [searchParams, setJoinRoomId]);
+  }, [searchParams, router]);
 
   // アカウント状態を取得（任意）
   useEffect(() => {
@@ -312,9 +310,7 @@ export function RoomLobby() {
         nickname: nickname.trim(),
         shortId: payload.shortId,
       });
-      // ルームIDを表示するダイアログを表示（短いIDを優先）
-      setCreatedRoomId(payload.shortId ?? payload.roomId);
-      setShowRoomCreatedDialog(true);
+      router.push(`/game/${payload.roomId}`);
     } catch (error) {
       setMpError((error as Error).message ?? "ルーム作成に失敗しました");
     } finally {
@@ -322,59 +318,18 @@ export function RoomLobby() {
     }
   };
 
-  const handleJoinRoom = async () => {
+  const handleJoinRoom = () => {
     const resolved = extractRoomIdFromValue(joinRoomId);
-    if (!nickname.trim() || !joinRoomId.trim()) {
-      setMpError("ルームIDとニックネームを入力してください");
+    if (!joinRoomId.trim()) {
+      setMpError("ルームIDを入力してください");
       return;
     }
     if (!resolved) {
       setMpError("ルームIDの形式が不正です（6文字IDまたはUUID）。");
       return;
     }
-    if (session?.roomId) {
-      setMpError(
-        "既存のセッションがあります。同じブラウザで別プレイヤーとして参加するとホスト権限/認証が上書きされるため、別端末/シークレットで参加するか、下の「セッションを破棄」を押してから続行してください。",
-      );
-      return;
-    }
-    setMpError(null);
-    setMpLoading(true);
-    try {
-      const response = await fetch("/api/room/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId: resolved, nickname: nickname.trim() }),
-      });
-      const payload = (await response.json()) as {
-        roomId?: string;
-        shortId?: string;
-        playerId?: string;
-        seat?: number;
-        error?: string;
-        detail?: string;
-      };
-      if (!response.ok) {
-        const errorMsg = payload.error ?? "参加に失敗しました";
-        const detailMsg = payload.detail ? ` (${payload.detail})` : "";
-        throw new Error(errorMsg + detailMsg);
-      }
-      if (!payload.roomId || !payload.playerId) {
-        throw new Error("無効なレスポンスです。");
-      }
-      saveLastNickname(nickname.trim());
-      setSession({
-        roomId: payload.roomId,
-        playerId: payload.playerId,
-        nickname: nickname.trim(),
-        shortId: payload.shortId,
-      });
-      router.push(`/game/${payload.roomId}`);
-    } catch (error) {
-      setMpError((error as Error).message ?? "参加に失敗しました");
-    } finally {
-      setMpLoading(false);
-    }
+    saveLastNickname(nickname.trim());
+    router.push(`/game/${resolved}`);
   };
 
   const handleStartRoom = async () => {
@@ -616,67 +571,25 @@ export function RoomLobby() {
             >
               {createLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bot対戦を開始"}
             </Button>
-            <div className="h-px bg-[rgba(215,178,110,0.25)]" />
-            <div className="grid gap-4" ref={multiSectionRef}>
-              <div className="rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.55)] p-4 text-sm text-[var(--color-text-muted)]">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="font-medium text-[var(--color-accent-light)]">アカウント</span>
-                  {user ? (
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs">{user.username}</span>
-                      <Button variant="outline" className="h-8 px-3 text-xs" onClick={handleLogout} disabled={authLoading}>
-                        ログアウト
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={authMode === "login" ? "primary" : "outline"}
-                        className="h-8 px-3 text-xs"
-                        onClick={() => setAuthMode("login")}
-                        disabled={authLoading}
-                      >
-                        ログイン
-                      </Button>
-                      <Button
-                        variant={authMode === "signup" ? "primary" : "outline"}
-                        className="h-8 px-3 text-xs"
-                        onClick={() => setAuthMode("signup")}
-                        disabled={authLoading}
-                      >
-                        登録
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                {!user && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    <Input
-                      value={authUsername}
-                      onChange={(e) => setAuthUsername(e.target.value)}
-                      placeholder="username"
-                      maxLength={32}
-                    />
-                    <Input
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      placeholder="password"
-                      type="password"
-                      maxLength={128}
-                    />
-                    <Button onClick={handleAuth} disabled={authLoading} className="w-full">
-                      {authLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : authMode === "signup" ? "登録して続行" : "ログインして続行"}
-                    </Button>
-                  </div>
-                )}
-                {authError && <p className="mt-2 text-xs text-[var(--color-warn-light)]">{authError}</p>}
-                <p className="mt-2 text-xs leading-relaxed">
-                  ログインしてマルチ参加すると、従来の player Cookie（llr_pid/llr_ptk）に依存せず、
-                  <span className="text-[var(--color-accent-light)]">同一ブラウザでもタブごとに別プレイヤー</span>を扱えます（テスト用途向け）。
-                </p>
-              </div>
+          </CardContent>
+        </Card>
+
+        <div ref={multiSectionRef}>
+        <Card className="relative overflow-hidden bg-table-felt border-[rgba(215,178,110,0.35)] shadow-2xl">
+          <div className="noise-overlay" />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <Users className="h-5 w-5 text-[var(--color-accent-light)]" />
+              友達と対戦する
+            </CardTitle>
+            <p className="text-sm text-[var(--color-text-muted)] pt-1">
+              ルームを作って招待リンクを共有するだけ。すぐに対戦が始められます。
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-4">
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">ニックネーム（共通）</label>
+                <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">ニックネーム</label>
                 <Input
                   ref={mpNicknameInputRef}
                   value={nickname}
@@ -685,48 +598,64 @@ export function RoomLobby() {
                   maxLength={24}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Button onClick={handleCreateHumanRoom} disabled={mpLoading} className="w-full">
-                  {mpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "マルチ部屋を作成"}
-                </Button>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="sm:flex-1 space-y-1">
-                    <Input
-                      ref={joinRoomIdInputRef}
-                      value={joinRoomId}
-                      onChange={(e) => setJoinRoomId(e.target.value)}
-                      onBlur={(e) => {
-                        const extracted = extractRoomIdFromValue(e.currentTarget.value);
-                        if (extracted) {
-                          setJoinRoomId(extracted);
-                          setMpError(null);
-                        }
-                      }}
-                      onPaste={(e) => {
-                        const text = e.clipboardData.getData("text");
-                        const extracted = extractRoomIdFromValue(text);
-                        if (extracted) {
-                          e.preventDefault();
-                          setJoinRoomId(extracted);
-                          setMpError(null);
-                          setTimeout(() => joinRoomIdInputRef.current?.focus({ preventScroll: true }), 0);
-                        }
-                      }}
-                      placeholder="Room ID を入力"
-                      className="w-full"
-                    />
-                    {joinRoomId.trim().length > 0 && (
-                      <p
-                        className={`text-[11px] ${
-                          joinRoomIdValid ? "text-[var(--color-success-light)]" : "text-[var(--color-warn-light)]"
-                        }`}
-                      >
-                        {joinRoomIdValid ? "形式: OK" : "6文字ID または UUID を入力（招待URL貼り付け可）"}
-                      </p>
-                    )}
-                  </div>
+              <Button
+                onClick={() => {
+                  play("confirm", { volume: 0.4 });
+                  handleCreateHumanRoom();
+                }}
+                onMouseEnter={() => play("card_draw", { volume: 0.1 })}
+                disabled={mpLoading || !nickname.trim()}
+                className="w-full shadow-lg h-12 text-base"
+              >
+                {mpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "マルチ部屋を作成"}
+              </Button>
+              <p className="text-xs text-center text-[var(--color-text-muted)]">
+                作成後、待機画面で招待リンク・QRコードを共有できます
+              </p>
+            </div>
+
+            <div className="h-px bg-[rgba(215,178,110,0.2)]" />
+
+            <div className="space-y-3">
+              <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">ルームIDで参加</label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                <div className="sm:flex-1 space-y-1">
+                  <Input
+                    ref={joinRoomIdInputRef}
+                    value={joinRoomId}
+                    onChange={(e) => setJoinRoomId(e.target.value)}
+                    onBlur={(e) => {
+                      const extracted = extractRoomIdFromValue(e.currentTarget.value);
+                      if (extracted) {
+                        setJoinRoomId(extracted);
+                        setMpError(null);
+                      }
+                    }}
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData("text");
+                      const extracted = extractRoomIdFromValue(text);
+                      if (extracted) {
+                        e.preventDefault();
+                        setJoinRoomId(extracted);
+                        setMpError(null);
+                        setTimeout(() => joinRoomIdInputRef.current?.focus({ preventScroll: true }), 0);
+                      }
+                    }}
+                    placeholder="6文字ID または UUID を入力"
+                    className="w-full"
+                  />
+                  {joinRoomId.trim().length > 0 && (
+                    <p
+                      className={`text-[11px] ${
+                        joinRoomIdValid ? "text-[var(--color-success-light)]" : "text-[var(--color-warn-light)]"
+                      }`}
+                    >
+                      {joinRoomIdValid ? "形式: OK" : "6文字ID / UUID / 招待URL を入力"}
+                    </p>
+                  )}
+                </div>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                  <Button onClick={handleJoinRoom} disabled={mpLoading || !nickname.trim() || !joinRoomIdValid} className="w-full sm:w-auto">
+                  <Button onClick={handleJoinRoom} disabled={mpLoading || !joinRoomIdValid} className="w-full sm:w-auto">
                     参加
                   </Button>
                   <Button
@@ -739,20 +668,38 @@ export function RoomLobby() {
                     QR読取
                   </Button>
                 </div>
+              </div>
+            </div>
+
+            {mpError && <p className="text-sm text-[var(--color-warn-light)]">{mpError}</p>}
+
+            {session?.roomId && (
+              <div className="rounded-lg border border-[rgba(215,178,110,0.3)] bg-[rgba(20,45,40,0.5)] p-4 text-sm">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-[var(--color-text-muted)]">進行中:</span>
+                  <span className="font-mono text-[var(--color-accent-light)]">{session.shortId ?? session.roomId.slice(0, 8)}</span>
+                  <span className="text-[var(--color-accent-light)]">{session.nickname}</span>
+                  <Button
+                    variant="primary"
+                    className="h-9 px-4 text-xs"
+                    onClick={() => router.push(`/game/${session.roomId}`)}
+                  >
+                    続きを再開
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="h-9 px-3 text-xs"
+                    onClick={() => {
+                      setSession(null);
+                      setMpError(null);
+                    }}
+                  >
+                    破棄
+                  </Button>
                 </div>
               </div>
-              <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">
-                {user
-                  ? "ログイン中は同一ブラウザでもタブを分ければ参加できます（ただし同一アカウントで複数席を操作できます）。実運用のマルチは別アカウント/別端末を推奨します。"
-                  : "未ログインのまま同一ブラウザで複数人が参加すると、player Cookieが上書きされてホストが開始できなくなることがあります。2人目以降は別端末/別ブラウザ/シークレット、またはログインを推奨します。"}
-              </p>
-              {mpError && <p className="text-sm text-[var(--color-warn-light)]">{mpError}</p>}
-              {session?.roomId && (
-                <Button variant="outline" onClick={handleStartRoom} disabled={mpLoading} className="w-full">
-                  {mpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "この部屋でゲーム開始 (ホスト)"}
-                </Button>
-              )}
-            </div>
+            )}
+
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">公開ルーム</label>
@@ -794,117 +741,94 @@ export function RoomLobby() {
                   {rooms.length === 0 && (
                     <p className="text-sm text-[var(--color-text-muted)]">現在参加可能なルームはありません。</p>
                   )}
-                {rooms.map((r) => (
-                  (() => {
+                  {rooms.map((r) => {
                     const statusLabel =
                       r.status === "waiting" ? "募集中" : r.status === "active" ? "進行中" : r.status;
                     const canJoin = r.status === "waiting";
                     return (
-                  <div
-                    key={r.id}
-                    className="flex flex-col gap-2 rounded border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="truncate">
-                      Room {r.shortId ?? r.id.slice(0, 8)} · {statusLabel} · {r.playerCount} 人
-                    </span>
-                    <Button
-                      variant="ghost"
-                      className="h-8 w-full px-3 text-xs sm:w-auto"
-                      onClick={() => {
-                        if (canJoin) {
-                          setJoinRoomId(r.shortId ?? r.id);
-                          setMpError(null);
-                          const scrollTarget = multiSectionRef.current;
-                          window.requestAnimationFrame(() => {
-                            scrollTarget?.scrollIntoView({ behavior: "smooth", block: "start" });
-                            setTimeout(() => joinRoomIdInputRef.current?.focus({ preventScroll: true }), 120);
-                          });
-                        } else {
-                          router.push(`/game/${r.id}`);
-                        }
-                      }}
-                    >
-                      {canJoin ? "参加準備" : "観戦"}
-                    </Button>
-                  </div>
+                      <div
+                        key={r.id}
+                        className="flex flex-col gap-2 rounded border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <span className="truncate">
+                          Room {r.shortId ?? r.id.slice(0, 8)} · {statusLabel} · {r.playerCount} 人
+                        </span>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-full px-3 text-xs sm:w-auto"
+                          onClick={() => router.push(`/game/${r.id}`)}
+                        >
+                          {canJoin ? "参加する" : "観戦"}
+                        </Button>
+                      </div>
                     );
-                  })()
-                ))}
+                  })}
                 </div>
               )}
             </div>
-            {session && (
-              <div className="rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(13,32,30,0.7)] p-4 text-sm text-[var(--color-text-muted)]">
-                <p>既存のセッションがあります。</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-[var(--color-accent-light)]">
-                  <span>Room: {session.shortId ?? session.roomId}</span>
-                  <span>Player: {session.nickname}</span>
-                  <Button
-                    variant="outline"
-                    className="h-8 px-3 text-xs"
-                    onClick={() => router.push(`/game/${session.roomId}`)}
-                  >
-                  続きを再開
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="h-8 px-3 text-xs"
-                    onClick={() => {
-                      setSession(null);
-                      setMpError(null);
-                    }}
-                  >
-                    セッションを破棄
+
+            <div className="rounded-lg border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.55)] p-4 text-sm text-[var(--color-text-muted)]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="font-medium text-[var(--color-accent-light)]">アカウント</span>
+                {user ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs">{user.username}</span>
+                    <Button variant="outline" className="h-8 px-3 text-xs" onClick={handleLogout} disabled={authLoading}>
+                      ログアウト
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={authMode === "login" ? "primary" : "outline"}
+                      className="h-8 px-3 text-xs"
+                      onClick={() => setAuthMode("login")}
+                      disabled={authLoading}
+                    >
+                      ログイン
+                    </Button>
+                    <Button
+                      variant={authMode === "signup" ? "primary" : "outline"}
+                      className="h-8 px-3 text-xs"
+                      onClick={() => setAuthMode("signup")}
+                      disabled={authLoading}
+                    >
+                      登録
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {!user && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <Input
+                    value={authUsername}
+                    onChange={(e) => setAuthUsername(e.target.value)}
+                    placeholder="username"
+                    maxLength={32}
+                  />
+                  <Input
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="password"
+                    type="password"
+                    maxLength={128}
+                  />
+                  <Button onClick={handleAuth} disabled={authLoading} className="w-full">
+                    {authLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : authMode === "signup" ? "登録して続行" : "ログインして続行"}
                   </Button>
                 </div>
-              </div>
-            )}
+              )}
+              {authError && <p className="mt-2 text-xs text-[var(--color-warn-light)]">{authError}</p>}
+              <p className="mt-2 text-xs leading-relaxed">
+                ログインすると同一ブラウザでもタブごとに別プレイヤーとして参加できます。
+              </p>
+            </div>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       <RoomQrScanner open={qrScannerOpen} onOpenChange={setQrScannerOpen} onDetected={handleQrDetected} />
-
-      {/* ルーム作成成功ダイアログ */}
-      <Dialog open={showRoomCreatedDialog} onOpenChange={setShowRoomCreatedDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>ルームが作成されました</DialogTitle>
-            <DialogDescription>
-              他のプレイヤーを招待するために、ルームIDを共有してください。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {createdRoomId && (
-              <div className="space-y-3">
-                <RoomIdDisplay roomId={createdRoomId} />
-                <RoomQrShare roomId={createdRoomId} />
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowRoomCreatedDialog(false);
-                }}
-                className="flex-1"
-              >
-                閉じる
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowRoomCreatedDialog(false);
-                  // ゲームページへの遷移は必ず UUID の roomId を使用（短いIDは共有用）
-                  router.push(`/game/${session?.roomId ?? createdRoomId ?? ""}`);
-                }}
-                className="flex-1"
-              >
-                ゲームページへ
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
     </div>
   );

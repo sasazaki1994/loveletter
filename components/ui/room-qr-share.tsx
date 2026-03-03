@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from "react";
-import { AlertCircle, Check, Copy, Link2, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Check, Copy, Link2, Loader2, Share2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ interface RoomQrShareProps {
 }
 
 const buildJoinUrl = (roomId: string) => {
-  const fallback = `/?join=${encodeURIComponent(roomId)}&mode=multi`;
+  const fallback = `/game/${encodeURIComponent(roomId)}`;
   try {
     if (typeof window === "undefined") {
       return fallback;
@@ -23,9 +23,7 @@ const buildJoinUrl = (roomId: string) => {
     const url = new URL(window.location.href);
     url.search = "";
     url.hash = "";
-    url.pathname = "/";
-    url.searchParams.set("join", roomId);
-    url.searchParams.set("mode", "multi");
+    url.pathname = `/game/${encodeURIComponent(roomId)}`;
     return url.toString();
   } catch {
     return fallback;
@@ -36,8 +34,13 @@ export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareP
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  const [canShare, setCanShare] = useState(false);
 
   const joinUrl = useMemo(() => buildJoinUrl(roomId), [roomId]);
+
+  useEffect(() => {
+    setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
+  }, []);
 
   const handleCopyLink = async () => {
     if (copying) return;
@@ -58,6 +61,19 @@ export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareP
     }
   };
 
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: "Love Letter Reverie — 対戦に参加",
+        text: "Love Letter Reverie で一緒に遊ぼう！",
+        url: joinUrl,
+      });
+    } catch {
+      // user cancelled or share failed — fall back to copy
+      handleCopyLink();
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -70,37 +86,49 @@ export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareP
           <Link2 className="h-4 w-4 text-[var(--color-accent-light)]" />
           <div className="leading-tight">
             <p className="text-[11px] uppercase tracking-[0.32em] text-[rgba(215,178,110,0.75)]">QRで参加</p>
-            <p className="text-xs text-[var(--color-text-muted)]">スキャンするとロビーの参加フォームが開きます</p>
+            <p className="text-xs text-[var(--color-text-muted)]">スキャンするとルームに直接入れます</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          className="h-8 px-2 text-xs"
-          onClick={handleCopyLink}
-          disabled={copying}
-        >
-          {copying ? (
-            <>
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              コピー中
-            </>
-          ) : copied ? (
-            <>
-              <Check className="mr-2 h-3.5 w-3.5 text-[var(--color-success-light)]" />
-              コピー済み
-            </>
-          ) : copyFailed ? (
-            <>
-              <AlertCircle className="mr-2 h-3.5 w-3.5 text-[var(--color-warn-light)]" />
-              コピー失敗
-            </>
-          ) : (
-            <>
-              <Copy className="mr-2 h-3.5 w-3.5" />
-              リンクをコピー
-            </>
+        <div className="flex items-center gap-1">
+          {canShare && (
+            <Button
+              variant="ghost"
+              className="h-8 px-2 text-xs"
+              onClick={handleShare}
+            >
+              <Share2 className="mr-1.5 h-3.5 w-3.5" />
+              共有
+            </Button>
           )}
-        </Button>
+          <Button
+            variant="ghost"
+            className="h-8 px-2 text-xs"
+            onClick={handleCopyLink}
+            disabled={copying}
+          >
+            {copying ? (
+              <>
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                コピー中
+              </>
+            ) : copied ? (
+              <>
+                <Check className="mr-2 h-3.5 w-3.5 text-[var(--color-success-light)]" />
+                コピー済み
+              </>
+            ) : copyFailed ? (
+              <>
+                <AlertCircle className="mr-2 h-3.5 w-3.5 text-[var(--color-warn-light)]" />
+                コピー失敗
+              </>
+            ) : (
+              <>
+                <Copy className="mr-2 h-3.5 w-3.5" />
+                リンクをコピー
+              </>
+            )}
+          </Button>
+        </div>
       </div>
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="self-start rounded-lg bg-[rgba(9,22,20,0.85)] p-3">
@@ -116,8 +144,7 @@ export function RoomQrShare({ roomId, className, compact = false }: RoomQrShareP
         <div className="flex-1 space-y-2 text-xs text-[var(--color-text-muted)]">
           <p className="break-all font-mono text-sm text-[var(--color-accent-light)] select-all">{joinUrl}</p>
           <p className="text-[11px] leading-relaxed">
-            共有用URLにはルームID <span className="font-mono text-[var(--color-accent-light)]">{roomId}</span> を埋め込んでいます。
-            ブラウザのカメラからアクセスすると参加フォームが開きます。
+            リンクを開くとルームに直接入れます。ルームID: <span className="font-mono text-[var(--color-accent-light)]">{roomId}</span>
           </p>
         </div>
       </div>

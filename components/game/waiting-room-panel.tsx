@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Users, Crown } from "lucide-react";
+import { ArrowLeft, Loader2, Users, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -336,6 +336,16 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
                 {error}
               </motion.div>
             )}
+
+            <div className="pt-2 border-t border-[rgba(215,178,110,0.15)]">
+              <button
+                onClick={() => router.push("/")}
+                className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent-light)] transition-colors"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                ロビーに戻る
+              </button>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
