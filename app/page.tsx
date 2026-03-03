@@ -1,5 +1,6 @@
 import { RoomLobby } from "@/components/lobby/room-lobby";
 import { AdsenseAd } from "@/components/ads/adsense-ad";
+import { CookieSettingsButton } from "@/components/ads/cookie-settings-button";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default function Home() {
         <Link className="underline underline-offset-2" href="/terms">
           利用規約
         </Link>
+        <CookieSettingsButton />
       </div>
     </main>
   );

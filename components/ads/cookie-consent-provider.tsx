@@ -20,10 +20,12 @@ const CookieConsentContext = createContext<{
   consent: ConsentState;
   accept: () => void;
   reject: () => void;
+  reset: () => void;
 }>({
   consent: "pending",
   accept: () => {},
   reject: () => {},
+  reset: () => {},
 });
 
 export function useCookieConsent() {
@@ -42,10 +44,6 @@ function CookieConsentBanner() {
     firstButton?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        reject();
-        return;
-      }
       if (e.key !== "Tab") return;
 
       const focusable = bannerRef.current?.querySelectorAll<HTMLElement>(
@@ -72,7 +70,7 @@ function CookieConsentBanner() {
         previousFocusRef.current.focus();
       }
     };
-  }, [reject]);
+  }, []);
 
   return (
     <div
@@ -153,10 +151,19 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
     setConsent("rejected");
   }, []);
 
+  const reset = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // localStorage unavailable
+    }
+    setConsent("pending");
+  }, []);
+
   const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
   return (
-    <CookieConsentContext.Provider value={{ consent, accept, reject }}>
+    <CookieConsentContext.Provider value={{ consent, accept, reject, reset }}>
       {children}
       {consent === "accepted" && adsenseClient && (
         <Script

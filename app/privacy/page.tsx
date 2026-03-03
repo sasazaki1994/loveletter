@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CookieSettingsButton } from "@/components/ads/cookie-settings-button";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー | Love Letter Reverie",
@@ -226,6 +227,7 @@ export default function PrivacyPolicyPage() {
           <Link className="underline underline-offset-2" href="/">
             トップに戻る
           </Link>
+          <CookieSettingsButton />
         </div>
       </section>
     </main>
