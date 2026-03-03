@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useCookieConsent } from "./cookie-consent-provider";
 
 declare global {
   interface Window {
@@ -24,18 +25,24 @@ export function AdsenseAd({
   fullWidthResponsive = true,
 }: AdsenseAdProps) {
   const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+  const { consent } = useCookieConsent();
+  const filledRef = useRef(false);
 
   useEffect(() => {
-    if (!client || !slot) return;
-    try {
-      window.adsbygoogle = window.adsbygoogle || [];
-      window.adsbygoogle.push({});
-    } catch {
-      // Ad blockers / network failures should not crash the app.
-    }
-  }, [client, slot]);
+    if (!client || !slot || consent !== "accepted" || filledRef.current) return;
+    const timer = setTimeout(() => {
+      try {
+        window.adsbygoogle = window.adsbygoogle || [];
+        window.adsbygoogle.push({});
+        filledRef.current = true;
+      } catch {
+        // Ad blockers / network failures should not crash the app.
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [client, slot, consent]);
 
-  if (!client || !slot) return null;
+  if (!client || !slot || consent !== "accepted") return null;
 
   return (
     <ins

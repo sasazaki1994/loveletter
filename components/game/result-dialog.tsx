@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Crown, RefreshCw, Play, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { AdsenseAd } from "@/components/ads/adsense-ad";
 import { useGameContext } from "@/components/game/game-provider";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { cn } from "@/lib/utils";
@@ -431,6 +432,16 @@ export function ResultDialog() {
                 </Button>
               </div>
             </div>
+
+            {process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT && (
+              <div className="pt-2">
+                <AdsenseAd
+                  slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_RESULT}
+                  format="horizontal"
+                  style={{ minHeight: 50 }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>
