@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Crimson_Text, Work_Sans } from "next/font/google";
 
+import { CookieConsentProvider } from "@/components/ads/cookie-consent-provider";
 import "./globals.css";
 
 const headingFont = Crimson_Text({
@@ -28,25 +28,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
-
   return (
     <html lang="ja" suppressHydrationWarning>
       <body
         className={`${headingFont.variable} ${bodyFont.variable} font-body antialiased text-[var(--color-text)]`}
       >
-        <div className="min-h-screen bg-app-pattern text-[var(--color-text)]">
-          {children}
-        </div>
-        {adsenseClient ? (
-          <Script
-            id="adsbygoogle-init"
-            strategy="afterInteractive"
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
-            crossOrigin="anonymous"
-          />
-        ) : null}
+        <CookieConsentProvider>
+          <div className="min-h-screen bg-app-pattern text-[var(--color-text)]">
+            {children}
+          </div>
+        </CookieConsentProvider>
       </body>
     </html>
   );

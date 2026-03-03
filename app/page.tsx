@@ -15,9 +15,12 @@ export default function Home() {
           <AdsenseAd slot={homeSlot} />
         </div>
       ) : null}
-      <div className="mx-auto mt-8 w-full max-w-5xl px-4 text-xs text-[var(--color-text-muted)]">
+      <div className="mx-auto mt-8 flex w-full max-w-5xl gap-4 px-4 text-xs text-[var(--color-text-muted)]">
         <Link className="underline underline-offset-2" href="/privacy">
           プライバシーポリシー
+        </Link>
+        <Link className="underline underline-offset-2" href="/terms">
+          利用規約
         </Link>
       </div>
     </main>
