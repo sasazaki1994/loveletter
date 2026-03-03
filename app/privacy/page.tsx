@@ -108,7 +108,7 @@ export default function PrivacyPolicyPage() {
                 className="underline underline-offset-2"
                 href="https://policies.google.com/technologies/ads"
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 policies.google.com/technologies/ads
               </a>
@@ -139,7 +139,7 @@ export default function PrivacyPolicyPage() {
                 className="underline underline-offset-2"
                 href="https://adssettings.google.com"
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 adssettings.google.com
               </a>
@@ -152,7 +152,7 @@ export default function PrivacyPolicyPage() {
                 className="underline underline-offset-2"
                 href="https://optout.networkadvertising.org/"
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 optout.networkadvertising.org
               </a>

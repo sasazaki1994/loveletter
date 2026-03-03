@@ -29,6 +29,10 @@ export function AdsenseAd({
   const filledRef = useRef(false);
 
   useEffect(() => {
+    filledRef.current = false;
+  }, [client, slot, consent]);
+
+  useEffect(() => {
     if (!client || !slot || consent !== "accepted" || filledRef.current) return;
     const timer = setTimeout(() => {
       try {

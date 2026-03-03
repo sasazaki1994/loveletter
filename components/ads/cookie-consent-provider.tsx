@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import Script from "next/script";
@@ -31,16 +32,62 @@ export function useCookieConsent() {
 
 function CookieConsentBanner() {
   const { accept, reject } = useCookieConsent();
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<Element | null>(null);
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement;
+
+    const firstButton = bannerRef.current?.querySelector<HTMLButtonElement>("button");
+    firstButton?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        reject();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const focusable = bannerRef.current?.querySelectorAll<HTMLElement>(
+        'button, a[href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable || focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      if (previousFocusRef.current instanceof HTMLElement) {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [reject]);
 
   return (
     <div
+      ref={bannerRef}
       role="dialog"
       aria-label="Cookie の使用について"
+      aria-describedby="cookie-consent-description"
       className="fixed inset-x-0 bottom-0 z-[9999] animate-fade-in"
     >
       <div className="mx-auto max-w-3xl px-4 pb-4">
         <div className="rounded-2xl border border-[rgba(215,178,110,0.35)] bg-[rgba(12,28,26,0.97)] p-5 shadow-[0_-8px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-          <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
+          <p
+            id="cookie-consent-description"
+            className="text-sm leading-relaxed text-[var(--color-text-muted)]"
+          >
             当サイトでは、サービス改善および広告配信のために Cookie
             を使用しています。「同意する」を選択すると、広告配信用の Cookie
             （Google AdSense 等）の使用に同意したものとみなします。詳細は
@@ -77,20 +124,32 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "accepted" || stored === "rejected") {
-      setConsent(stored);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === "accepted" || stored === "rejected") {
+        setConsent(stored);
+      }
+    } catch {
+      // localStorage unavailable (e.g., private browsing mode)
     }
     setMounted(true);
   }, []);
 
   const accept = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "accepted");
+    try {
+      localStorage.setItem(STORAGE_KEY, "accepted");
+    } catch {
+      // localStorage unavailable
+    }
     setConsent("accepted");
   }, []);
 
   const reject = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "rejected");
+    try {
+      localStorage.setItem(STORAGE_KEY, "rejected");
+    } catch {
+      // localStorage unavailable
+    }
     setConsent("rejected");
   }, []);
 
