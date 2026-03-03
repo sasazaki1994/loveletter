@@ -100,7 +100,7 @@ export function RoomLobby() {
     const invite = searchParams.get("join") ?? searchParams.get("room");
     if (invite) {
       const normalized = normalizeRoomId(invite);
-      if (normalized) {
+      if (normalized && (isValidShortRoomId(normalized) || UUID_RE.test(normalized))) {
         router.replace(`/game/${normalized}`);
         return;
       }

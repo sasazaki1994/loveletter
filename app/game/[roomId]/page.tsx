@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function resolveRoomId(raw: string): Promise<string | null> {
-  if (UUID_RE.test(raw)) return raw;
+  if (UUID_RE.test(raw)) return raw.toLowerCase();
 
   const normalized = raw.trim().toUpperCase().replace(/\s+/g, "");
   if (!isValidShortRoomId(normalized)) return null;
