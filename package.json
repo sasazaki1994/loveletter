@@ -20,6 +20,7 @@
     "monkey:test": "playwright test tests/monkey/monkey.spec.ts --project=chromium",
     "monkey:test:headed": "playwright test tests/monkey/monkey.spec.ts --project=chromium --headed",
     "monkey:test:seed": "cross-env MONKEY_SEED=20251030 playwright test tests/monkey/monkey.spec.ts --project=chromium",
+    "perf:scene": "node scripts/perf/profile-scene.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push"

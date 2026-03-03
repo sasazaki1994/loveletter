@@ -221,6 +221,7 @@ npm run dev
 | `npm run monkey:test` | Playwright モンキーテストを実行（ヘッドレス） |
 | `npm run monkey:test:headed` | モンキーテストを実行（ブラウザ表示あり） |
 | `npm run monkey:test:seed` | シード値を指定してモンキーテストを実行 |
+| `pnpm perf:scene` | ロビー→ゲーム遷移の体感指標（FCP/LCP/LongTask/Input遅延）を採取 |
 
 ## API
 
@@ -346,6 +347,27 @@ data: {"error": "エラーメッセージ"}
 - データベース接続プール使用率
 - レスポンスタイム（P50/P95/P99）
 
+### パフォーマンス計測（ローカル）
+
+代表シーン（ロビー表示→Bot部屋作成→ゲーム画面表示）の最小計測は以下で実行できます。
+
+```bash
+pnpm perf:scene
+```
+
+オプション：
+
+- `--base-url http://localhost:3000`（デフォルト）
+- `--output artifacts/perf_scene.json`（JSON保存先）
+- `--settle-ms 2500`（画面安定待ち時間）
+
+主な出力：
+
+- `firstContentfulPaint` / `largestContentfulPaint`
+- `longTaskCount50ms` / `maxLongTaskMs`
+- `inputDelayP95Ms`
+- `roomTransitionToGameUiMs`
+
 ### バックアップ
 
 - **データベース**: Neon の自動バックアップ機能を利用（有料プラン）
@@ -406,6 +428,15 @@ npm run db:push
 - **プレイヤー**: 自分のルームでのみゲームアクションを実行可能
 - **オブザーバー**: ゲーム状態の閲覧のみ（未実装）
 - **ルームオーナー**: ルーム作成者（現時点では特別な権限なし）
+
+### HTTP セキュリティヘッダー
+
+`next.config.mjs` で以下を全レスポンスに付与しています。
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: SAMEORIGIN`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(self), microphone=(), geolocation=()`
 
 ### 入力検証
 

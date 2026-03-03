@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Crown, Loader2, QrCode } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { RoomQrShare } from "@/components/ui/room-qr-share";
-import { RoomQrScanner } from "@/components/ui/room-qr-scanner";
 import { CardSymbol } from "@/components/icons/card-symbol";
 import { ParticlesCanvas, type ParticleBurst } from "@/components/game/particles-canvas";
 import { usePlayerSession } from "@/lib/client/session";
@@ -21,6 +21,10 @@ import { CARD_POOL } from "@/lib/game/cards";
 import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RoomQrScanner = dynamic(
+  () => import("@/components/ui/room-qr-scanner").then((mod) => mod.RoomQrScanner),
+  { ssr: false },
+);
 
 export function RoomLobby() {
   const router = useRouter();
