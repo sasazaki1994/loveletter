@@ -769,7 +769,10 @@ export function GameBoard() {
                 </div>
               </div>
               <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
-              <LogPanel />
+              <LogPanel
+                defaultCollapsed={isCompactViewport}
+                className={isCompactViewport ? "sticky top-3 z-20 shadow-[0_14px_34px_rgba(0,0,0,0.34)]" : undefined}
+              />
             </div>
           )}
 

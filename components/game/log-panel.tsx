@@ -41,12 +41,25 @@ const LOG_ICONS: Record<string, React.ElementType> = {
 
 const LOG_PANEL_COLLAPSED_KEY = "gameLogPanelCollapsed";
 
-export function LogPanel() {
+interface LogPanelProps {
+  defaultCollapsed?: boolean;
+  className?: string;
+}
+
+function resolveLogVisualState(log: { icon?: string; type?: string; message: string }) {
+  const Icon = LOG_ICONS[log.icon || "info"] ?? Info;
+  const isElimination = log.type === "elimination" || log.icon === "flame" || /脱落|自滅/.test(log.message);
+  const isWin = log.type === "win" || log.icon === "crown";
+
+  return { Icon, isElimination, isWin };
+}
+
+export function LogPanel({ defaultCollapsed = false, className }: LogPanelProps) {
   const { state } = useGameContext();
   const logs = useMemo(() => state?.logs ?? [], [state?.logs]);
   const latestLog = useMemo(() => logs[logs.length - 1], [logs]);
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [unreadCount, setUnreadCount] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const prevLogCountRef = useRef(0);
@@ -56,6 +69,8 @@ export function LogPanel() {
     const stored = window.localStorage.getItem(LOG_PANEL_COLLAPSED_KEY);
     if (stored === "1") {
       setCollapsed(true);
+    } else if (stored === "0") {
+      setCollapsed(false);
     }
   }, []);
 
@@ -92,7 +107,10 @@ export function LogPanel() {
 
   return (
     <aside
-      className="pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.24)] bg-[rgba(10,24,22,0.82)] shadow-[0_10px_24px_rgba(0,0,0,0.32)] backdrop-blur-md"
+      className={cn(
+        "pointer-events-auto w-full overflow-hidden rounded-xl border border-[rgba(215,178,110,0.24)] bg-[rgba(10,24,22,0.82)] shadow-[0_10px_24px_rgba(0,0,0,0.32)] backdrop-blur-md",
+        className,
+      )}
       role="log"
       aria-live="polite"
       aria-relevant="additions"
@@ -134,10 +152,7 @@ export function LogPanel() {
         <ScrollArea ref={scrollAreaRef} className="h-64">
           <div className="space-y-3 px-3 py-3">
             {logs.map((log) => {
-              const Icon = LOG_ICONS[log.icon || "info"] ?? Info;
-              // サーバー側でtypeが判定されるが、未反映の古いログや一時的な状態のためにフォールバックを残す
-              const isElimination = log.type === "elimination" || log.icon === "flame" || /脱落|自滅/.test(log.message);
-              const isWin = log.type === "win" || log.icon === "crown";
+              const { Icon, isElimination, isWin } = resolveLogVisualState(log);
 
               return (
                 <motion.div
