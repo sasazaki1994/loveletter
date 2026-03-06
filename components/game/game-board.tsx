@@ -34,8 +34,10 @@ const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
 };
 
 const EFFECT_POSITION_SCALE = 0.78;
+const ACTION_BAR_DOCK_EVENT = "action_bar_dock_change";
 
 type PlayerSnapshot = ClientGameState["players"][number] | NonNullable<ClientGameState["self"]>;
+type ActionBarDock = "left" | "bottom";
 
 export function GameBoard() {
   const {
@@ -122,6 +124,7 @@ export function GameBoard() {
   const [handRevealComplete, setHandRevealComplete] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [useOverlayInfoRail, setUseOverlayInfoRail] = useState(false);
+  const [actionBarDock, setActionBarDock] = useState<ActionBarDock>("left");
   const hand = useMemo(
     () => optimisticHand ?? state?.hand ?? state?.self?.hand ?? [],
     [optimisticHand, state?.hand, state?.self?.hand],
@@ -151,6 +154,32 @@ export function GameBoard() {
     evaluateViewport();
     window.addEventListener("resize", evaluateViewport);
     return () => window.removeEventListener("resize", evaluateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncDockFromStorage = () => {
+      const stored = window.localStorage.getItem("actionBarDock");
+      setActionBarDock(stored === "bottom" ? "bottom" : "left");
+    };
+
+    const handleDockChange = (event: Event) => {
+      const dock = (event as CustomEvent<{ dock?: ActionBarDock }>).detail?.dock;
+      if (dock === "left" || dock === "bottom") {
+        setActionBarDock(dock);
+        return;
+      }
+      syncDockFromStorage();
+    };
+
+    syncDockFromStorage();
+    window.addEventListener("storage", syncDockFromStorage);
+    window.addEventListener(ACTION_BAR_DOCK_EVENT, handleDockChange as EventListener);
+    return () => {
+      window.removeEventListener("storage", syncDockFromStorage);
+      window.removeEventListener(ACTION_BAR_DOCK_EVENT, handleDockChange as EventListener);
+    };
   }, []);
 
   const generateEventId = useCallback(() => {
@@ -676,6 +705,14 @@ export function GameBoard() {
     targetOptions,
   ]);
 
+  const overlayLogPanelStyle = useMemo<CSSProperties>(
+    () => ({
+      right: actionBarDock === "left" ? "calc(20rem + 1.5rem)" : "1.5rem",
+      bottom: actionBarDock === "bottom" ? "calc(min(70vh, 36rem) + 1.5rem)" : "1.5rem",
+    }),
+    [actionBarDock],
+  );
+
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {
     return (
@@ -719,10 +756,17 @@ export function GameBoard() {
       <TurnCutin show={showTurnCutin} text={cutinText} />
 
       {useOverlayInfoRail && (
-        <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
-          <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
-          <LogPanel />
-        </div>
+        <>
+          <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
+            <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
+          </div>
+          <div
+            className="pointer-events-none fixed z-30 w-[min(18rem,calc(100vw-25rem))] min-w-[15rem]"
+            style={overlayLogPanelStyle}
+          >
+            <LogPanel />
+          </div>
+        </>
       )}
 
       {useOverlayInfoRail && !isBotGame && (

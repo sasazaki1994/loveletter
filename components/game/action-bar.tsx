@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
 
 type DockPosition = "left" | "bottom";
+const ACTION_BAR_DOCK_EVENT = "action_bar_dock_change";
 
 export function ActionBar() {
   const {
@@ -84,6 +85,11 @@ export function ActionBar() {
     setDockPosition(dock);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("actionBarDock", dock);
+      window.dispatchEvent(
+        new CustomEvent(ACTION_BAR_DOCK_EVENT, {
+          detail: { dock },
+        }),
+      );
     }
   };
 
