@@ -355,16 +355,36 @@ export function useGameStream({
     polling.clearError();
   }, [polling]);
 
+  const shouldUsePollingSnapshot = useMemo(() => {
+    if (!usePollingFallback || !polling.state) return false;
+    if (!state) return true;
+
+    const pollingTime = polling.lastUpdated ? Date.parse(polling.lastUpdated) : Number.NaN;
+    const streamTime = lastUpdated ? Date.parse(lastUpdated) : Number.NaN;
+
+    if (Number.isFinite(pollingTime) && Number.isFinite(streamTime)) {
+      return pollingTime >= streamTime;
+    }
+    if (Number.isFinite(pollingTime) && !Number.isFinite(streamTime)) {
+      return true;
+    }
+    if (!Number.isFinite(pollingTime) && Number.isFinite(streamTime)) {
+      return false;
+    }
+
+    return false;
+  }, [lastUpdated, polling.lastUpdated, polling.state, state, usePollingFallback]);
+
   const effectiveState = useMemo(
-    () => (usePollingFallback ? polling.state ?? state : state),
-    [polling.state, state, usePollingFallback],
+    () => (shouldUsePollingSnapshot ? polling.state : state),
+    [polling.state, shouldUsePollingSnapshot, state],
   );
   const effectiveLastUpdated = useMemo(
-    () => (usePollingFallback ? polling.lastUpdated ?? lastUpdated : lastUpdated),
-    [lastUpdated, polling.lastUpdated, usePollingFallback],
+    () => (shouldUsePollingSnapshot ? polling.lastUpdated : lastUpdated),
+    [lastUpdated, polling.lastUpdated, shouldUsePollingSnapshot],
   );
   const effectiveError = useMemo(
-    () => (usePollingFallback ? polling.error : error),
+    () => (usePollingFallback ? polling.error ?? error : error),
     [error, polling.error, usePollingFallback],
   );
   const effectiveLoading = useMemo(
