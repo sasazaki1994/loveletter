@@ -63,6 +63,10 @@ export function GameBoard() {
     isMyTurn,
     selfId,
     effectScale,
+    turnCutinMs,
+    roundCutinMs,
+    roundToTurnCutinDelayMs,
+    handRevealMs,
     playCard,
     cancelSelection,
     cardDefinition,
@@ -79,9 +83,16 @@ export function GameBoard() {
   // ターン開始検出用
   const [showTurnCutin, setShowTurnCutin] = useState(false);
   const [cutinText, setCutinText] = useState("あなたの番");
+  const [cutinSequence, setCutinSequence] = useState(0);
   const prevTurnRef = useRef<boolean>(false);
   const prevRoundRef = useRef<number | null>(null);
   const cutinInitializedRef = useRef(false);
+
+  const triggerCutin = useCallback((nextText: string) => {
+    setCutinText(nextText);
+    setCutinSequence((prev) => prev + 1);
+    setShowTurnCutin(true);
+  }, []);
 
   useEffect(() => {
     if (!state) return;
@@ -98,19 +109,16 @@ export function GameBoard() {
     const roundChanged = prevRoundRef.current !== null && state.round !== prevRoundRef.current;
 
     if (roundChanged) {
-      setCutinText(`ラウンド ${state.round}`);
-      setShowTurnCutin(true);
+      triggerCutin(`ラウンド ${state.round}`);
 
       // ラウンド開始直後かつ自分の入力フェーズに入っている場合のみ追従表示
       if (isMyTurn && state.phase === "choose_card") {
         delayedTurnTimer = window.setTimeout(() => {
-          setCutinText("あなたの番");
-          setShowTurnCutin(true);
-        }, 1800);
+          triggerCutin("あなたの番");
+        }, roundToTurnCutinDelayMs);
       }
     } else if (isMyTurn && !prevTurnRef.current && state.phase === "choose_card") {
-      setCutinText("あなたの番");
-      setShowTurnCutin(true);
+      triggerCutin("あなたの番");
     }
 
     prevTurnRef.current = isMyTurn;
@@ -121,7 +129,7 @@ export function GameBoard() {
         window.clearTimeout(delayedTurnTimer);
       }
     };
-  }, [isMyTurn, state]);
+  }, [isMyTurn, roundToTurnCutinDelayMs, state, triggerCutin]);
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
   const fx = useGameEffects();
@@ -780,7 +788,13 @@ export function GameBoard() {
 
   return (
     <div className={rootClasses}>
-      <TurnCutin show={showTurnCutin} text={cutinText} />
+      <TurnCutin
+        show={showTurnCutin}
+        text={cutinText}
+        triggerKey={cutinSequence}
+        turnCutinMs={turnCutinMs}
+        roundCutinMs={roundCutinMs}
+      />
 
       {useOverlayInfoRail && (
         <>
@@ -874,6 +888,7 @@ export function GameBoard() {
                     players={orderedPlayers}
                     tableSize={tableSize}
                     getSeatPosition={getSeatPosition}
+                    displayDurationMs={handRevealMs}
                     onComplete={handleHandRevealComplete}
                   />
                 )}

@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { CARD_DEFINITIONS } from '@/lib/game/cards';
 import { CardArt } from '@/components/game/card-art';
 import type { CardId, PlayerId } from '@/lib/game/types';
 
-const DISPLAY_DURATION_MS = 2500;
+const SKIP_ARM_DELAY_MS = 250;
 
 interface SeatPosition {
   x: number;
@@ -24,6 +24,7 @@ interface HandRevealOverlayProps {
   }>;
   tableSize: { width: number; height: number };
   getSeatPosition: (seat: number) => SeatPosition;
+  displayDurationMs?: number;
   onComplete: () => void;
 }
 
@@ -32,15 +33,47 @@ export function HandRevealOverlay({
   players,
   tableSize,
   getSeatPosition,
+  displayDurationMs = 2500,
   onComplete,
 }: HandRevealOverlayProps) {
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      onComplete();
-    }, DISPLAY_DURATION_MS);
-    
-    return () => window.clearTimeout(timer);
+  const completedRef = useRef(false);
+  const [skipHintVisible, setSkipHintVisible] = useState(false);
+
+  const complete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    onComplete();
   }, [onComplete]);
+
+  useEffect(() => {
+    completedRef.current = false;
+    const timer = window.setTimeout(() => {
+      complete();
+    }, displayDurationMs);
+
+    const armTimer = window.setTimeout(() => {
+      setSkipHintVisible(true);
+    }, Math.min(SKIP_ARM_DELAY_MS, Math.max(120, Math.round(displayDurationMs * 0.2))));
+
+    const handleSkip = (event: KeyboardEvent | PointerEvent) => {
+      if (event instanceof KeyboardEvent) {
+        if (!["Enter", " ", "Escape"].includes(event.key)) return;
+        event.preventDefault();
+      }
+      complete();
+    };
+
+    window.addEventListener('keydown', handleSkip);
+    window.addEventListener('pointerdown', handleSkip);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(armTimer);
+      window.removeEventListener('keydown', handleSkip);
+      window.removeEventListener('pointerdown', handleSkip);
+      setSkipHintVisible(false);
+    };
+  }, [complete, displayDurationMs]);
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
@@ -63,6 +96,18 @@ export function HandRevealOverlay({
           );
         })}
       </AnimatePresence>
+      {skipHintVisible && (
+        <motion.div
+          className="absolute inset-x-0 bottom-4 flex justify-center px-4"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+        >
+          <div className="rounded-full border border-[rgba(140,210,198,0.32)] bg-[rgba(10,28,26,0.82)] px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent-light)]">
+            クリック / Enter でスキップ
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

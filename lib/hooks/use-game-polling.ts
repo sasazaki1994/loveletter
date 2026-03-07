@@ -8,6 +8,7 @@ interface UseGamePollingOptions {
   roomId: string;
   playerId?: string;
   interval?: number;
+  enabled?: boolean;
 }
 
 interface UseGamePollingResult {
@@ -16,6 +17,7 @@ interface UseGamePollingResult {
   error: string | null;
   refetch: () => Promise<void>;
   lastUpdated: string | null;
+  clearError: () => void;
 }
 
 const MAX_RETRIES = 3;
@@ -40,12 +42,13 @@ export function useGamePolling({
   roomId,
   playerId,
   interval = 1200,
+  enabled = true,
 }: UseGamePollingOptions): UseGamePollingResult {
   const BOT_POLL_INTERVAL = 350;
   const [state, setState] = useState<ClientGameState | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(enabled);
 
   const etagRef = useRef<string | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,7 +59,7 @@ export function useGamePolling({
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchState = useCallback(async (isRetry = false) => {
-    if (!roomId) return;
+    if (!roomId || !enabled) return;
 
     // リトライ中は既存のタイマーをクリア
     if (retryTimeoutRef.current) {
@@ -177,11 +180,12 @@ export function useGamePolling({
         setLoading(false);
       }
     }
-  }, [playerId, roomId]);
+  }, [enabled, playerId, roomId]);
 
   useEffect(() => {
+    if (!enabled) return;
     fetchState(false);
-  }, [fetchState]);
+  }, [enabled, fetchState]);
 
   const isBotTurn = useMemo(() => {
     if (!state) return false;
@@ -202,6 +206,19 @@ export function useGamePolling({
   }, [interval, isBotTurn]);
 
   useEffect(() => {
+    if (!enabled) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      abortRef.current?.abort();
+      setLoading(false);
+      return undefined;
+    }
     if (!roomId) return () => {};
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -227,10 +244,10 @@ export function useGamePolling({
       retryTimeoutRef.current = null;
       abortRef.current?.abort();
     };
-  }, [effectiveInterval, fetchState, roomId]);
+  }, [effectiveInterval, enabled, fetchState, roomId]);
 
   useEffect(() => {
-    if (!isBotTurn) return undefined;
+    if (!enabled || !isBotTurn) return undefined;
 
     const timeoutId = setTimeout(() => {
       fetchState(false).catch((err) => {
@@ -244,16 +261,21 @@ export function useGamePolling({
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [effectiveInterval, fetchState, isBotTurn]);
+  }, [effectiveInterval, enabled, fetchState, isBotTurn]);
 
   const refetch = useCallback(async () => {
+    if (!enabled) return;
     retryCountRef.current = 0; // 手動リフレッシュ時はリトライカウントをリセット
     await fetchState(false);
-  }, [fetchState]);
+  }, [enabled, fetchState]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
   return useMemo(
-    () => ({ state, loading, error, refetch, lastUpdated }),
-    [state, loading, error, refetch, lastUpdated],
+    () => ({ state, loading, error, refetch, lastUpdated, clearError }),
+    [clearError, error, lastUpdated, loading, refetch, state],
   );
 }
 

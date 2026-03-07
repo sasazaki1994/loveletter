@@ -36,6 +36,12 @@ interface GameContextValue {
   effectScale: number;
   botTurnDelayMs: number;
   turnCutinMs: number;
+  roundCutinMs: number;
+  roundToTurnCutinDelayMs: number;
+  handRevealMs: number;
+  resultDialogDelayMs: number;
+  resultRevealFallbackMs: number;
+  resultHardFallbackMs: number;
   optimisticHand: CardId[] | null;
   selectedCard: CardId | null;
   setSelectedCard: React.Dispatch<React.SetStateAction<CardId | null>>;
@@ -73,7 +79,20 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     roomId,
     playerId,
   });
-  const { tempo, setTempo, toggleTempo, effectScale, botTurnDelayMs, turnCutinMs } = useTempoSettings();
+  const {
+    tempo,
+    setTempo,
+    toggleTempo,
+    effectScale,
+    botTurnDelayMs,
+    turnCutinMs,
+    roundCutinMs,
+    roundToTurnCutinDelayMs,
+    handRevealMs,
+    resultDialogDelayMs,
+    resultRevealFallbackMs,
+    resultHardFallbackMs,
+  } = useTempoSettings();
   const { session } = usePlayerSession();
   const shortId = session?.shortId;
   const [selectedCard, setSelectedCard] = useState<CardId | null>(null);
@@ -381,6 +400,12 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       effectScale,
       botTurnDelayMs,
       turnCutinMs,
+      roundCutinMs,
+      roundToTurnCutinDelayMs,
+      handRevealMs,
+      resultDialogDelayMs,
+      resultRevealFallbackMs,
+      resultHardFallbackMs,
       optimisticHand,
       selectedCard,
       setSelectedCard,
@@ -443,6 +468,12 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
       effectScale,
       botTurnDelayMs,
       turnCutinMs,
+      roundCutinMs,
+      roundToTurnCutinDelayMs,
+      handRevealMs,
+      resultDialogDelayMs,
+      resultRevealFallbackMs,
+      resultHardFallbackMs,
       optimisticHand,
     ],
   );

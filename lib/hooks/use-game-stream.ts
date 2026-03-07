@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ClientGameState } from "@/lib/game/types";
+import { useGamePolling } from "@/lib/hooks/use-game-polling";
 
 interface UseGameStreamOptions {
   roomId: string;
@@ -45,6 +46,13 @@ export function useGameStream({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [usePollingFallback, setUsePollingFallback] = useState(false);
+
+  const polling = useGamePolling({
+    roomId,
+    playerId,
+    enabled: usePollingFallback,
+  });
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const etagRef = useRef<string | null>(null);
@@ -58,6 +66,14 @@ export function useGameStream({
   useEffect(() => {
     isConnectedRef.current = isConnected;
   }, [isConnected]);
+
+  const enablePollingFallback = useCallback(() => {
+    setUsePollingFallback(true);
+  }, []);
+
+  const disablePollingFallback = useCallback(() => {
+    setUsePollingFallback(false);
+  }, []);
 
   const fetchOnce = useCallback(async () => {
     if (!roomId || !isMountedRef.current) return;
@@ -157,10 +173,12 @@ export function useGameStream({
         if (!isConnectedRef.current && isMountedRef.current) {
           eventSource.close();
           setError("接続がタイムアウトしました。再試行中...");
+          setIsConnected(false);
+          enablePollingFallback();
           retryCountRef.current += 1;
           
           const delay = Math.min(
-            INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current - 1),
+            INITIAL_RETRY_DELAY * Math.pow(2, Math.min(retryCountRef.current, MAX_RETRIES) - 1),
             MAX_RETRY_DELAY
           );
           
@@ -183,6 +201,7 @@ export function useGameStream({
           connectionTimeoutRef.current = null;
           
           setIsConnected(true);
+          disablePollingFallback();
           if (data.etag) etagRef.current = data.etag;
           setState(data.state);
           setLastUpdated(data.lastUpdated);
@@ -226,27 +245,24 @@ export function useGameStream({
           // ストリームが閉じられた（サーバー側でエラーまたは正常終了）
           if (isMountedRef.current) {
             setIsConnected(false);
-            
-            // リトライ可能な場合
-            if (retryCountRef.current < MAX_RETRIES) {
-              retryCountRef.current += 1;
-              setError("接続が切断されました。再接続中...");
-              
-              const delay = Math.min(
-                INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current - 1),
-                MAX_RETRY_DELAY
-              );
-              
-              retryTimeoutRef.current = setTimeout(() => {
-                if (isMountedRef.current) {
-                  connect();
-                }
-              }, delay);
-            } else {
-              setError("接続が回復しませんでした。ページを再読み込みしてください。");
-              setLoading(false);
-              hasResolvedRef.current = true;
-            }
+            enablePollingFallback();
+            retryCountRef.current += 1;
+            setError(
+              retryCountRef.current <= MAX_RETRIES
+                ? "接続が切断されました。再接続中..."
+                : "リアルタイム接続が不安定なため、低頻度同期へ切り替えました。",
+            );
+
+            const delay = Math.min(
+              INITIAL_RETRY_DELAY * Math.pow(2, Math.min(retryCountRef.current, MAX_RETRIES) - 1),
+              MAX_RETRY_DELAY
+            );
+
+            retryTimeoutRef.current = setTimeout(() => {
+              if (isMountedRef.current) {
+                connect();
+              }
+            }, delay);
           }
         } else if (eventSource.readyState === EventSource.CONNECTING) {
           // 再接続中
@@ -274,7 +290,7 @@ export function useGameStream({
         hasResolvedRef.current = true;
       }
     }
-  }, [roomId, playerId]);
+  }, [disablePollingFallback, enablePollingFallback, roomId, playerId]);
 
   // 初回接続
   useEffect(() => {
@@ -317,25 +333,56 @@ export function useGameStream({
   const refetch = useCallback(async () => {
     // 最新状態を単発で取得（SSE再接続はしない）
     await fetchOnce();
-  }, [fetchOnce]);
+    if (usePollingFallback) {
+      await polling.refetch();
+    }
+  }, [fetchOnce, polling, usePollingFallback]);
 
   const reconnect = useCallback(async () => {
     // SSE再接続（必要なら単発取得も併用）
     retryCountRef.current = 0;
     if (isMountedRef.current) {
+      disablePollingFallback();
+      polling.clearError();
       connect();
       // 初期表示や遅延時の保険として単発取得も行う
       await fetchOnce();
     }
-  }, [connect, fetchOnce]);
+  }, [connect, disablePollingFallback, fetchOnce, polling]);
 
   const clearError = useCallback(() => {
     setError(null);
-  }, []);
+    polling.clearError();
+  }, [polling]);
+
+  const effectiveState = useMemo(
+    () => (usePollingFallback ? polling.state ?? state : state),
+    [polling.state, state, usePollingFallback],
+  );
+  const effectiveLastUpdated = useMemo(
+    () => (usePollingFallback ? polling.lastUpdated ?? lastUpdated : lastUpdated),
+    [lastUpdated, polling.lastUpdated, usePollingFallback],
+  );
+  const effectiveError = useMemo(
+    () => (usePollingFallback ? polling.error : error),
+    [error, polling.error, usePollingFallback],
+  );
+  const effectiveLoading = useMemo(
+    () => (usePollingFallback ? !effectiveState && (loading || polling.loading) : loading),
+    [effectiveState, loading, polling.loading, usePollingFallback],
+  );
 
   return useMemo(
-    () => ({ state, loading, error, refetch, reconnect, lastUpdated, clearError }),
-    [state, loading, error, refetch, reconnect, lastUpdated, clearError],
+    () => ({
+      state: effectiveState,
+      loading: effectiveLoading,
+      error: effectiveError,
+      refetch,
+      reconnect,
+      lastUpdated: effectiveLastUpdated,
+      clearError,
+    }),
+    [clearError, effectiveError, effectiveLastUpdated, effectiveLoading, effectiveState, reconnect, refetch],
   );
 }
 

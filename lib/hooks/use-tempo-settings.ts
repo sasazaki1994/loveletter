@@ -15,17 +15,41 @@ const TEMPO_PRESETS: Record<
     botTurnDelayMs: number;
     /** ターン開始カットイン表示（ms） */
     turnCutinMs: number;
+    /** ラウンド開始カットイン表示（ms） */
+    roundCutinMs: number;
+    /** ラウンド開始から自ターン告知までの追従遅延（ms） */
+    roundToTurnCutinDelayMs: number;
+    /** 山札切れ時の手札公開表示（ms） */
+    handRevealMs: number;
+    /** 通常リザルトの表示遅延（ms） */
+    resultDialogDelayMs: number;
+    /** 手札公開待ちのフォールバック表示（ms） */
+    resultRevealFallbackMs: number;
+    /** リザルト強制表示までの待ち時間（ms） */
+    resultHardFallbackMs: number;
   }
 > = {
   normal: {
     effectScale: 1.0,
     botTurnDelayMs: 2000,
-    turnCutinMs: 2000,
+    turnCutinMs: 1600,
+    roundCutinMs: 1400,
+    roundToTurnCutinDelayMs: 1800,
+    handRevealMs: 2500,
+    resultDialogDelayMs: 1000,
+    resultRevealFallbackMs: 5000,
+    resultHardFallbackMs: 8000,
   },
   fast: {
     effectScale: 0.65,
     botTurnDelayMs: 350,
     turnCutinMs: 900,
+    roundCutinMs: 750,
+    roundToTurnCutinDelayMs: 1100,
+    handRevealMs: 1200,
+    resultDialogDelayMs: 250,
+    resultRevealFallbackMs: 1600,
+    resultHardFallbackMs: 2500,
   },
 };
 
@@ -40,6 +64,12 @@ export interface TempoSettings {
   effectScale: number;
   botTurnDelayMs: number;
   turnCutinMs: number;
+  roundCutinMs: number;
+  roundToTurnCutinDelayMs: number;
+  handRevealMs: number;
+  resultDialogDelayMs: number;
+  resultRevealFallbackMs: number;
+  resultHardFallbackMs: number;
 }
 
 export function useTempoSettings(): TempoSettings {
@@ -98,8 +128,27 @@ export function useTempoSettings(): TempoSettings {
       effectScale: preset.effectScale,
       botTurnDelayMs: preset.botTurnDelayMs,
       turnCutinMs: preset.turnCutinMs,
+      roundCutinMs: preset.roundCutinMs,
+      roundToTurnCutinDelayMs: preset.roundToTurnCutinDelayMs,
+      handRevealMs: preset.handRevealMs,
+      resultDialogDelayMs: preset.resultDialogDelayMs,
+      resultRevealFallbackMs: preset.resultRevealFallbackMs,
+      resultHardFallbackMs: preset.resultHardFallbackMs,
     }),
-    [preset.botTurnDelayMs, preset.effectScale, preset.turnCutinMs, setTempo, tempo, toggleTempo],
+    [
+      preset.botTurnDelayMs,
+      preset.effectScale,
+      preset.handRevealMs,
+      preset.resultDialogDelayMs,
+      preset.resultHardFallbackMs,
+      preset.resultRevealFallbackMs,
+      preset.roundCutinMs,
+      preset.roundToTurnCutinDelayMs,
+      preset.turnCutinMs,
+      setTempo,
+      tempo,
+      toggleTempo,
+    ],
   );
 }
 

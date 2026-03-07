@@ -8,12 +8,22 @@ import { cn } from "@/lib/utils";
 interface TurnCutinProps {
   show: boolean;
   text?: string;
+  triggerKey?: number;
+  turnCutinMs?: number;
+  roundCutinMs?: number;
 }
 
-export function TurnCutin({ show, text = "あなたの番" }: TurnCutinProps) {
+export function TurnCutin({
+  show,
+  text = "あなたの番",
+  triggerKey = 0,
+  turnCutinMs = 1600,
+  roundCutinMs = 1400,
+}: TurnCutinProps) {
   const { play } = useSoundEffects(0.6);
   const [visible, setVisible] = useState(false);
   const isRoundCutin = useMemo(() => /^ラウンド\s+\d+/i.test(text.trim()), [text]);
+  const durationMs = isRoundCutin ? roundCutinMs : turnCutinMs;
 
   useEffect(() => {
     if (show) {
@@ -21,12 +31,12 @@ export function TurnCutin({ show, text = "あなたの番" }: TurnCutinProps) {
       if (!isRoundCutin) {
         play("turn_chime");
       }
-      const timer = setTimeout(() => setVisible(false), isRoundCutin ? 1400 : 1600);
+      const timer = setTimeout(() => setVisible(false), durationMs);
       return () => clearTimeout(timer);
     } else {
       setVisible(false);
     }
-  }, [isRoundCutin, play, show]);
+  }, [durationMs, isRoundCutin, play, show, triggerKey]);
 
   return (
     <AnimatePresence>
