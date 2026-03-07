@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { Info, Volume2, VolumeX, Users, BookOpen } from "lucide-react";
 
@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useGameContext } from "@/components/game/game-provider";
+import {
+  ACTION_BAR_BOTTOM_DOCK_MAX_HEIGHT,
+  ACTION_BAR_LEFT_DOCK_WIDTH_REM,
+} from "@/components/game/layout-constants";
 import { cn } from "@/lib/utils";
 import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
 
@@ -110,11 +114,11 @@ export function ActionBar() {
   const containerClasses = cn(
     "fixed z-30 flex flex-col gap-3 text-sm text-[var(--color-text-muted)] backdrop-blur-md",
     isDockedLeft
-      ? "inset-y-0 right-0 w-full max-w-[20rem] border-l border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.92)] px-4 py-4 shadow-[-24px_0_60px_rgba(0,0,0,0.5)] bg-table-felt"
+      ? "inset-y-0 right-0 w-full border-l border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.92)] px-4 py-4 shadow-[-24px_0_60px_rgba(0,0,0,0.5)] bg-table-felt"
       : "inset-x-0 bottom-0 w-full border-t border-[rgba(215,178,110,0.25)] bg-[rgba(10,24,22,0.92)] px-4 py-3 shadow-[0_-24px_60px_rgba(0,0,0,0.5)] sm:px-6 sm:py-4 bg-table-felt",
     isDockedLeft
       ? "scrollbar-thin max-h-[calc(100vh-2.5rem)] overflow-y-auto pr-1"
-      : "max-h-[min(70vh,36rem)] overflow-y-auto",
+      : "overflow-y-auto",
     isDockedLeft && isCompactHeight && "pb-6",
     !isDockedLeft && isCompactWidth && "px-4",
   );
@@ -129,9 +133,16 @@ export function ActionBar() {
     [isDockedLeft],
   );
 
-  const actionBarStyle = isDockedLeft
-    ? undefined
-    : { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" };
+  const actionBarStyle = useMemo<CSSProperties>(
+    () =>
+      isDockedLeft
+        ? { maxWidth: `${ACTION_BAR_LEFT_DOCK_WIDTH_REM}rem` }
+        : {
+            maxHeight: ACTION_BAR_BOTTOM_DOCK_MAX_HEIGHT,
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
+          },
+    [isDockedLeft],
+  );
 
   const innerClasses = cn(
     "flex flex-col",

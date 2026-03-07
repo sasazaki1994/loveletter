@@ -21,6 +21,14 @@ import { TurnCutin } from "@/components/game/turn-cutin";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { SoundControls } from "@/components/game/sound-controls";
 import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
+import {
+  ACTION_BAR_BOTTOM_DOCK_MAX_HEIGHT,
+  ACTION_BAR_LEFT_DOCK_WIDTH_REM,
+  FLOATING_PANEL_SIDE_OFFSET_REM,
+  LOG_PANEL_BOTTOM_OFFSET_REM,
+  LOG_PANEL_MIN_WIDTH_REM,
+  OVERLAY_INFO_RAIL_MAX_WIDTH_REM,
+} from "@/components/game/layout-constants";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { ErrorAlert } from "@/components/game/error-alert";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
@@ -35,7 +43,6 @@ const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
 
 const EFFECT_POSITION_SCALE = 0.78;
 const ACTION_BAR_DOCK_EVENT = "action_bar_dock_change";
-const LOG_PANEL_BOTTOM_OFFSET = "0.5rem";
 
 type PlayerSnapshot = ClientGameState["players"][number] | NonNullable<ClientGameState["self"]>;
 type ActionBarDock = "left" | "bottom";
@@ -708,13 +715,23 @@ export function GameBoard() {
 
   const overlayLogPanelStyle = useMemo<CSSProperties>(
     () => ({
-      right: actionBarDock === "left" ? "calc(20rem + 1.5rem)" : "1.5rem",
+      minWidth: `${LOG_PANEL_MIN_WIDTH_REM}rem`,
+      width: `min(${OVERLAY_INFO_RAIL_MAX_WIDTH_REM}rem, calc(100vw - 25rem))`,
+      right:
+        actionBarDock === "left"
+          ? `calc(${ACTION_BAR_LEFT_DOCK_WIDTH_REM}rem + ${FLOATING_PANEL_SIDE_OFFSET_REM}rem)`
+          : `${FLOATING_PANEL_SIDE_OFFSET_REM}rem`,
       bottom:
         actionBarDock === "bottom"
-          ? `calc(min(70vh, 36rem) + ${LOG_PANEL_BOTTOM_OFFSET})`
-          : LOG_PANEL_BOTTOM_OFFSET,
+          ? `calc(${ACTION_BAR_BOTTOM_DOCK_MAX_HEIGHT} + ${LOG_PANEL_BOTTOM_OFFSET_REM}rem)`
+          : `${LOG_PANEL_BOTTOM_OFFSET_REM}rem`,
     }),
     [actionBarDock],
+  );
+
+  const overlayInfoRailStyle = useMemo<CSSProperties>(
+    () => ({ maxWidth: `${OVERLAY_INFO_RAIL_MAX_WIDTH_REM}rem` }),
+    [],
   );
 
   // 待機中（ゲーム未開始）の場合は待機画面を表示
@@ -761,11 +778,14 @@ export function GameBoard() {
 
       {useOverlayInfoRail && (
         <>
-          <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
+          <div
+            className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10"
+            style={overlayInfoRailStyle}
+          >
             <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
           </div>
           <div
-            className="pointer-events-none fixed z-30 w-[min(18rem,calc(100vw-25rem))] min-w-[15rem]"
+            className="pointer-events-none fixed z-30 max-w-[calc(100vw-1rem)]"
             style={overlayLogPanelStyle}
           >
             <LogPanel />

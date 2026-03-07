@@ -116,7 +116,7 @@ export function LogPanel() {
           <Button
             type="button"
             variant="ghost"
-            className="h-7 w-7 p-0"
+            className="h-9 w-9 rounded-md p-0"
             onClick={handleToggleCollapse}
             aria-expanded={!collapsed}
             aria-label={collapsed ? "ログを展開" : "ログを折りたたむ"}
