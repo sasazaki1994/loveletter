@@ -27,6 +27,7 @@ import {
   FLOATING_PANEL_SIDE_OFFSET_REM,
   LOG_PANEL_BOTTOM_OFFSET_REM,
   LOG_PANEL_MIN_WIDTH_REM,
+  OVERLAY_GAME_TABLE_MAX_WIDTH_REM,
   OVERLAY_INFO_RAIL_MAX_WIDTH_REM,
 } from "@/components/game/layout-constants";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
@@ -225,16 +226,12 @@ export function GameBoard() {
     if (!element) return;
 
     const measure = () => {
-      const rect = element.getBoundingClientRect();
       const styles = window.getComputedStyle(element);
       const maxWidth = parseFloat(styles.maxWidth) || 0;
       const parentRect = element.parentElement?.getBoundingClientRect();
       const viewportAvailable = Math.max(window.innerWidth - 96, 240);
 
       const candidates = [
-        rect.width,
-        element.offsetWidth,
-        element.clientWidth,
         parentRect?.width ?? 0,
         maxWidth,
         viewportAvailable,
@@ -734,6 +731,15 @@ export function GameBoard() {
     [],
   );
 
+  const tableContainerStyle = useMemo<CSSProperties>(
+    () => ({
+      maxWidth: useOverlayInfoRail ? `${OVERLAY_GAME_TABLE_MAX_WIDTH_REM}rem` : undefined,
+      width: tableSize.width ? `${tableSize.width}px` : undefined,
+      height: tableSize.height ? `${tableSize.height}px` : undefined,
+    }),
+    [tableSize.height, tableSize.width, useOverlayInfoRail],
+  );
+
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {
     return (
@@ -841,11 +847,13 @@ export function GameBoard() {
             </div>
           )}
 
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex w-full flex-1 items-center justify-center">
             <div
               ref={tableContainerRef}
               className="relative aspect-square w-full max-w-[24rem] sm:max-w-[30rem] lg:max-w-[38rem]"
-              style={{ width: tableSize.width ? `${tableSize.width}px` : undefined, height: tableSize.height ? `${tableSize.height}px` : undefined }}
+              style={tableContainerStyle}
+              role="region"
+              aria-label="ゲームテーブル"
             >
               <GameTable
                 drawPileCount={state?.drawPileCount ?? 0}

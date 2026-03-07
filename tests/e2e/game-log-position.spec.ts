@@ -1,5 +1,8 @@
 import { test, expect, createBotRoomViaUI, waitForGameUI } from "./fixtures";
-import { OVERLAY_INFO_RAIL_MAX_WIDTH_REM } from "@/components/game/layout-constants";
+import {
+  OVERLAY_GAME_TABLE_MAX_WIDTH_REM,
+  OVERLAY_INFO_RAIL_MAX_WIDTH_REM,
+} from "@/components/game/layout-constants";
 
 test.use({ viewport: { width: 1440, height: 1100 } });
 
@@ -25,11 +28,13 @@ test("ゲームログがデスクトップで右下に固定表示される", as
 
   const remInPx = 16;
   const overlayRailMaxWidthPx = OVERLAY_INFO_RAIL_MAX_WIDTH_REM * remInPx;
+  const overlayTableMaxWidthPx = OVERLAY_GAME_TABLE_MAX_WIDTH_REM * remInPx;
 
   expect(logBox.x).toBeGreaterThan(viewport.width * 0.5);
   expect(logBox.y).toBeGreaterThan(viewport.height * 0.5);
   expect(logBox.x + logBox.width).toBeLessThanOrEqual(viewport.width);
   expect(logBox.y + logBox.height).toBeLessThanOrEqual(viewport.height);
+  expect(logBox.height).toBeLessThan(220);
 
   const turnBanner = page.getByLabel("ターンバナー").first();
   await expect(turnBanner).toBeVisible();
@@ -42,4 +47,17 @@ test("ゲームログがデスクトップで右下に固定表示される", as
   }
 
   expect(bannerBox.width).toBeLessThanOrEqual(overlayRailMaxWidthPx + 1);
+
+  const tableRegion = page.getByRole("region", { name: "ゲームテーブル" }).first();
+  await expect(tableRegion).toBeVisible();
+
+  const tableBox = await tableRegion.boundingBox();
+  expect(tableBox).not.toBeNull();
+
+  if (!tableBox) {
+    throw new Error("game table bounding box unavailable");
+  }
+
+  expect(tableBox.width).toBeGreaterThan(620);
+  expect(tableBox.width).toBeLessThanOrEqual(overlayTableMaxWidthPx + 1);
 });

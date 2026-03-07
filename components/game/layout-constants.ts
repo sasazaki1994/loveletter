@@ -4,3 +4,4 @@ export const ACTION_BAR_LEFT_DOCK_WIDTH_REM = 20;
 export const FLOATING_PANEL_SIDE_OFFSET_REM = 1.5;
 export const LOG_PANEL_BOTTOM_OFFSET_REM = 0.5;
 export const ACTION_BAR_BOTTOM_DOCK_MAX_HEIGHT = "min(70vh, 36rem)";
+export const OVERLAY_GAME_TABLE_MAX_WIDTH_REM = 42;

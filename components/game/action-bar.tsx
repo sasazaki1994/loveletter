@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
-import { Info, Volume2, VolumeX, Users, BookOpen } from "lucide-react";
+import { Info, Volume2, VolumeX, Users, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
 
 type DockPosition = "left" | "bottom";
 const ACTION_BAR_DOCK_EVENT = "action_bar_dock_change";
+const ACTION_BAR_HELPER_EXPANDED_KEY = "actionBarHelperExpanded";
 
 export function ActionBar() {
   const {
@@ -49,6 +50,7 @@ export function ActionBar() {
   const [gameInfoVisible, setGameInfoVisible] = useState(false);
   const [isCompactHeight, setIsCompactHeight] = useState(false);
   const [isCompactWidth, setIsCompactWidth] = useState(false);
+  const [helperPanelExpanded, setHelperPanelExpanded] = useState(false);
   const preferredDockRef = useRef<DockPosition>("left");
   const isDockedLeft = dockPosition === "left";
 
@@ -59,6 +61,7 @@ export function ActionBar() {
       preferredDockRef.current = stored;
       setDockPosition(stored);
     }
+    setHelperPanelExpanded(window.localStorage.getItem(ACTION_BAR_HELPER_EXPANDED_KEY) === "1");
 
     const handleResize = () => {
       const width = window.innerWidth;
@@ -95,6 +98,20 @@ export function ActionBar() {
         }),
       );
     }
+  };
+
+  const toggleHelperPanel = () => {
+    setHelperPanelExpanded((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(ACTION_BAR_HELPER_EXPANDED_KEY, next ? "1" : "0");
+      }
+      if (!next) {
+        setHintVisible(false);
+        setGameInfoVisible(false);
+      }
+      return next;
+    });
   };
 
   const canConfirm = useMemo(() => {
@@ -166,6 +183,7 @@ export function ActionBar() {
     "flex gap-3",
     isDockedLeft ? "flex-col" : stackControls ? "flex-col" : "flex-wrap items-center",
   );
+  const showHelperDetails = !isDockedLeft || helperPanelExpanded;
 
   return (
     <motion.div
@@ -187,120 +205,140 @@ export function ActionBar() {
                     {isMyTurn ? "カードを選択して Enter で使用" : "待機中"}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
-                      ← / →
-                    </Badge>
-                    <span>カード</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
-                      ↑ / ↓
-                    </Badge>
-                    <span>対象</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
-                      2-8
-                    </Badge>
-                    <span>推測</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
-                      Enter
-                    </Badge>
-                    <span>使用</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
-                      Esc
-                    </Badge>
-                    <span>キャンセル</span>
-                  </div>
+                <div className="flex items-center justify-between rounded-lg border border-[rgba(215,178,110,0.2)] bg-[rgba(12,32,30,0.7)] px-2 py-1.5">
+                  <span className="text-[10px] uppercase tracking-[0.3em] text-[rgba(215,178,110,0.75)]">
+                    補助と設定
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-7 px-2 text-[10px]"
+                    onClick={toggleHelperPanel}
+                    aria-expanded={showHelperDetails}
+                    aria-label={showHelperDetails ? "補助パネルを折りたたむ" : "補助パネルを展開する"}
+                  >
+                    {showHelperDetails ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    {showHelperDetails ? "閉じる" : "表示"}
+                  </Button>
                 </div>
-                <div className="flex flex-col gap-1.5 border-t border-[rgba(255,255,255,0.1)] pt-2">
-                  <div className="flex items-center gap-2 px-1.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-7 w-7 p-0 text-[var(--color-accent-light)]"
-                      onClick={toggleMute}
-                      aria-pressed={muted}
-                      aria-label={muted ? "ミュート解除" : "ミュート"}
-                    >
-                      {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-                    </Button>
-                    <div className="flex flex-1 items-center gap-2">
-                      <input
-                        id="volume-slider-left"
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={Math.round(volume * 100)}
-                        onChange={(event) => setVolume(Number(event.target.value) / 100)}
-                        className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-[rgba(215,178,110,0.25)]"
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={Math.round(volume * 100)}
-                        aria-label="音量スライダー"
-                      />
-                      <span className="w-9 text-right text-[10px] text-[var(--color-accent-light)]">
-                        {Math.round(volume * 100)}%
-                      </span>
+                {showHelperDetails && (
+                  <>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                          ← / →
+                        </Badge>
+                        <span>カード</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                          ↑ / ↓
+                        </Badge>
+                        <span>対象</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                          2-8
+                        </Badge>
+                        <span>推測</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                          Enter
+                        </Badge>
+                        <span>使用</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="px-1.5 py-0.5 text-[10px]">
+                          Esc
+                        </Badge>
+                        <span>キャンセル</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 px-1.5">
-                    <span className="text-[10px] uppercase tracking-[0.3em] text-[rgba(215,178,110,0.75)]">
-                      テンポ
-                    </span>
-                    <div className="ml-auto flex gap-1">
+                    <div className="flex flex-col gap-1.5 border-t border-[rgba(255,255,255,0.1)] pt-2">
+                      <div className="flex items-center gap-2 px-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-[var(--color-accent-light)]"
+                          onClick={toggleMute}
+                          aria-pressed={muted}
+                          aria-label={muted ? "ミュート解除" : "ミュート"}
+                        >
+                          {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                        </Button>
+                        <div className="flex flex-1 items-center gap-2">
+                          <input
+                            id="volume-slider-left"
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={Math.round(volume * 100)}
+                            onChange={(event) => setVolume(Number(event.target.value) / 100)}
+                            className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-[rgba(215,178,110,0.25)]"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={Math.round(volume * 100)}
+                            aria-label="音量スライダー"
+                          />
+                          <span className="w-9 text-right text-[10px] text-[var(--color-accent-light)]">
+                            {Math.round(volume * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 px-1.5">
+                        <span className="text-[10px] uppercase tracking-[0.3em] text-[rgba(215,178,110,0.75)]">
+                          テンポ
+                        </span>
+                        <div className="ml-auto flex gap-1">
+                          <Button
+                            type="button"
+                            variant={tempo === "normal" ? "primary" : "outline"}
+                            className="h-7 px-2 py-1 text-[10px]"
+                            onClick={() => setTempo("normal")}
+                            aria-pressed={tempo === "normal"}
+                          >
+                            通常
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={tempo === "fast" ? "primary" : "outline"}
+                            className="h-7 px-2 py-1 text-[10px]"
+                            onClick={() => setTempo("fast")}
+                            aria-pressed={tempo === "fast"}
+                          >
+                            高速
+                          </Button>
+                        </div>
+                      </div>
                       <Button
-                        type="button"
-                        variant={tempo === "normal" ? "primary" : "outline"}
-                        className="h-7 px-2 py-1 text-[10px]"
-                        onClick={() => setTempo("normal")}
-                        aria-pressed={tempo === "normal"}
+                        variant="ghost"
+                        className="h-7 w-full justify-start px-2 text-xs"
+                        onClick={() => setPreferredDock("bottom")}
                       >
-                        通常
+                        下部に表示
                       </Button>
                       <Button
-                        type="button"
-                        variant={tempo === "fast" ? "primary" : "outline"}
-                        className="h-7 px-2 py-1 text-[10px]"
-                        onClick={() => setTempo("fast")}
-                        aria-pressed={tempo === "fast"}
+                        variant="ghost"
+                        className="h-7 w-full justify-start px-2 text-xs"
+                        onClick={() => setHintVisible((prev) => !prev)}
+                        aria-expanded={hintVisible}
                       >
-                        高速
+                        {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
                       </Button>
+                      <Button
+                        variant="ghost"
+                        className="h-7 w-full justify-start gap-2 px-2 text-xs"
+                        onClick={() => setGameInfoVisible((prev) => !prev)}
+                        aria-expanded={gameInfoVisible}
+                      >
+                        <BookOpen className="h-3.5 w-3.5" />
+                        {gameInfoVisible ? "ガイドを隠す" : "ゲームガイド"}
+                      </Button>
+                      <CardReferenceDialog />
                     </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    className="h-7 w-full justify-start px-2 text-xs"
-                    onClick={() => setPreferredDock("bottom")}
-                  >
-                    下部に表示
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="h-7 w-full justify-start px-2 text-xs"
-                    onClick={() => setHintVisible((prev) => !prev)}
-                    aria-expanded={hintVisible}
-                  >
-                    {hintVisible ? "ヒントを隠す" : "カード効果ヒント"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="h-7 w-full justify-start gap-2 px-2 text-xs"
-                    onClick={() => setGameInfoVisible((prev) => !prev)}
-                    aria-expanded={gameInfoVisible}
-                  >
-                    <BookOpen className="h-3.5 w-3.5" />
-                    {gameInfoVisible ? "ガイドを隠す" : "ゲームガイド"}
-                  </Button>
-                  <CardReferenceDialog />
-                </div>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -403,7 +441,7 @@ export function ActionBar() {
             </div>
           )}
 
-          {gameInfoVisible && (
+          {showHelperDetails && gameInfoVisible && (
             <div
               className={cn(
                 "flex flex-col gap-4 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.95)] px-4 py-3 text-sm text-[var(--color-text-muted)] shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-2 fade-in",
@@ -443,7 +481,7 @@ export function ActionBar() {
             </div>
           )}
 
-          {hintVisible && cardDefinition && !gameInfoVisible && (
+          {showHelperDetails && hintVisible && cardDefinition && !gameInfoVisible && (
             <div
               className={cn(
                 "rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.65)] px-4 py-3 text-sm text-[var(--color-text-muted)] animate-in slide-in-from-bottom-2 fade-in",
