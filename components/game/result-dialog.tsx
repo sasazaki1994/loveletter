@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { Crown, RefreshCw, Play, Loader2 } from "lucide-react";
@@ -21,6 +21,13 @@ export function ResultDialog() {
   const [firstSeenAt, setFirstSeenAt] = useState<number | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const resultDialogDelayRef = useRef(resultDialogDelayMs);
+  const resultRevealFallbackRef = useRef(resultRevealFallbackMs);
+
+  useEffect(() => {
+    resultDialogDelayRef.current = resultDialogDelayMs;
+    resultRevealFallbackRef.current = resultRevealFallbackMs;
+  }, [resultDialogDelayMs, resultRevealFallbackMs]);
 
   const handleStartNewGame = async () => {
     if (!state?.roomId) return;
@@ -101,7 +108,7 @@ export function ResultDialog() {
     if (state.result.reason === "deck_exhausted") {
       let fallbackTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
         setOpen(true);
-      }, resultRevealFallbackMs);
+      }, resultRevealFallbackRef.current);
 
       const onRevealComplete = (e: Event) => {
         try {
@@ -127,12 +134,10 @@ export function ResultDialog() {
     // それ以外は軽い遅延後に表示
     const timer = setTimeout(() => {
         setOpen(true);
-    }, resultDialogDelayMs);
+    }, resultDialogDelayRef.current);
     return () => clearTimeout(timer);
   }, [
     dismissedResultId,
-    resultDialogDelayMs,
-    resultRevealFallbackMs,
     scheduledId,
     state?.id,
     state?.result,
