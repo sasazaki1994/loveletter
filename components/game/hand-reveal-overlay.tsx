@@ -64,19 +64,24 @@ export function HandRevealOverlay({
     };
 
     window.addEventListener('keydown', handleSkip);
-    window.addEventListener('pointerdown', handleSkip);
 
     return () => {
       window.clearTimeout(timer);
       window.clearTimeout(armTimer);
       window.removeEventListener('keydown', handleSkip);
-      window.removeEventListener('pointerdown', handleSkip);
       setSkipHintVisible(false);
     };
   }, [complete, displayDurationMs]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20">
+    <div
+      className="absolute inset-0 z-20"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        complete();
+      }}
+    >
       <AnimatePresence>
         {players.map((player) => {
           const hand = finalHands[player.id];
