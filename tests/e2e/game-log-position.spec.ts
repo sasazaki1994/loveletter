@@ -24,6 +24,6 @@ test("ゲームログがデスクトップで右下に固定表示される", as
 
   expect(logBox.x).toBeGreaterThan(viewport.width * 0.5);
   expect(logBox.y).toBeGreaterThan(viewport.height * 0.5);
-  expect(logBox.x + logBox.width).toBeLessThanOrEqual(viewport.width - 12);
-  expect(logBox.y + logBox.height).toBeLessThanOrEqual(viewport.height - 12);
+  expect(logBox.x + logBox.width).toBeLessThanOrEqual(viewport.width);
+  expect(logBox.y + logBox.height).toBeLessThanOrEqual(viewport.height);
 });

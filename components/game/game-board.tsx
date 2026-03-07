@@ -35,6 +35,7 @@ const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
 
 const EFFECT_POSITION_SCALE = 0.78;
 const ACTION_BAR_DOCK_EVENT = "action_bar_dock_change";
+const LOG_PANEL_BOTTOM_OFFSET = "0.5rem";
 
 type PlayerSnapshot = ClientGameState["players"][number] | NonNullable<ClientGameState["self"]>;
 type ActionBarDock = "left" | "bottom";
@@ -708,7 +709,10 @@ export function GameBoard() {
   const overlayLogPanelStyle = useMemo<CSSProperties>(
     () => ({
       right: actionBarDock === "left" ? "calc(20rem + 1.5rem)" : "1.5rem",
-      bottom: actionBarDock === "bottom" ? "calc(min(70vh, 36rem) + 1.5rem)" : "1.5rem",
+      bottom:
+        actionBarDock === "bottom"
+          ? `calc(min(70vh, 36rem) + ${LOG_PANEL_BOTTOM_OFFSET})`
+          : LOG_PANEL_BOTTOM_OFFSET,
     }),
     [actionBarDock],
   );
