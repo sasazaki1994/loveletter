@@ -32,20 +32,22 @@ export function TurnBanner({ state, isMyTurn }: TurnBannerProps) {
       exit={{ y: -32, opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="pointer-events-none w-full"
+      aria-label="ターンバナー"
       aria-live="polite"
     >
       <div
         className={cn(
-          "pointer-events-auto min-w-[20rem] rounded-2xl border border-[rgba(215,178,110,0.3)] bg-[rgba(16,36,33,0.9)] px-6 py-4 shadow-[0_16px_42px_rgba(0,0,0,0.45)] backdrop-blur-md transition-colors duration-200",
+          "pointer-events-auto w-full min-w-0 rounded-2xl border border-[rgba(215,178,110,0.3)] bg-[rgba(16,36,33,0.9)] px-4 py-4 shadow-[0_16px_42px_rgba(0,0,0,0.45)] backdrop-blur-md transition-colors duration-200 sm:px-5",
           isMyTurn && "border-[rgba(215,178,110,0.6)] bg-[rgba(24,48,43,0.94)]"
         )}
       >
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-xs uppercase tracking-[0.6em] text-[rgba(215,178,110,0.8)] font-medium">
+        <div className="flex flex-wrap items-start justify-between gap-2.5">
+          <p className="min-w-0 text-[11px] font-medium uppercase leading-relaxed tracking-[0.35em] text-[rgba(215,178,110,0.8)]">
             ラウンド {state?.round ?? 1} / <span className="tracking-widest">残り {state?.drawPileCount ?? 0} 枚</span>
           </p>
           {state && (
             <span className={cn(
+              "shrink-0",
               "rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold shadow-sm transition-colors duration-500",
               isMyTurn 
                 ? "bg-[rgba(215,178,110,0.25)] border-[rgba(215,178,110,0.6)] text-[var(--color-accent-light)]" 
@@ -55,18 +57,18 @@ export function TurnBanner({ state, isMyTurn }: TurnBannerProps) {
             </span>
           )}
         </div>
-        <h2 className="mt-2.5 font-heading text-2xl text-[var(--color-accent-light)] sm:text-[1.75rem]">
+        <h2 className="mt-2.5 break-words font-heading text-[1.35rem] leading-tight text-[var(--color-accent-light)] sm:text-[1.6rem]">
           {activePlayer ? (
-            <span className={cn("inline-block", isMyTurn && "text-shadow-gold")}>
+            <span className={cn("inline-block break-words", isMyTurn && "text-shadow-gold")}>
               {activePlayer.nickname}
-              <span className="ml-2 text-lg font-normal opacity-80">の手番</span>
+              <span className="ml-2 text-base font-normal opacity-80">の手番</span>
             </span>
           ) : "待機中"}
         </h2>
-        <div className="mt-2.5 flex items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
           <div className={cn("h-px flex-1 transition-colors", isMyTurn ? "bg-[rgba(215,178,110,0.45)]" : "bg-[rgba(255,255,255,0.12)]")} />
           <p className={cn(
-            "px-2 text-sm transition-colors duration-300",
+            "px-2 text-xs transition-colors duration-300 sm:text-sm",
             isMyTurn ? "font-medium text-[var(--color-accent-light)]" : "text-[var(--color-text-muted)] opacity-85"
           )}>
             {isMyTurn ? "カードを選択して実行" : "進行を待機中"}

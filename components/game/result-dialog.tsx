@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { Crown, RefreshCw, Play, Loader2 } from "lucide-react";
@@ -12,7 +12,8 @@ import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { cn } from "@/lib/utils";
 
 export function ResultDialog() {
-  const { state, refetch, selfId } = useGameContext();
+  const { state, refetch, selfId, resultDialogDelayMs, resultRevealFallbackMs, resultHardFallbackMs } =
+    useGameContext();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [dismissedResultId, setDismissedResultId] = useState<string | null>(null);
@@ -20,6 +21,13 @@ export function ResultDialog() {
   const [firstSeenAt, setFirstSeenAt] = useState<number | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const resultDialogDelayRef = useRef(resultDialogDelayMs);
+  const resultRevealFallbackRef = useRef(resultRevealFallbackMs);
+
+  useEffect(() => {
+    resultDialogDelayRef.current = resultDialogDelayMs;
+    resultRevealFallbackRef.current = resultRevealFallbackMs;
+  }, [resultDialogDelayMs, resultRevealFallbackMs]);
 
   const handleStartNewGame = async () => {
     if (!state?.roomId) return;
@@ -100,7 +108,7 @@ export function ResultDialog() {
     if (state.result.reason === "deck_exhausted") {
       let fallbackTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
         setOpen(true);
-      }, 5000);
+      }, resultRevealFallbackRef.current);
 
       const onRevealComplete = (e: Event) => {
         try {
@@ -126,9 +134,14 @@ export function ResultDialog() {
     // それ以外は軽い遅延後に表示
     const timer = setTimeout(() => {
         setOpen(true);
-    }, 1000);
+    }, resultDialogDelayRef.current);
     return () => clearTimeout(timer);
-  }, [state?.result, state?.id, dismissedResultId, scheduledId]);
+  }, [
+    dismissedResultId,
+    scheduledId,
+    state?.id,
+    state?.result,
+  ]);
 
   // 最終フォールバック: 結果検出から一定時間たっても開かない場合は強制的に開く
   useEffect(() => {
@@ -138,7 +151,7 @@ export function ResultDialog() {
 
     const check = () => {
       const elapsed = Date.now() - firstSeenAt;
-      if (elapsed >= 8000) {
+      if (elapsed >= resultHardFallbackMs) {
         setOpen(true);
         if (timeoutId) clearTimeout(timeoutId);
         if (rafId) cancelAnimationFrame(rafId);
@@ -147,17 +160,44 @@ export function ResultDialog() {
       rafId = requestAnimationFrame(check);
     };
 
-    // 8秒のハードタイマーもセット
+    // 最終フォールバック
     timeoutId = setTimeout(() => {
       setOpen(true);
-    }, 8500);
+    }, resultHardFallbackMs + 500);
 
     rafId = requestAnimationFrame(check);
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [firstSeenAt, open, state?.result]);
+  }, [firstSeenAt, open, resultHardFallbackMs, state?.result]);
+
+  useEffect(() => {
+    if (!state?.result || open) return;
+
+    let handleSkip: ((event: KeyboardEvent | PointerEvent) => void) | null = null;
+    const armTimer = window.setTimeout(() => {
+      handleSkip = (event: KeyboardEvent | PointerEvent) => {
+        if (event instanceof KeyboardEvent) {
+          if (!["Enter", " ", "Escape"].includes(event.key)) return;
+          event.preventDefault();
+        }
+        setOpen(true);
+      };
+
+      window.addEventListener("keydown", handleSkip);
+      window.addEventListener("pointerdown", handleSkip);
+
+    }, Math.min(300, resultDialogDelayMs));
+
+    return () => {
+      window.clearTimeout(armTimer);
+      if (handleSkip) {
+        window.removeEventListener("keydown", handleSkip);
+        window.removeEventListener("pointerdown", handleSkip);
+      }
+    };
+  }, [open, resultDialogDelayMs, state?.result]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);

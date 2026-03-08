@@ -21,6 +21,15 @@ import { TurnCutin } from "@/components/game/turn-cutin";
 import { RoomIdDisplay } from "@/components/ui/room-id-display";
 import { SoundControls } from "@/components/game/sound-controls";
 import { CardReferenceDialog } from "@/components/game/card-reference-dialog";
+import {
+  ACTION_BAR_BOTTOM_DOCK_MAX_HEIGHT,
+  ACTION_BAR_LEFT_DOCK_WIDTH_REM,
+  FLOATING_PANEL_SIDE_OFFSET_REM,
+  LOG_PANEL_BOTTOM_OFFSET_REM,
+  LOG_PANEL_MIN_WIDTH_REM,
+  OVERLAY_GAME_TABLE_MAX_WIDTH_REM,
+  OVERLAY_INFO_RAIL_MAX_WIDTH_REM,
+} from "@/components/game/layout-constants";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { ErrorAlert } from "@/components/game/error-alert";
 import type { CardEffectType, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
@@ -34,8 +43,10 @@ const RELATIVE_OFFSETS: Record<number, { x: number; y: number }> = {
 };
 
 const EFFECT_POSITION_SCALE = 0.78;
+const ACTION_BAR_DOCK_EVENT = "action_bar_dock_change";
 
 type PlayerSnapshot = ClientGameState["players"][number] | NonNullable<ClientGameState["self"]>;
+type ActionBarDock = "left" | "bottom";
 
 export function GameBoard() {
   const {
@@ -52,6 +63,10 @@ export function GameBoard() {
     isMyTurn,
     selfId,
     effectScale,
+    turnCutinMs,
+    roundCutinMs,
+    roundToTurnCutinDelayMs,
+    handRevealMs,
     playCard,
     cancelSelection,
     cardDefinition,
@@ -68,9 +83,16 @@ export function GameBoard() {
   // ターン開始検出用
   const [showTurnCutin, setShowTurnCutin] = useState(false);
   const [cutinText, setCutinText] = useState("あなたの番");
+  const [cutinSequence, setCutinSequence] = useState(0);
   const prevTurnRef = useRef<boolean>(false);
   const prevRoundRef = useRef<number | null>(null);
   const cutinInitializedRef = useRef(false);
+
+  const triggerCutin = useCallback((nextText: string) => {
+    setCutinText(nextText);
+    setCutinSequence((prev) => prev + 1);
+    setShowTurnCutin(true);
+  }, []);
 
   useEffect(() => {
     if (!state) return;
@@ -87,19 +109,16 @@ export function GameBoard() {
     const roundChanged = prevRoundRef.current !== null && state.round !== prevRoundRef.current;
 
     if (roundChanged) {
-      setCutinText(`ラウンド ${state.round}`);
-      setShowTurnCutin(true);
+      triggerCutin(`ラウンド ${state.round}`);
 
       // ラウンド開始直後かつ自分の入力フェーズに入っている場合のみ追従表示
       if (isMyTurn && state.phase === "choose_card") {
         delayedTurnTimer = window.setTimeout(() => {
-          setCutinText("あなたの番");
-          setShowTurnCutin(true);
-        }, 1800);
+          triggerCutin("あなたの番");
+        }, roundToTurnCutinDelayMs);
       }
     } else if (isMyTurn && !prevTurnRef.current && state.phase === "choose_card") {
-      setCutinText("あなたの番");
-      setShowTurnCutin(true);
+      triggerCutin("あなたの番");
     }
 
     prevTurnRef.current = isMyTurn;
@@ -110,7 +129,7 @@ export function GameBoard() {
         window.clearTimeout(delayedTurnTimer);
       }
     };
-  }, [isMyTurn, state]);
+  }, [isMyTurn, roundToTurnCutinDelayMs, state, triggerCutin]);
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null);
   const fx = useGameEffects();
@@ -122,6 +141,7 @@ export function GameBoard() {
   const [handRevealComplete, setHandRevealComplete] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [useOverlayInfoRail, setUseOverlayInfoRail] = useState(false);
+  const [actionBarDock, setActionBarDock] = useState<ActionBarDock>("left");
   const hand = useMemo(
     () => optimisticHand ?? state?.hand ?? state?.self?.hand ?? [],
     [optimisticHand, state?.hand, state?.self?.hand],
@@ -151,6 +171,32 @@ export function GameBoard() {
     evaluateViewport();
     window.addEventListener("resize", evaluateViewport);
     return () => window.removeEventListener("resize", evaluateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncDockFromStorage = () => {
+      const stored = window.localStorage.getItem("actionBarDock");
+      setActionBarDock(stored === "bottom" ? "bottom" : "left");
+    };
+
+    const handleDockChange = (event: Event) => {
+      const dock = (event as CustomEvent<{ dock?: ActionBarDock }>).detail?.dock;
+      if (dock === "left" || dock === "bottom") {
+        setActionBarDock(dock);
+        return;
+      }
+      syncDockFromStorage();
+    };
+
+    syncDockFromStorage();
+    window.addEventListener("storage", syncDockFromStorage);
+    window.addEventListener(ACTION_BAR_DOCK_EVENT, handleDockChange as EventListener);
+    return () => {
+      window.removeEventListener("storage", syncDockFromStorage);
+      window.removeEventListener(ACTION_BAR_DOCK_EVENT, handleDockChange as EventListener);
+    };
   }, []);
 
   const generateEventId = useCallback(() => {
@@ -188,16 +234,12 @@ export function GameBoard() {
     if (!element) return;
 
     const measure = () => {
-      const rect = element.getBoundingClientRect();
       const styles = window.getComputedStyle(element);
       const maxWidth = parseFloat(styles.maxWidth) || 0;
       const parentRect = element.parentElement?.getBoundingClientRect();
       const viewportAvailable = Math.max(window.innerWidth - 96, 240);
 
       const candidates = [
-        rect.width,
-        element.offsetWidth,
-        element.clientWidth,
         parentRect?.width ?? 0,
         maxWidth,
         viewportAvailable,
@@ -676,6 +718,36 @@ export function GameBoard() {
     targetOptions,
   ]);
 
+  const overlayLogPanelStyle = useMemo<CSSProperties>(
+    () => ({
+      minWidth: `${LOG_PANEL_MIN_WIDTH_REM}rem`,
+      width: `min(${OVERLAY_INFO_RAIL_MAX_WIDTH_REM}rem, calc(100vw - 25rem))`,
+      right:
+        actionBarDock === "left"
+          ? `calc(${ACTION_BAR_LEFT_DOCK_WIDTH_REM}rem + ${FLOATING_PANEL_SIDE_OFFSET_REM}rem)`
+          : `${FLOATING_PANEL_SIDE_OFFSET_REM}rem`,
+      bottom:
+        actionBarDock === "bottom"
+          ? `calc(${ACTION_BAR_BOTTOM_DOCK_MAX_HEIGHT} + ${LOG_PANEL_BOTTOM_OFFSET_REM}rem)`
+          : `${LOG_PANEL_BOTTOM_OFFSET_REM}rem`,
+    }),
+    [actionBarDock],
+  );
+
+  const overlayInfoRailStyle = useMemo<CSSProperties>(
+    () => ({ maxWidth: `${OVERLAY_INFO_RAIL_MAX_WIDTH_REM}rem` }),
+    [],
+  );
+
+  const tableContainerStyle = useMemo<CSSProperties>(
+    () => ({
+      maxWidth: useOverlayInfoRail ? `${OVERLAY_GAME_TABLE_MAX_WIDTH_REM}rem` : undefined,
+      width: tableSize.width ? `${tableSize.width}px` : undefined,
+      height: tableSize.height ? `${tableSize.height}px` : undefined,
+    }),
+    [tableSize.height, tableSize.width, useOverlayInfoRail],
+  );
+
   // 待機中（ゲーム未開始）の場合は待機画面を表示
   if (!state && !loading) {
     return (
@@ -716,13 +788,29 @@ export function GameBoard() {
 
   return (
     <div className={rootClasses}>
-      <TurnCutin show={showTurnCutin} text={cutinText} />
+      <TurnCutin
+        show={showTurnCutin}
+        text={cutinText}
+        triggerKey={cutinSequence}
+        turnCutinMs={turnCutinMs}
+        roundCutinMs={roundCutinMs}
+      />
 
       {useOverlayInfoRail && (
-        <div className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] max-w-[18rem] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10">
-          <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
-          <LogPanel />
-        </div>
+        <>
+          <div
+            className="pointer-events-none fixed left-3 top-16 z-30 flex w-[calc(100vw-2.5rem)] flex-col gap-4 sm:left-6 sm:top-20 lg:left-10"
+            style={overlayInfoRailStyle}
+          >
+            <AnimatePresence>{state && <TurnBanner state={state} isMyTurn={isMyTurn} />}</AnimatePresence>
+          </div>
+          <div
+            className="pointer-events-none fixed z-30 max-w-[calc(100vw-1rem)]"
+            style={overlayLogPanelStyle}
+          >
+            <LogPanel />
+          </div>
+        </>
       )}
 
       {useOverlayInfoRail && !isBotGame && (
@@ -773,11 +861,13 @@ export function GameBoard() {
             </div>
           )}
 
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex w-full flex-1 items-center justify-center">
             <div
               ref={tableContainerRef}
               className="relative aspect-square w-full max-w-[24rem] sm:max-w-[30rem] lg:max-w-[38rem]"
-              style={{ width: tableSize.width ? `${tableSize.width}px` : undefined, height: tableSize.height ? `${tableSize.height}px` : undefined }}
+              style={tableContainerStyle}
+              role="region"
+              aria-label="ゲームテーブル"
             >
               <GameTable
                 drawPileCount={state?.drawPileCount ?? 0}
@@ -798,6 +888,7 @@ export function GameBoard() {
                     players={orderedPlayers}
                     tableSize={tableSize}
                     getSeatPosition={getSeatPosition}
+                    displayDurationMs={handRevealMs}
                     onComplete={handleHandRevealComplete}
                   />
                 )}

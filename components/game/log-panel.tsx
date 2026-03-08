@@ -45,6 +45,7 @@ export function LogPanel() {
   const { state } = useGameContext();
   const logs = useMemo(() => state?.logs ?? [], [state?.logs]);
   const latestLog = useMemo(() => logs[logs.length - 1], [logs]);
+  const hasLogs = logs.length > 0;
 
   const [collapsed, setCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -116,7 +117,7 @@ export function LogPanel() {
           <Button
             type="button"
             variant="ghost"
-            className="h-7 w-7 p-0"
+            className="h-9 w-9 rounded-md p-0"
             onClick={handleToggleCollapse}
             aria-expanded={!collapsed}
             aria-label={collapsed ? "ログを展開" : "ログを折りたたむ"}
@@ -131,7 +132,7 @@ export function LogPanel() {
           {latestLog ? latestLog.message : "ログはまだありません"}
         </div>
       ) : (
-        <ScrollArea ref={scrollAreaRef} className="h-64">
+        <ScrollArea ref={scrollAreaRef} className={cn(hasLogs ? "h-64" : "h-32")}>
           <div className="space-y-3 px-3 py-3">
             {logs.map((log) => {
               const Icon = LOG_ICONS[log.icon || "info"] ?? Info;
@@ -199,7 +200,7 @@ export function LogPanel() {
             })}
 
             {logs.length === 0 && (
-              <div className="flex h-full flex-col items-center justify-center gap-2 py-8 text-[var(--color-text-muted)] opacity-40">
+              <div className="flex h-full flex-col items-center justify-center gap-2 py-5 text-[var(--color-text-muted)] opacity-40">
                 <Info className="h-8 w-8" />
                 <p className="text-xs">ログはまだありません</p>
               </div>
