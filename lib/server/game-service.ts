@@ -6,8 +6,10 @@ import { db, type DbClient } from "@/lib/db/client";
 import { buildFullDeck, draw, shuffleDeck, getTestDeckOverrides, type TestDeckOverrides } from "@/lib/game/deck";
 import { CARD_POOL } from "@/lib/game/cards";
 import type { VariantConfig } from "@/lib/game/variants";
+import { isSupportedVariantCardId } from "@/lib/game/variant-support";
 import { generateOpaqueToken, hashToken } from "@/lib/server/auth";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
+import { getForcedPlayableCard } from "@/lib/game/forced-card-rules";
 import { generateShortRoomId } from "@/lib/utils/room-id";
 import type {
   CardId,
@@ -713,31 +715,13 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
       return { success: false, message: "対象は守護状態です。" };
     }
 
-    const holdsVizier = currentHand.cards.includes("vizier");
-    const forcedDiscardCards: CardId[] = ["arbiter", "legate"];
-    if (
-      holdsVizier &&
-      cardId !== "vizier" &&
-      forcedDiscardCards.includes(cardId) &&
-      currentHand.cards.includes("vizier")
-    ) {
-      return {
-        success: false,
-        message: "Vizier を同時に所持しているため、このカードは使用できません。Vizier を捨ててください。",
-      };
-    }
-
-    // 強制使用ルール: Marquise (7) を所持し、手札合計が12以上のときは Marquise を優先
-    const holdsMarquise = currentHand.cards.includes("marquise");
-    if (holdsMarquise && cardId !== "marquise") {
-      const handRanks = currentHand.cards.map((cid) => CARD_DEFINITIONS[cid as CardId].rank);
-      const totalRank = handRanks.reduce((a, b) => a + b, 0);
-      if (totalRank >= 12) {
-        return {
-          success: false,
-          message: "手札合計が12以上のため、Marquise を先に使用する必要があります。",
-        };
-      }
+    const forcedCard = getForcedPlayableCard(currentHand.cards as CardId[]);
+    if (forcedCard && cardId !== forcedCard) {
+      const message =
+        forcedCard === "vizier"
+          ? "Vizier を同時に所持しているため、このカードは使用できません。Vizier を捨ててください。"
+          : "手札合計が12以上のため、Marquise を先に使用する必要があります。";
+      return { success: false, message };
     }
 
     const updatedHand = [...currentHand.cards];
@@ -1275,10 +1259,10 @@ export async function executeBotTurn(
   }
 }
 
-function chooseBotCard(cards: CardId[]): CardId {
-  if (cards.includes("vizier") && cards.some((card) => card === "arbiter" || card === "legate")) {
-    return "vizier";
-  }
+export function chooseBotCard(cards: CardId[]): CardId {
+  const forcedCard = getForcedPlayableCard(cards);
+  if (forcedCard) return forcedCard;
+
   const sorted = [...cards].sort((a, b) => CARD_DEFINITIONS[a].rank - CARD_DEFINITIONS[b].rank);
   return sorted[0];
 }
@@ -1660,7 +1644,7 @@ function buildVariantConfigFromIds(ids: CardId[]): VariantConfig {
   const config: VariantConfig = {};
   for (const id of ids) {
     const def = CARD_DEFINITIONS[id];
-    if (!def) continue;
+    if (!def || !isSupportedVariantCardId(id)) continue;
     const r = def.rank;
     if (r >= 1 && r <= 7 && config[r as 1 | 2 | 3 | 4 | 5 | 6 | 7] === undefined) {
       config[r as 1 | 2 | 3 | 4 | 5 | 6 | 7] = id;
