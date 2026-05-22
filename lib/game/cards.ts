@@ -112,6 +112,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
     copies: 1, // replaces 1 of 2
     effectType: "peek", // NOTE: placeholder effect type; deck toggle is off by default
     description: "山札の上から2枚を見る。1枚を上、1枚を下に置く。",
+    notes: "未実装のため variant 選択では無効化。",
     icon: "eye",
     target: "none",
   },
@@ -122,6 +123,7 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
     copies: 1, // replaces 1 of 2
     effectType: "compare",
     description: "互いに公開し、小さい値の側が捨てる。同値なら効果なし。",
+    notes: "説明と実装の整合が未完了のため variant 選択では無効化。",
     icon: "swords",
     target: "opponent",
     cannotTargetShielded: true,
@@ -145,7 +147,8 @@ export const CARD_DEFINITIONS: Record<CardDefinition["id"], CardDefinition> = {
     rank: 6,
     copies: 1, // replaces 1 of 1
     effectType: "swap_hands",
-    description: "対象の手札を密かに見て、入れ替えるかどうかを選べる（公開しない）。",
+    description: "対象の手札を確認し、自分と対象の手札を入れ替える。",
+    notes: "effectChoice による swap/keep 分岐は将来対応。",
     icon: "balance",
     target: "opponent",
     cannotTargetShielded: true,

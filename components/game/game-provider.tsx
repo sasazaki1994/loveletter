@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardDefinition, CardId, ClientGameState, PlayerId } from "@/lib/game/types";
+import { getForcedPlayableCard } from "@/lib/game/forced-card-rules";
 import { useGameStream } from "@/lib/hooks/use-game-stream";
 import { useSoundEffects, type SoundKey } from "@/lib/hooks/use-sound-effects";
 import { useTempoSettings, type TempoMode } from "@/lib/hooks/use-tempo-settings";
@@ -268,12 +269,13 @@ export function GameProvider({ roomId, playerId, children }: GameProviderProps) 
     const definition = CARD_DEFINITIONS[selectedCard];
     if (!definition) return;
 
-    // クライアント側ガード: Vizier 同時所持中は Arbiter/Legate を使用不可
-    const currentHand = (state.self?.hand ?? state.hand ?? []) as CardId[];
-    const holdsVizier = currentHand.includes("vizier");
-    if (holdsVizier && (selectedCard === "arbiter" || selectedCard === "legate")) {
+        const currentHand = (state.self?.hand ?? state.hand ?? []) as CardId[];
+    const forcedCard = getForcedPlayableCard(currentHand);
+    if (forcedCard && selectedCard !== forcedCard) {
       setActionError(
-        "Vizier を同時に所持しているため、このカードは使用できません。Vizier を捨ててください。",
+        forcedCard === "vizier"
+          ? "Vizier を同時に所持しているため、このカードは使用できません。Vizier を捨ててください。"
+          : "手札合計が12以上のため、Marquise を先に使用する必要があります。",
       );
       playSound("deny");
       return;
