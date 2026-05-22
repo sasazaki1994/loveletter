@@ -19,6 +19,33 @@ type DockPosition = "left" | "bottom";
 const ACTION_BAR_DOCK_EVENT = "action_bar_dock_change";
 const ACTION_BAR_HELPER_EXPANDED_KEY = "actionBarHelperExpanded";
 
+function getActionNextStep(params: {
+  isMyTurn: boolean;
+  hasSelectedCard: boolean;
+  cardDefinition?: { requiresGuess?: boolean };
+  requiresTarget: boolean;
+  noAvailableTargets: boolean;
+  selectedTarget: string | null;
+  guessedRank: number | null;
+  acting: boolean;
+  canConfirm: boolean;
+}): string {
+  if (!params.isMyTurn) return "他のプレイヤーの手番です。進行を待ってください";
+  if (params.acting) return "カードを送信中です";
+  if (!params.hasSelectedCard) return "カードを1枚選択してください";
+  if (params.requiresTarget && !params.noAvailableTargets && !params.selectedTarget) {
+    return "対象プレイヤーを選択してください";
+  }
+  if (params.requiresTarget && params.noAvailableTargets) {
+    return "対象がいないため、このままカードを捨て札にできます";
+  }
+  if (params.cardDefinition?.requiresGuess && !params.noAvailableTargets && (!params.guessedRank || params.guessedRank < 2 || params.guessedRank > 8)) {
+    return "推測するランクを 2〜8 で入力してください";
+  }
+  if (params.canConfirm) return "カードを使用できます";
+  return "入力内容を確認してください";
+}
+
 export function ActionBar() {
   const {
     selectedCard,
@@ -184,6 +211,17 @@ export function ActionBar() {
     isDockedLeft ? "flex-col" : stackControls ? "flex-col" : "flex-wrap items-center",
   );
   const showHelperDetails = !isDockedLeft || helperPanelExpanded;
+  const nextStepMessage = getActionNextStep({
+    isMyTurn,
+    hasSelectedCard: Boolean(selectedCard),
+    cardDefinition,
+    requiresTarget,
+    noAvailableTargets,
+    selectedTarget,
+    guessedRank,
+    acting,
+    canConfirm,
+  });
 
   return (
     <motion.div
@@ -499,13 +537,19 @@ export function ActionBar() {
             <span className="text-xs uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
               選択中カード
             </span>
-            <p className={cn("text-[var(--color-accent-light)]", isDockedLeft ? "text-xs" : "text-sm")}> 
+            <p data-testid="action-selected-card" className={cn("text-[var(--color-accent-light)]", isDockedLeft ? "text-xs" : "text-sm")}> 
               {cardDefinition ? `${cardDefinition.name} (ランク ${cardDefinition.rank})` : "未選択"}
+            </p>
+          </div>
+          <div className={cn("flex flex-col gap-1", isDockedLeft ? "w-full" : "min-w-[18rem]")}>
+            <span className="text-xs uppercase tracking-[0.3em] text-[var(--color-text-muted)]">次にやること</span>
+            <p data-testid="action-next-step" className={cn("text-[var(--color-text)]", isDockedLeft ? "text-xs" : "text-sm")}>
+              {nextStepMessage}
             </p>
           </div>
 
           {requiresTarget && (
-            <div className={cn("flex flex-col gap-1.5", isDockedLeft ? "w-full" : "text-sm")}> 
+            <div data-testid="action-target-section" className={cn("flex flex-col gap-1.5", isDockedLeft ? "w-full" : "text-sm")}> 
               <span className="text-xs uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
                 対象プレイヤー
               </span>
@@ -551,6 +595,7 @@ export function ActionBar() {
                 推測するランク
               </span>
               <Input
+                data-testid="action-guess-input"
                 type="number"
                 min={2}
                 max={8}
@@ -593,6 +638,7 @@ export function ActionBar() {
 
           <div className={cn("flex gap-2", stackControls ? "w-full flex-col pt-0" : "ml-auto gap-3")}> 
             <Button
+              data-testid="action-cancel-button"
               variant="ghost"
               className={cn(stackControls ? "h-9 w-full justify-center" : "px-4")}
               onClick={cancelSelection}
@@ -601,6 +647,7 @@ export function ActionBar() {
               取り消し
             </Button>
             <Button
+              data-testid="action-confirm-button"
               className={cn(stackControls ? "h-10 w-full" : "px-6")}
               onClick={playCard}
               disabled={!canConfirm || acting}
