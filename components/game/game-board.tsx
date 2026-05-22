@@ -804,7 +804,7 @@ export function GameBoard() {
       : "相手の行動を待機中です。ログを確認して次の一手を考えましょう。";
 
   return (
-    <div className={rootClasses}>
+    <div className={rootClasses} data-testid="game-board">
       <TurnCutin
         show={showTurnCutin}
         text={cutinText}
@@ -901,6 +901,7 @@ export function GameBoard() {
           <div className="flex w-full flex-1 items-center justify-center">
             <div
               ref={tableContainerRef}
+              data-testid="game-table"
               className="relative aspect-square w-full max-w-[24rem] sm:max-w-[30rem] lg:max-w-[38rem]"
               style={tableContainerStyle}
               role="region"
@@ -957,14 +958,14 @@ export function GameBoard() {
             </section>
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Badge variant="outline">あなた</Badge>
-              <span className="font-heading text-xl text-[var(--color-accent-light)]">
+              <span data-testid="self-player-label" className="font-heading text-xl text-[var(--color-accent-light)]">
                 {state?.self?.nickname ?? "観戦モード"}
               </span>
               {!isMyTurn && state?.self && !state.self.isEliminated && (
                 <span className="text-xs text-[var(--color-text-muted)]">ターン待機中...</span>
               )}
             </div>
-            <div className="mt-3 flex min-h-[5.5rem] flex-wrap justify-center gap-4">
+            <div data-testid="player-hand" className="mt-3 flex min-h-[5.5rem] flex-wrap justify-center gap-4">
               {hand && hand.length > 0 ? (
                 <LayoutGroup id="player-hand">
                   <AnimatePresence initial={false}>
@@ -980,7 +981,7 @@ export function GameBoard() {
                   </AnimatePresence>
                 </LayoutGroup>
               ) : (
-                <p className="text-sm text-[var(--color-text-muted)]">現在手札は表示されていません。</p>
+                <p data-testid="hand-empty-message" className="text-sm text-[var(--color-text-muted)]">現在手札は表示されていません。</p>
               )}
             </div>
           </div>

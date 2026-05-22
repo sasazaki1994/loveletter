@@ -364,6 +364,21 @@ export function ResultDialog() {
           </DialogHeader>
 
           <div className="relative z-10 space-y-6">
+            <div className="space-y-2 rounded-xl border border-[rgba(215,178,110,0.24)] bg-[rgba(8,18,17,0.55)] p-3">
+              <p data-testid="game-result-reason" className="text-sm text-[var(--color-text)]">
+                {state?.result?.reason === "deck_exhausted"
+                  ? "山札切れ: 山札が尽きたため、残った手札のランクで勝敗を判定しました。"
+                  : state?.result?.reason === "elimination"
+                    ? "脱落決着: 他プレイヤーが脱落し、生存者が勝利しました。"
+                    : "決着: ラウンド終了条件を満たしました。"}
+              </p>
+              <p data-testid="game-result-ranking" className="text-xs text-[var(--color-text-muted)]">
+                順位は生存状況と手札情報にもとづいて表示されています。
+              </p>
+              <p data-testid="game-result-next-action" className="text-xs text-[var(--color-text-muted)]">
+                次の行動: 続ける場合は「次のゲームを始める」を押してください。
+              </p>
+            </div>
             {placements.length > 0 ? (
               <div className="space-y-4">
                 <ol className="space-y-3">

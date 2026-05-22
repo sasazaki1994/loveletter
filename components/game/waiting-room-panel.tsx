@@ -217,6 +217,25 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
               <RoomQrShare roomId={shareId} compact className="lg:justify-self-end" />
             </div>
 
+            <section
+              data-testid="waiting-room-rule-panel"
+              className="rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(9,20,19,0.75)] px-5 py-4 text-sm"
+            >
+              <h3 className="text-base font-semibold text-[var(--color-accent-light)]">はじめての方へ</h3>
+              <p data-testid="waiting-room-objective" className="mt-2 text-[var(--color-text)]">
+                <span className="font-semibold">目的:</span> 最後まで脱落せずに残るか、山札が尽きたときに最も強い手札を持つことを目指します。
+              </p>
+              <p data-testid="waiting-room-basic-flow" className="mt-2 text-[var(--color-text-muted)]">
+                <span className="font-semibold text-[var(--color-text)]">基本の流れ:</span> 自分の番で山札から1枚引き、手札2枚のうち1枚を使用します。カード効果で相手を脱落させたり、自分を守ったりして勝利を目指します。
+              </p>
+              <p data-testid="waiting-room-win-condition" className="mt-2 text-[var(--color-text-muted)]">
+                <span className="font-semibold text-[var(--color-text)]">勝利条件:</span> 他のプレイヤーが全員脱落する、または山札切れ時に最も高いランクの手札を持っていると勝利です。
+              </p>
+              <p className="mt-2 text-[var(--color-text-muted)]">
+                2人以上で開始できます。BOT戦はすぐに開始でき、対人戦は参加者が揃った後にホストが開始します。
+              </p>
+            </section>
+
             <div className="rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.6)] px-5 py-4 text-sm shadow-inner">
               <div className="flex items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.05)] pb-2 mb-2">
                 <span className="text-[var(--color-text-muted)] uppercase tracking-wider text-xs font-medium">参加人数</span>
@@ -352,5 +371,4 @@ export function WaitingRoomPanel({ roomId }: { roomId: string }) {
     </div>
   );
 }
-
 
