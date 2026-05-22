@@ -345,7 +345,7 @@ export function ResultDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="border-none bg-transparent p-0 shadow-none sm:max-w-md">
-        <div className="relative overflow-hidden rounded-3xl border border-[rgba(215,178,110,0.4)] bg-[rgba(12,28,26,0.95)] p-6 shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+        <div data-testid="game-result-panel" className="relative overflow-hidden rounded-3xl border border-[rgba(215,178,110,0.4)] bg-[rgba(12,28,26,0.95)] p-6 shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl">
           {/* Decorative background elements */}
           <div className="pointer-events-none absolute inset-0 bg-app-pattern opacity-30" />
           <div className="pointer-events-none absolute -top-20 left-1/2 h-64 w-64 -translate-x-1/2 bg-[radial-gradient(circle,rgba(215,178,110,0.15)_0%,transparent_70%)] blur-2xl" />
@@ -444,6 +444,7 @@ export function ResultDialog() {
                 </div>
               )}
               <Button 
+                data-testid="game-retry-button"
                 fullWidth 
                 onClick={handleStartNewGame}
                 disabled={isStarting || !selfId}

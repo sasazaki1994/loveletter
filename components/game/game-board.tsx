@@ -786,6 +786,23 @@ export function GameBoard() {
         : "px-5 pt-8 pb-24",
   );
 
+  const gameStatusLabel = state?.result
+    ? "ゲーム終了"
+    : state?.phase === "choose_card" && isMyTurn
+      ? "あなたの手番"
+      : state?.phase === "choose_card"
+        ? "相手の手番"
+        : state
+          ? "進行中"
+          : "開始待ち";
+  const progressScore = `${state?.self?.discardPile.length ?? 0} / ${Math.max(1, state?.round ?? 1)}`;
+  const latestLog = state?.logs?.[state.logs.length - 1];
+  const nextActionHint = state?.result
+    ? "結果を確認して、再戦ボタンから次のゲームを始めましょう。"
+    : isMyTurn
+      ? "手札から使うカードを1枚選び、対象が必要な場合は相手を選択してください。"
+      : "相手の行動を待機中です。ログを確認して次の一手を考えましょう。";
+
   return (
     <div className={rootClasses}>
       <TurnCutin
@@ -847,6 +864,26 @@ export function GameBoard() {
 
       <div className={contentClasses}>
         <div className="flex flex-1 flex-col items-center gap-6">
+          <section
+            data-testid="game-header"
+            className="w-full max-w-3xl rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.78)] p-3 shadow-[0_10px_28px_rgba(0,0,0,0.28)]"
+          >
+            <p className="text-xs tracking-[0.3em] text-[var(--color-text-muted)]">LOVE LETTER REVERIE</p>
+            <div className="mt-2 grid gap-2 text-sm sm:grid-cols-3">
+              <p data-testid="game-status"><span className="font-semibold">状態:</span> {gameStatusLabel}</p>
+              <p data-testid="game-score"><span className="font-semibold">進捗:</span> {progressScore}</p>
+              <p><span className="font-semibold">ラウンド:</span> {state?.round ?? "-"}</p>
+            </div>
+          </section>
+
+          <section
+            data-testid="game-rule-panel"
+            className="w-full max-w-3xl rounded-xl border border-[rgba(215,178,110,0.2)] bg-[rgba(9,20,19,0.85)] p-3 text-sm"
+          >
+            <p className="font-semibold">目的: 最後まで生き残るか、山札切れ時に最強ランクを保持して勝利する。</p>
+            <p className="mt-1 text-[var(--color-text-muted)]">操作: 自分の手番で手札を1枚選んで使用。対象・推測が必要なカードは追加選択後に確定。</p>
+          </section>
+
           {!useOverlayInfoRail && (
             <div className="w-full max-w-3xl space-y-3">
               <div className="flex items-center gap-2 rounded-xl border border-[rgba(215,178,110,0.25)] bg-[rgba(12,32,30,0.78)] px-3 py-2 shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
@@ -911,6 +948,13 @@ export function GameBoard() {
           </div>
 
           <div className="w-full max-w-3xl">
+            <section
+              data-testid="game-action-feedback"
+              className="mb-3 rounded-xl border border-[rgba(215,178,110,0.2)] bg-[rgba(9,20,19,0.8)] p-3 text-sm"
+            >
+              <p className="font-semibold">直前の結果: {latestLog?.message ?? "まだ行動ログはありません。"}</p>
+              <p className="mt-1 text-[var(--color-text-muted)]">次の行動: {nextActionHint}</p>
+            </section>
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Badge variant="outline">あなた</Badge>
               <span className="font-heading text-xl text-[var(--color-accent-light)]">
@@ -947,4 +991,3 @@ export function GameBoard() {
     </div>
   );
 }
-
