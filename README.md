@@ -215,8 +215,6 @@ npm run dev
 | `npm run build` | 本番用ビルドを生成 |
 | `npm run start` | 本番サーバーを起動（`build` 後に実行） |
 | `npm run lint` | ESLint でコードチェック |
-| `npm run test` | 契約テストを実行 (`tests/contracts/*.test.ts`) |
-| `npm run test:contracts` | 契約テストのみ実行 |
 | `npm run db:generate` | Drizzle スキーマからマイグレーションファイルを生成 |
 | `npm run db:migrate` | データベースマイグレーションを実行 |
 | `npm run db:push` | スキーマをデータベースに直接プッシュ（開発用） |
