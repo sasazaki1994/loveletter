@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { CARD_DEFINITIONS } from "@/lib/game/cards";
-import type { CardId } from "@/lib/game/types";
 import { handleGameAction } from "@/lib/server/game-service";
 import { extractPlayerAuth, getClientIp, verifyToken } from "@/lib/server/auth";
 import { rateLimit } from "@/lib/server/rate-limit";
@@ -10,25 +8,8 @@ import { db } from "@/lib/db/client";
 import { players } from "@/drizzle/schema";
 import { getUserFromRequest } from "@/lib/server/user-auth";
 import { and, eq } from "drizzle-orm";
+import { actionSchema } from "@/app/api/game/action/schema";
 
-const cardIdValues = Object.keys(CARD_DEFINITIONS) as [CardId, ...CardId[]];
-
-const payloadSchema = z
-  .object({
-    cardId: z.enum(cardIdValues).optional(),
-    targetId: z.string().uuid().optional(),
-    guessedRank: z.number().int().min(1).max(8).optional(),
-    effectChoice: z.string().optional(),
-  })
-  .optional();
-
-const actionSchema = z.object({
-  gameId: z.string().uuid(),
-  roomId: z.string().uuid(),
-  playerId: z.string().uuid(),
-  type: z.enum(["play_card", "resign"]),
-  payload: payloadSchema,
-});
 
 export async function POST(request: Request) {
   try {
