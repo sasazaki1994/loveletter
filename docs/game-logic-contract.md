@@ -45,3 +45,22 @@
 - 本PRは新機能追加ではなく、既存挙動維持のままテスト可能性を上げる基盤整備。
 - `effectChoice` は future work のまま。
 - Insight / Standoff / Ambush は未実装ポリシーを維持する。
+
+
+## Contract tests
+- `tests/contracts/card-effect-engine.test.ts`: Sentinel/Feint/Wager/Oracle/Duelist/Warder/Legate/Arbiter/Vizier/Marquise/Emissary の契約を検証。
+- `tests/contracts/forced-card-rules.test.ts`: Vizier / Marquise の強制使用優先順位を検証。
+- `tests/contracts/bot-choice.test.ts`: 強制ルール適用時の bot 選択と通常時の低ランク選択を検証。
+- `tests/contracts/variant-support.test.ts`: supported/unsupported variant の境界を検証。
+- `tests/contracts/api-action-contract.test.ts`: API入力schemaの境界条件（UUID/rank/type）を検証。
+
+## API contract
+- `app/api/game/action/schema.ts` に action/payload schema を分離し、API route と契約テストの共通契約として利用。
+- 未認証・playerId不一致・room非参加は `401` を返す方針を維持。
+
+## bot-action authorization
+- `/api/game/bot-action` は room参加者認証を必須化。
+- player token / user session による認可検証を通過しない呼び出しは `401`。
+
+## unsupported variants
+- `ambush` / `insight` / `standoff` は引き続き deck へ投入しない（選択されても無効化）。
