@@ -8,7 +8,6 @@ export async function waitForGameUI(page: Page, timeoutMs = 20000) {
   const isNarrow = viewport ? viewport.width < 800 : false;
   const effectiveTimeout = Math.max(timeoutMs, isNarrow ? 60000 : timeoutMs);
   const start = Date.now();
-  // まずセッション未検出メッセージが消えるまで待つ（リロード後のセッション復元を待つ）
   {
     const sessionWaitStart = Date.now();
     while (Date.now() - sessionWaitStart < effectiveTimeout) {
@@ -17,14 +16,11 @@ export async function waitForGameUI(page: Page, timeoutMs = 20000) {
       await page.waitForTimeout(200);
     }
   }
-  // ゲームUIが表示されるまで待つ
   for (;;) {
     const hasTable = await page.getByRole('region', { name: 'ゲームテーブル' }).isVisible().catch(() => false);
     if (hasTable) return;
-    // 代替としてターンバナーの一部文言でも可
     const banner = await page.getByText(/(の手番|ターン待機中)/).isVisible().catch(() => false);
     if (banner) return;
-    // さらに代替としてアクションバーの主要ボタンで判定
     const actionButton = await page.getByRole('button', { name: /カードを使う|Play Card/i }).isVisible().catch(() => false);
     if (actionButton) return;
     if (Date.now() - start > effectiveTimeout) throw new Error('Game UI not visible');
@@ -44,26 +40,25 @@ export async function createBotRoomViaUI(page: Page, nickname: string) {
     await page.waitForURL(/\/game\//, { timeout: 12000 });
     return;
   } catch {
-    // Fallback: APIで作成して直接遷移
-  const r = await page.request.post("/api/room/create", {
+    const r = await page.request.post("/api/room/create", {
       data: { nickname, variants: [] },
     });
-  const json = (await r.json()) as { roomId?: string; playerId?: string };
-  if (!r.ok() || !json.roomId || !json.playerId) throw new Error("failed to create room via API fallback");
-  await page.addInitScript(([roomId, playerId, nick]) => {
-    window.sessionStorage.setItem(
-      "llr:session",
-      JSON.stringify({ roomId, playerId, nickname: nick }),
-    );
-  }, [json.roomId, json.playerId, nickname]);
-  await page.goto(`/game/${json.roomId}`);
+    const json = (await r.json()) as { roomId?: string; playerId?: string };
+    if (!r.ok() || !json.roomId || !json.playerId) throw new Error("failed to create room via API fallback");
+    await page.addInitScript(([roomId, playerId, nick]) => {
+      window.sessionStorage.setItem(
+        "llr:session",
+        JSON.stringify({ roomId, playerId, nickname: nick }),
+      );
+    }, [json.roomId, json.playerId, nickname]);
+    await page.goto(`/game/${json.roomId}`);
   }
 }
 
 export async function createBotRoomViaAPI(
   request: APIRequestContext,
   nickname: string,
-  opts?: { seed?: string; deck?: string },
+  opts?: { seed?: string; deck?: string; variants?: string[] },
 ) {
   const params = new URLSearchParams();
   if (opts?.seed || opts?.deck) {
@@ -73,13 +68,67 @@ export async function createBotRoomViaAPI(
   }
   const url = "/api/room/create" + (params.toString() ? `?${params.toString()}` : "");
   const res = await request.post(url, {
-    data: { nickname, variants: [] },
+    data: { nickname, variants: opts?.variants ?? [] },
   });
   const json = await res.json();
   if (!res.ok()) {
     throw new Error(`create failed: ${json?.error ?? res.status()}`);
   }
   return json as { roomId: string; playerId: string; gameId?: string };
+}
+
+export async function fetchStateForPlayer(
+  request: APIRequestContext,
+  roomId: string,
+  playerId: string,
+) {
+  const url = new URL("/api/game/state", "http://localhost");
+  url.searchParams.set("roomId", roomId);
+  url.searchParams.set("playerId", playerId);
+  const res = await request.get(url.pathname + url.search);
+  expect(res.ok()).toBeTruthy();
+  const json = (await res.json()) as { state: any };
+  return json.state;
+}
+
+export async function postPlayCard(
+  request: APIRequestContext,
+  params: {
+    roomId: string;
+    gameId: string;
+    playerId: string;
+    cardId: string;
+    targetId?: string;
+    guessedRank?: number;
+  },
+) {
+  return request.post("/api/game/action", {
+    headers: {
+      "X-Player-Id": params.playerId,
+      "Content-Type": "application/json",
+    },
+    data: {
+      gameId: params.gameId,
+      roomId: params.roomId,
+      playerId: params.playerId,
+      type: "play_card",
+      payload: {
+        cardId: params.cardId,
+        ...(params.targetId ? { targetId: params.targetId } : {}),
+        ...(params.guessedRank !== undefined ? { guessedRank: params.guessedRank } : {}),
+      },
+    },
+  });
+}
+
+export function findSelf(state: any, playerId: string) {
+  return (state.players as Array<any>).find((p) => p.id === playerId);
+}
+
+export function findOpponent(state: any, playerId: string, predicate?: (p: any) => boolean) {
+  return (state.players as Array<any>).find(
+    (p) => p.id !== playerId && !p.isEliminated && (!predicate || predicate(p)),
+  );
 }
 
 export async function waitForServerState(
@@ -104,5 +153,3 @@ export async function waitForServerState(
     await new Promise((r) => setTimeout(r, 500));
   }
 }
-
-
