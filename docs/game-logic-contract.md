@@ -26,3 +26,22 @@
 ## Future work
 - `effectChoice` は将来の選択式効果（例: ambush swap/keep）で利用する拡張ポイント。
 - Ambush / Insight / Standoff を本実装する場合は、サーバ契約・bot判断・UI選択・秘匿情報管理を同時に更新する。
+
+## Card effect engine (pure rules)
+- カード効果の「判定」を `lib/game/rules/card-effect-engine.ts` に分離する。
+- 同 engine は DB / Next.js / drizzle に依存しない pure function として維持する。
+- engine は以下を返す:
+  - 効果発動可否 (`effectActivated`)
+  - 追記ログの意味情報 (`logSuffix`)
+  - 脱落候補 (`eliminatedPlayerIds`)
+  - 永続化命令 (`instructions`: action追加, shield付与, hand swap, force_discard判定)
+
+## Server responsibility
+- `lib/server/game-service.ts` は transaction と永続化を担当する。
+- `handlePlayCard` は rules engine の結果を受け取り、DB 更新（actions / hands / games / logs / players）を実行する。
+- `force_discard` の山札/手札更新は DB 依存処理として server に残す。
+
+## This phase goal
+- 本PRは新機能追加ではなく、既存挙動維持のままテスト可能性を上げる基盤整備。
+- `effectChoice` は future work のまま。
+- Insight / Standoff / Ambush は未実装ポリシーを維持する。

@@ -10,6 +10,7 @@ import { isSupportedVariantCardId } from "@/lib/game/variant-support";
 import { generateOpaqueToken, hashToken } from "@/lib/server/auth";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { getForcedPlayableCard } from "@/lib/game/forced-card-rules";
+import { resolveCardEffect, type RulesPlayerSnapshot } from "@/lib/game/rules/card-effect-engine";
 import { generateShortRoomId } from "@/lib/utils/room-id";
 import type {
   CardId,
@@ -752,168 +753,76 @@ async function handlePlayCard(action: GameActionRequest): Promise<GameActionResu
         },
       });
 
-    const noEffectMessage =
-      requiresTargetSelection && !hasSelectableTarget
-        ? "。しかし有効な対象が存在しないため効果は発動しませんでした。"
-        : "";
+    const rulesPlayers: RulesPlayerSnapshot[] = await Promise.all(
+      candidatePlayers.map(async (p) => {
+        const handRow = await getHand(tx, game.id, p.id);
+        return {
+          id: p.id,
+          nickname: p.nickname,
+          isSelf: p.id === actingPlayer.id,
+          isEliminated: p.isEliminated,
+          shield: p.shield,
+          hand: (handRow?.cards ?? []) as CardId[],
+        };
+      }),
+    );
 
-    switch (definition.effectType) {
-      case "guess_eliminate":
-        if (!hasSelectableTarget || !targetPlayer || guessedRank === undefined) {
-          logMessage += noEffectMessage || "。推測できる対象がいません。";
-        } else {
-          const targetHandRow = await getHand(tx, game.id, targetPlayer.id);
-          if (!targetHandRow || targetHandRow.cards.length === 0) {
-            logMessage += "。相手の手札が存在せず効果は発動しませんでした。";
+    const effectResult = resolveCardEffect({
+      actorId: actingPlayer.id,
+      actorNickname: actingPlayer.nickname,
+      cardId,
+      actorHandAfterPlay: updatedHand as CardId[],
+      targetId: targetPlayer?.id,
+      guessedRank,
+      players: rulesPlayers,
+      drawPileCount: deckState.drawPile.length,
+    });
+
+    if (!effectResult.ok) {
+      return { success: false, message: effectResult.message ?? "カード効果の解決に失敗しました。" };
+    }
+
+    effectActivated = effectResult.effectActivated;
+    logMessage += effectResult.logSuffix;
+    eliminationQueue.push(...effectResult.eliminatedPlayerIds);
+
+    for (const instruction of effectResult.instructions) {
+      switch (instruction.type) {
+        case "insert_action":
+          if (instruction.actionType === "force_discard") {
             break;
           }
-          effectActivated = true;
-          const targetCard = targetHandRow.cards[0] as CardId;
-          const targetRank = CARD_DEFINITIONS[targetCard].rank;
-          if (targetRank === guessedRank) {
-            eliminationQueue = [targetPlayer.id];
-            logMessage += `。推測が命中し、${targetPlayer.nickname} は脱落しました。`;
-          } else {
-            logMessage += "。推測は外れました。";
-          }
-          await tx
-            .insert(actions)
-            .values({
-              gameId: game.id,
-              actorId: actingPlayer.id,
-              type: "guess",
-              payload: { targetId, guessedRank },
-            });
-        }
-        break;
-      case "guess_reveal": {
-        if (!hasSelectableTarget || !targetPlayer || guessedRank === undefined) {
-          logMessage += noEffectMessage || "。推測できる対象がいません。";
-        } else {
-          const targetHandRow = await getHand(tx, game.id, targetPlayer.id);
-          if (!targetHandRow || targetHandRow.cards.length === 0) {
-            logMessage += "。相手の手札が存在せず効果は発動しませんでした。";
-            break;
-          }
-          const targetCard = targetHandRow.cards[0] as CardId;
-          const targetRank = CARD_DEFINITIONS[targetCard].rank;
-          const targetName = CARD_DEFINITIONS[targetCard].name;
-          if (targetRank === guessedRank) {
-            logMessage += `。推測が命中し、${targetPlayer.nickname} は手札を公開しました（${targetName}）。`;
-          } else {
-            const selfHand = await getHand(tx, game.id, actingPlayer.id);
-            const selfTop = selfHand?.cards?.[0] as CardId | undefined;
-            const selfName = selfTop ? CARD_DEFINITIONS[selfTop].name : undefined;
-            logMessage += selfName
-              ? `。推測は外れました。${actingPlayer.nickname} は手札を公開しました（${selfName}）。`
-              : "。推測は外れました。";
-          }
-          await tx
-            .insert(actions)
-            .values({
-              gameId: game.id,
-              actorId: actingPlayer.id,
-              type: "guess",
-              payload: { targetId, guessedRank },
-            });
-        }
-        break;
-      }
-      case "peek":
-        if (!hasSelectableTarget || !targetPlayer) {
-          logMessage += noEffectMessage || "。対象がいないため効果は発動しませんでした。";
-        } else {
-          effectActivated = true;
-          logMessage += `。${targetPlayer.nickname} の手札を覗き見ました。`;
-          await tx
-            .insert(actions)
-            .values({
-              gameId: game.id,
-              actorId: actingPlayer.id,
-              type: "peek",
-              payload: { targetId },
-            });
-        }
-        break;
-      case "compare":
-        if (!hasSelectableTarget || !targetPlayer) {
-          logMessage += noEffectMessage || "。比較対象がいないため効果は発動しませんでした。";
-        } else {
-          effectActivated = true;
-          await tx
-            .insert(actions)
-            .values({
-              gameId: game.id,
-              actorId: actingPlayer.id,
-              type: "compare",
-              payload: { targetId },
-            });
-          logMessage += `。${targetPlayer.nickname} と手札を比較しました。`;
-          eliminationQueue = await resolveCompare(tx, game.id, actingPlayer.id, targetPlayer.id);
-        }
-        break;
-      case "shield":
-        effectActivated = true;
-        await tx
-          .update(players)
-          .set({ shield: true })
-          .where(eq(players.id, actingPlayer.id));
-        logMessage += "。守護状態になりました。";
-        break;
-      case "force_discard":
-        if (!hasSelectableTarget || !targetPlayer) {
-          logMessage += noEffectMessage || "。対象がいないため効果は発動しませんでした。";
-        } else {
-          effectActivated = true;
-          const discardResult = await resolveForceDiscard(
-            tx,
-            game,
-            deckState,
-            targetPlayer.id,
-          );
+          await tx.insert(actions).values({
+            gameId: game.id,
+            actorId: actingPlayer.id,
+            type: instruction.actionType,
+            payload: instruction.payload,
+          });
+          break;
+        case "set_shield":
+          await tx.update(players).set({ shield: true }).where(eq(players.id, instruction.playerId));
+          break;
+        case "swap_hands":
+          await swapHands(tx, game.id, instruction.playerA, instruction.playerB);
+          break;
+        case "force_discard": {
+          const discardResult = await resolveForceDiscard(tx, game, deckState, instruction.targetId);
           deckState = discardResult.deckState;
           if (discardResult.eliminated) {
-            eliminationQueue.push(targetPlayer.id);
+            eliminationQueue.push(instruction.targetId);
           }
           if (discardResult.discardedCard) {
             discardPile.push(discardResult.discardedCard);
-            // 記録: 強制捨てで対象が捨てたカードを actions に残す（クライアント側の捨て札反映用）
-            await tx
-              .insert(actions)
-              .values({
-                gameId: game.id,
-                actorId: actingPlayer.id,
-                type: "force_discard",
-                payload: { targetId: targetPlayer.id, cardId: discardResult.discardedCard },
-              });
+            await tx.insert(actions).values({
+              gameId: game.id,
+              actorId: actingPlayer.id,
+              type: "force_discard",
+              payload: { targetId: instruction.targetId, cardId: discardResult.discardedCard },
+            });
           }
-          logMessage += `。${targetPlayer.nickname} の手札を捨てさせました。`;
+          break;
         }
-        break;
-      case "swap_hands":
-        if (!hasSelectableTarget || !targetPlayer) {
-          logMessage += noEffectMessage || "。対象がいないため効果は発動しませんでした。";
-        } else {
-          effectActivated = true;
-          await swapHands(tx, game.id, actingPlayer.id, targetPlayer.id);
-          if (cardId === "ambush") {
-            logMessage += `。${targetPlayer.nickname} の手札を確認し、決断を下しました。`;
-          } else {
-            logMessage += `。${targetPlayer.nickname} と手札を交換しました。`;
-          }
-        }
-        break;
-      case "conditional_discard":
-        effectActivated = true;
-        logMessage += "。静かに捨てられました。";
-        break;
-      case "self_eliminate":
-        effectActivated = true;
-        eliminationQueue = [actingPlayer.id];
-        logMessage += "。照耀の重責により自滅しました。";
-        break;
-      default:
-        break;
+      }
     }
 
     await tx
