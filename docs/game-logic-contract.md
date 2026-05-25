@@ -93,3 +93,7 @@ They remain future work and must not enter the deck in beta.
 | insight | unsupported | 未実装（山札2枚操作） |
 | standoff | unsupported | 未実装（discard仕様未確定） |
 | ambush | unsupported | 未実装（effectChoice必須仕様は future work） |
+
+## Observer status (beta)
+- `player_role=observer` はデータモデル上存在するが、観戦フローは future work。
+- observer は状態閲覧境界の検証対象であり、play_card 実行は拒否されるべき。

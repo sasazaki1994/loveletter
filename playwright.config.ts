@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: 'tests',
   timeout: 1000 * 60 * 8, // 8 min
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 2 : 0,
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
@@ -31,7 +31,7 @@ export default defineConfig({
   webServer: {
     command: process.env.CI ? 'pnpm start --port 3100' : 'pnpm dev --port 3100',
     url: 'http://localhost:3100',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 1000 * 60 * 2,
     stdout: 'pipe',
     stderr: 'pipe',

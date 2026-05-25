@@ -22,6 +22,7 @@ import type {
   PollingResponse,
 } from "@/lib/game/types";
 import { invalidateStateCache } from "@/lib/server/game-state-cache";
+import { getHand, resolveForceDiscard, swapHands, type DeckState } from "@/lib/server/game/hand-service";
 import {
   actions,
   games,
@@ -32,7 +33,6 @@ import {
   rooms,
 } from "@/drizzle/schema";
 
-type DeckState = { drawPile: CardId[]; burnCard: CardId | null };
 
 const BOT_NAMES = [
   "Automaton Aurelia",
@@ -1308,76 +1308,6 @@ async function resolveCompare(
   }
 
   return attackerMax > targetMax ? [targetId] : [attackerId];
-}
-
-async function resolveForceDiscard(
-  tx: TransactionClient,
-  game: typeof games.$inferSelect,
-  deckState: DeckState,
-  targetId: string,
-) {
-  const hand = await getHand(tx, game.id, targetId);
-  if (!hand || hand.cards.length === 0) {
-    return { deckState, eliminated: false, discardedCard: null as CardId | null };
-  }
-
-  const discarded = hand.cards[0] as CardId;
-  const remaining = hand.cards.slice(1);
-
-  await tx
-    .update(hands)
-    .set({ cards: remaining, updatedAt: new Date() })
-    .where(eq(hands.id, hand.id));
-
-  const nextDraw = draw(deckState.drawPile);
-  const newDeckState: DeckState = {
-    drawPile: nextDraw.deck,
-    burnCard: deckState.burnCard,
-  };
-
-  if (nextDraw.card) {
-    await tx
-      .update(hands)
-      .set({ cards: [...remaining, nextDraw.card], updatedAt: new Date() })
-      .where(eq(hands.id, hand.id));
-  }
-
-  const eliminated = discarded === "emissary";
-
-  return { deckState: newDeckState, eliminated, discardedCard: discarded };
-}
-
-async function swapHands(
-  tx: TransactionClient,
-  gameId: string,
-  playerA: string,
-  playerB: string,
-) {
-  const [handA, handB] = await Promise.all([
-    getHand(tx, gameId, playerA),
-    getHand(tx, gameId, playerB),
-  ]);
-
-  if (!handA || !handB) return;
-
-  await Promise.all([
-    tx
-      .update(hands)
-      .set({ cards: handB.cards, updatedAt: new Date() })
-      .where(eq(hands.id, handA.id)),
-    tx
-      .update(hands)
-      .set({ cards: handA.cards, updatedAt: new Date() })
-      .where(eq(hands.id, handB.id)),
-  ]);
-}
-
-async function getHand(tx: TransactionClient, gameId: string, playerId: string) {
-  const rows = await tx
-    .select()
-    .from(hands)
-    .where(and(eq(hands.gameId, gameId), eq(hands.playerId, playerId)));
-  return rows[0] ?? null;
 }
 
 function mapToClientState(
