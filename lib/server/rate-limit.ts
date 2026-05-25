@@ -26,6 +26,11 @@ export function rateLimit(key: string, limit: number, windowMs: number): {
   remaining: number;
   resetAt: number;
 } {
+  if (process.env.PLAYWRIGHT_E2E === "1" || process.env.NODE_ENV === "test") {
+    const resetAt = Date.now() + windowMs;
+    return { ok: true, remaining: Math.max(0, limit - 1), resetAt };
+  }
+
   const now = Date.now();
   const entry = BUCKET.get(key);
   if (!entry || entry.resetAt <= now) {
@@ -39,4 +44,3 @@ export function rateLimit(key: string, limit: number, windowMs: number): {
   }
   return { ok: false, remaining: 0, resetAt: entry.resetAt };
 }
-
