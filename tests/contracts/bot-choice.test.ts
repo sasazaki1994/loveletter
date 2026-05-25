@@ -16,3 +16,8 @@ test("without forced chooses lower rank", () => {
   assert.equal(chooseBotCard(["sentinel", "emissary"]), "sentinel");
   assert.equal(chooseBotCard(["oracle", "legate"]), "oracle");
 });
+
+
+test("empty hand throws", () => {
+  assert.throws(() => chooseBotCard([]), /empty/i);
+});

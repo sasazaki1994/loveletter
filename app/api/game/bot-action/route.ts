@@ -14,12 +14,16 @@ const schema = z.object({
   skipThinkDelay: z.boolean().optional(),
 });
 
+function errorResponse(message: string, status: number) {
+  return NextResponse.json({ success: false, message }, { status });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
     const r = rateLimit(`bot-turn:${ip}`, 80, 10_000);
     if (!r.ok) {
-      return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
+      return errorResponse("Too Many Requests", 429);
     }
 
     const body = await request.json();
@@ -27,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     const { playerId, playerToken } = extractPlayerAuth(request);
     if (!playerId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return errorResponse("Unauthorized", 401);
     }
 
     const row = (
@@ -38,17 +42,17 @@ export async function POST(request: NextRequest) {
     )[0];
 
     if (!row) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return errorResponse("Unauthorized", 401);
     }
 
     if (row.userId) {
       const user = await getUserFromRequest(request);
       if (!user || user.id !== row.userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return errorResponse("Unauthorized", 401);
       }
     } else if (row.authTokenHash) {
       if (!playerToken || !verifyToken(playerToken, row.authTokenHash)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return errorResponse("Unauthorized", 401);
       }
     }
 
@@ -56,6 +60,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[API /game/bot-action]", error);
-    return NextResponse.json({ error: "Failed to execute bot turn" }, { status: 500 });
+
+    if (error instanceof z.ZodError) {
+      return errorResponse("Invalid request body", 400);
+    }
+
+    return errorResponse("Failed to execute bot turn", 500);
   }
 }

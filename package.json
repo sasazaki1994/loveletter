@@ -22,7 +22,9 @@
     "monkey:test:seed": "cross-env MONKEY_SEED=20251030 playwright test tests/monkey/monkey.spec.ts --project=chromium",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "test": "pnpm test:contracts",
+    "test:contracts": "node --test tests/contracts/*.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.1",
