@@ -16,6 +16,7 @@ function startCleanupTimer() {
       }
     }
   }, CLEANUP_INTERVAL_MS);
+  globalScope.__llrRateLimitCleanup.unref?.();
 }
 
 startCleanupTimer();
@@ -38,5 +39,4 @@ export function rateLimit(key: string, limit: number, windowMs: number): {
   }
   return { ok: false, remaining: 0, resetAt: entry.resetAt };
 }
-
 

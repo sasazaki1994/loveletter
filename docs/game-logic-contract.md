@@ -123,3 +123,8 @@ Bot戦は 1 人の人間プレイヤーと 3 人の Bot で進行する。
 - Bot 手番が連続しても一定上限 (`MAX_BOT_CHAIN_ACTIONS`) 内で進行し、ループで詰まらない
 - round は山札切れ・脱落・勝敗確定まで進行できる
 - bot-action が失敗しても UI から手動再試行できる
+
+## Test runner contract (Node)
+
+- `pnpm test` (`tsx --test tests/contracts/*.test.ts`) は全サブテスト完了後に終了する。
+- テスト実行中に import されるサーバーモジュールの常駐タイマー（`setInterval`）は `unref()` し、テストプロセスをブロックしない。

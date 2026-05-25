@@ -77,6 +77,7 @@ function startCleanupTimer(): void {
       cacheStats.size = STATE_CACHE.size + COMMON_STATE_CACHE.size;
     }
   }, 60_000); // 60秒ごとにクリーンアップ
+  cleanupInterval.unref?.();
 }
 
 // 初期化時にクリーンアップタイマーを開始
