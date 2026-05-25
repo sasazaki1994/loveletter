@@ -2,14 +2,28 @@ import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { getForcedPlayableCard } from "@/lib/game/forced-card-rules";
 import type { CardId } from "@/lib/game/types";
 
-export function chooseBotCard(cards: CardId[]): CardId {
-  if (cards.length === 0) {
-    throw new Error("Bot hand is empty");
-  }
+export type BotDecisionInput = {
+  selfId: string;
+  hand: CardId[];
+  players: { id: string; isEliminated: boolean; shield: boolean; handCount: number; discardPile: CardId[] }[];
+};
 
+export type BotDecision = { cardId: CardId; targetId?: string; guessedRank?: number };
+
+export function chooseBotCard(cards: CardId[]): CardId {
+  if (cards.length === 0) throw new Error("Bot hand is empty");
   const forcedCard = getForcedPlayableCard(cards);
   if (forcedCard) return forcedCard;
+  return [...cards].sort((a, b) => CARD_DEFINITIONS[a].rank - CARD_DEFINITIONS[b].rank)[0];
+}
 
-  const sorted = [...cards].sort((a, b) => CARD_DEFINITIONS[a].rank - CARD_DEFINITIONS[b].rank);
-  return sorted[0];
+export function chooseBotAction(input: BotDecisionInput): BotDecision {
+  const forcedCard = getForcedPlayableCard(input.hand);
+  const aliveTargets = input.players.filter((p) => p.id !== input.selfId && !p.isEliminated && !p.shield);
+  const sorted = [...input.hand].sort((a, b) => CARD_DEFINITIONS[a].rank - CARD_DEFINITIONS[b].rank);
+  const nonEmissary = sorted.filter((c) => c !== "emissary");
+  const cardId = forcedCard ?? nonEmissary[0] ?? sorted[0];
+  const targetId = CARD_DEFINITIONS[cardId].target === "self" ? input.selfId : aliveTargets[0]?.id;
+  const guessedRank = CARD_DEFINITIONS[cardId].requiresGuess ? 2 : undefined;
+  return { cardId, targetId, guessedRank };
 }

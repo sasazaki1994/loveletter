@@ -10,7 +10,7 @@ import { isSupportedVariantCardId } from "@/lib/game/variant-support";
 import { generateOpaqueToken, hashToken } from "@/lib/server/auth";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import { getForcedPlayableCard } from "@/lib/game/forced-card-rules";
-import { chooseBotCard } from "@/lib/server/bot-service";
+import { chooseBotAction, chooseBotCard } from "@/lib/server/bot-service";
 import { resolveCardEffect, type RulesPlayerSnapshot } from "@/lib/game/rules/card-effect-engine";
 import { generateShortRoomId } from "@/lib/utils/room-id";
 import type {
@@ -23,6 +23,9 @@ import type {
 } from "@/lib/game/types";
 import { invalidateStateCache } from "@/lib/server/game-state-cache";
 import { getHand, resolveForceDiscard, swapHands, type DeckState } from "@/lib/server/game/hand-service";
+import { mapToClientState } from "@/lib/server/game/state-mapper";
+import { beginTurn, advanceTurn } from "@/lib/server/game/turn-service";
+import { concludeRound, determineWinnersByHand, eliminatePlayers } from "@/lib/server/game/round-service";
 import {
   actions,
   games,
@@ -975,80 +978,6 @@ async function setupNewGame(
   return { game };
 }
 
-async function beginTurn(
-  tx: TransactionClient,
-  gameRow: typeof games.$inferSelect,
-  player: typeof players.$inferSelect,
-) {
-  const deckState = gameRow.deckState as DeckState;
-  let workingDeck = [...deckState.drawPile];
-
-  const hand = await getHand(tx, gameRow.id, player.id);
-  if (!hand) {
-    return;
-  }
-
-  if (!player.isEliminated) {
-    const drawResult = draw(workingDeck);
-    workingDeck = drawResult.deck;
-    if (drawResult.card) {
-      await tx
-        .update(hands)
-        .set({ cards: [...hand.cards, drawResult.card], updatedAt: new Date() })
-        .where(eq(hands.id, hand.id));
-    }
-  }
-
-  await tx
-    .update(players)
-    .set({ shield: false, lastActiveAt: new Date() })
-    .where(eq(players.id, player.id));
-
-  await tx
-    .update(games)
-    .set({
-      phase: "choose_card",
-      activePlayerId: player.id,
-      turnIndex: player.seat,
-      deckState: { ...deckState, drawPile: workingDeck },
-      updatedAt: new Date(),
-    })
-    .where(eq(games.id, gameRow.id));
-}
-
-async function advanceTurn(
-  tx: TransactionClient,
-  gameRow: typeof games.$inferSelect,
-  playerRows: typeof players.$inferSelect[],
-) {
-  const orderedPlayers = playerRows
-    .filter((p) => p.role === "player")
-    .sort((a, b) => a.seat - b.seat);
-
-  const currentIndex = orderedPlayers.findIndex((p) => p.id === gameRow.activePlayerId);
-  let nextIndex = (currentIndex + 1) % orderedPlayers.length;
-
-  for (let i = 0; i < orderedPlayers.length; i += 1) {
-    const candidate = orderedPlayers[(currentIndex + 1 + i) % orderedPlayers.length];
-    if (!candidate.isEliminated) {
-      nextIndex = (currentIndex + 1 + i) % orderedPlayers.length;
-      break;
-    }
-  }
-
-  const nextPlayer = orderedPlayers[nextIndex];
-  if (!nextPlayer) {
-    return;
-  }
-
-  const [freshGame] = await tx
-    .select()
-    .from(games)
-    .where(eq(games.id, gameRow.id));
-
-  await beginTurn(tx, freshGame, nextPlayer);
-}
-
 const BOT_FALLBACK_THINK_TIME_MS = 2500; // fallback think time when no client-side trigger is available
 const BOT_THINK_JITTER_RATIO = 0.4; // +/-20% around base (0.8x - 1.2x)
 
@@ -1124,31 +1053,16 @@ export async function executeBotTurn(
       return null;
     }
 
-    const cardToPlay = chooseBotCard(hand.cards as CardId[]);
-    const definition = CARD_DEFINITIONS[cardToPlay];
-
     const roomPlayers = await tx
       .select()
       .from(players)
       .where(and(eq(players.roomId, roomId), eq(players.role, "player" as PlayerRole)));
 
-    // Build target according to card target rules
-    let chosenTarget: typeof players.$inferSelect | undefined;
-    if (definition.target === "self") {
-      chosenTarget = roomPlayers.find((p) => p.id === botPlayer.id);
-    } else if (definition.target === "opponent") {
-      const candidates = roomPlayers.filter(
-        (p) => p.id !== botPlayer.id && !p.isEliminated && (!definition.cannotTargetShielded || !p.shield),
-      );
-      chosenTarget = candidates[0];
-    } else if (definition.target === "any") {
-      const candidates = roomPlayers.filter((p) => {
-        if (p.isEliminated) return false;
-        if (p.id === botPlayer.id) return true; // self is allowed for "any"
-        return !definition.cannotTargetShielded || !p.shield;
-      });
-      chosenTarget = candidates[0];
-    }
+    const decision = chooseBotAction({
+      selfId: botPlayer.id,
+      hand: hand.cards as CardId[],
+      players: roomPlayers.map((p) => ({ id: p.id, isEliminated: p.isEliminated, shield: p.shield, handCount: 1, discardPile: [] })),
+    });
 
     return {
       gameId: game.id,
@@ -1156,10 +1070,9 @@ export async function executeBotTurn(
       playerId: game.activePlayerId,
       type: "play_card" as const,
       payload: {
-        cardId: cardToPlay,
-        targetId: chosenTarget?.id,
-        guessedRank:
-          definition.requiresGuess ? chooseBotGuess(chosenTarget ?? null) : undefined,
+        cardId: decision.cardId,
+        targetId: decision.targetId,
+        guessedRank: decision.guessedRank,
       },
     } satisfies GameActionRequest;
   });
@@ -1175,110 +1088,6 @@ function chooseBotGuess(target?: typeof players.$inferSelect | null) {
     .filter((card) => card.rank > 1)
     .map((card) => card.rank);
   return ranks[Math.floor(Math.random() * ranks.length)];
-}
-
-async function determineWinnersByHand(
-  tx: TransactionClient,
-  gameId: string,
-  survivors: typeof players.$inferSelect[],
-) {
-  const handRows = await tx
-    .select()
-    .from(hands)
-    .where(
-      and(eq(hands.gameId, gameId), inArray(hands.playerId, survivors.map((p) => p.id))),
-    );
-
-  let maxRank = -1;
-  let winners: string[] = [];
-
-  for (const player of survivors) {
-    const hand = handRows.find((h) => h.playerId === player.id);
-    if (!hand || hand.cards.length === 0) continue;
-    const highest = Math.max(
-      ...hand.cards.map((card) => CARD_DEFINITIONS[card as CardId].rank),
-    );
-    if (highest > maxRank) {
-      maxRank = highest;
-      winners = [player.id];
-    } else if (highest === maxRank) {
-      winners.push(player.id);
-    }
-  }
-
-  return winners;
-}
-
-async function concludeRound(
-  tx: TransactionClient,
-  game: typeof games.$inferSelect,
-  winnerIds: string[],
-  reason: string,
-) {
-  // deck_exhausted時は生存プレイヤーの最終手札を記録
-  let finalHands: Record<string, CardId[]> | undefined;
-  if (reason === "deck_exhausted") {
-    const allPlayers = await tx
-      .select()
-      .from(players)
-      .where(eq(players.roomId, game.roomId));
-    
-    const survivors = allPlayers.filter((p) => !p.isEliminated && p.role === "player");
-    
-    const handRows = await tx
-      .select()
-      .from(hands)
-      .where(
-        and(eq(hands.gameId, game.id), inArray(hands.playerId, survivors.map((p) => p.id))),
-      );
-    
-    finalHands = {};
-    for (const handRow of handRows) {
-      finalHands[handRow.playerId] = handRow.cards as CardId[];
-    }
-  }
-
-  await tx
-    .update(games)
-    .set({
-      phase: "finished",
-      result: finalHands ? { winnerIds, reason, finalHands } : { winnerIds, reason },
-      updatedAt: new Date(),
-    })
-    .where(eq(games.id, game.id));
-
-  await tx
-    .update(rooms)
-    .set({ status: "finished", updatedAt: new Date() })
-    .where(eq(rooms.id, game.roomId));
-
-  const winners = await tx
-    .select({ id: players.id, nickname: players.nickname })
-    .from(players)
-    .where(inArray(players.id, winnerIds));
-
-  const message =
-    winners.length > 0
-      ? `${winners.map((w) => w.nickname).join(" / ")} が勝利しました。`
-      : "このラウンドは引き分けです。";
-
-  await tx
-    .insert(logs)
-    .values({
-      gameId: game.id,
-      message,
-      icon: "crown",
-    });
-
-  // ルームは即時削除せず、クリーンアップジョブで一定時間後に処理する
-}
-
-async function eliminatePlayers(tx: TransactionClient, playerIds: string[]) {
-  if (playerIds.length === 0) return;
-  await tx
-    .update(players)
-    .set({ isEliminated: true })
-    .where(inArray(players.id, playerIds));
 }
 
 async function resolveCompare(
@@ -1308,157 +1117,6 @@ async function resolveCompare(
   }
 
   return attackerMax > targetMax ? [targetId] : [attackerId];
-}
-
-function mapToClientState(
-  game: typeof games.$inferSelect,
-  playerRows: typeof players.$inferSelect[],
-  handRows: typeof hands.$inferSelect[],
-  actionRows: typeof actions.$inferSelect[],
-  logRows: typeof logs.$inferSelect[],
-  perspectivePlayerId?: string,
-): ClientGameState {
-  const drawPile = (game.deckState as DeckState).drawPile;
-
-  const discardMap = new Map<string, CardId[]>();
-  for (const action of actionRows) {
-    if (action.type === "play_card" && action.actorId) {
-      const payload = action.payload as { cardId?: CardId } | null;
-      const playedCard = payload?.cardId;
-      if (playedCard) {
-        const list = discardMap.get(action.actorId) ?? [];
-        list.push(playedCard);
-        discardMap.set(action.actorId, list);
-      }
-    }
-    if (action.type === "force_discard") {
-      const payload = action.payload as { targetId?: string; cardId?: CardId } | null;
-      const tId = payload?.targetId;
-      const discarded = payload?.cardId as CardId | undefined;
-      if (tId && discarded) {
-        const list = discardMap.get(tId) ?? [];
-        list.push(discarded);
-        discardMap.set(tId, list);
-      }
-    }
-  }
-
-  const playerStates = playerRows
-    .filter((p) => p.role === "player")
-    .sort((a, b) => a.seat - b.seat)
-    .map((p) => ({
-      id: p.id,
-      nickname: p.nickname,
-      seat: p.seat,
-      shield: p.shield,
-      isEliminated: p.isEliminated,
-      isBot: p.isBot,
-      discardPile: discardMap.get(p.id) ?? [],
-      handCount: handRows.find((h) => h.playerId === p.id)?.cards.length ?? 0,
-      lastActiveAt: p.lastActiveAt?.toISOString?.() ?? new Date().toISOString(),
-    }));
-
-  const logsMapped = logRows
-    .slice()
-    .reverse()
-    .map((log) => {
-      let type: string | undefined;
-      // メッセージ内容からログタイプを推定（DBにtypeカラムがないため）
-      if (log.message.includes("脱落") || log.message.includes("自滅")) {
-        type = "elimination";
-      } else if (log.message.includes("勝利")) {
-        type = "win";
-      }
-
-      return {
-        id: log.id,
-        timestamp: log.createdAt.toISOString(),
-        message: log.message,
-        type,
-        actorId: log.actorId ?? undefined,
-        icon: (log.icon as ClientGameState["logs"][number]["icon"]) ?? "info",
-      };
-    });
-
-  const base: ClientGameState = {
-    id: game.id,
-    roomId: game.roomId,
-    phase: game.phase,
-    turnIndex: game.turnIndex,
-    round: game.round,
-    createdAt: game.createdAt.toISOString(),
-    updatedAt: game.updatedAt.toISOString(),
-    drawPileCount: drawPile.length,
-    discardPile: game.discardPile as CardId[],
-    revealedSetupCards: game.revealedSetupCards as CardId[],
-    topDiscard: (game.discardPile as CardId[]).slice(-1)[0],
-    players: playerStates,
-    activePlayerId: game.activePlayerId ?? undefined,
-    awaitingPlayerId: game.awaitingPlayerId ?? undefined,
-    logs: logsMapped,
-    self: undefined,
-    hand: undefined,
-    result: (game.result ?? undefined) as ClientGameState["result"],
-  };
-
-  if (perspectivePlayerId) {
-    const hand = handRows.find((h) => h.playerId === perspectivePlayerId);
-    const playerInfo = playerRows.find((p) => p.id === perspectivePlayerId);
-    if (hand && playerInfo) {
-      base.self = {
-        id: playerInfo.id,
-        nickname: playerInfo.nickname,
-        seat: playerInfo.seat,
-        isBot: playerInfo.isBot,
-        shield: playerInfo.shield,
-        isEliminated: playerInfo.isEliminated,
-        discardPile: discardMap.get(playerInfo.id) ?? [],
-        handCount: hand.cards.length,
-        lastActiveAt: playerInfo.lastActiveAt?.toISOString?.() ?? new Date().toISOString(),
-        hand: hand.cards as CardId[],
-      } as ClientGameState["self"];
-      base.hand = hand.cards as CardId[];
-    }
-
-    // effectHints: actor専用の一時的な可視化ヒント（例: peekで相手手札を短時間表示）
-    // 最新のpeekアクションのうち、視点プレイヤーが実行者のものを検出
-    const lastPeek = actionRows
-      .slice()
-      .reverse()
-      .find((a) => a.type === "peek" && a.actorId === perspectivePlayerId);
-    if (lastPeek) {
-      const payload = (lastPeek.payload ?? {}) as { targetId?: string };
-      const targetId = payload.targetId;
-      if (targetId) {
-        const targetHandRow = handRows.find((h) => h.playerId === targetId);
-        const targetTop = targetHandRow?.cards?.[0] as CardId | undefined;
-        if (targetTop) {
-          base.effectHints = {
-            ...(base.effectHints ?? {}),
-            peek: {
-              actionId: lastPeek.id,
-              targetId,
-              card: targetTop,
-            },
-          };
-        }
-      }
-    }
-  }
-
-  // 公開してよい最終アクション（機密値は含めない）
-  if (actionRows.length > 0) {
-    const a = actionRows[actionRows.length - 1]!;
-    const payload = (a.payload ?? {}) as { targetId?: string };
-    base.lastAction = {
-      id: a.id,
-      type: a.type,
-      actorId: a.actorId,
-      targetId: payload.targetId,
-    };
-  }
-
-  return base;
 }
 
 function randomAvatarSeed() {
