@@ -78,17 +78,18 @@ export async function handlePlayCard(action: GameActionRequest): Promise<GameAct
       const [game] = await tx.select().from(games).where(eq(games.id, action.gameId)).for("update");
       const gameValidationError = validateGameCanAcceptAction(game, action);
       if (gameValidationError) return gameValidationError;
+      const currentGame = game;
 
       const playersInRoom = await tx.select().from(players).where(eq(players.roomId, action.roomId)).orderBy(players.seat).for("update");
       const actingPlayer = playersInRoom.find((p) => p.id === action.playerId);
       if (!actingPlayer || actingPlayer.isEliminated) return { success: false, message: "プレイヤー状態が不正です。" };
       const targetPlayer = targetId ? playersInRoom.find((p) => p.id === targetId) : undefined;
 
-      const handRow = await tx.select().from(hands).where(and(eq(hands.gameId, game!.id), eq(hands.playerId, action.playerId))).for("update");
+      const handRow = await tx.select().from(hands).where(and(eq(hands.gameId, currentGame.id), eq(hands.playerId, action.playerId))).for("update");
       const currentHand = handRow[0];
       if (!currentHand) return { success: false, message: "手札情報が見つかりません。" };
 
-      const idempotentOrMissing = await validateCardInHandOrIdempotent(tx, game!.id, action.playerId, currentHand.cards as CardId[], cardId, targetId, guessedRank);
+      const idempotentOrMissing = await validateCardInHandOrIdempotent(tx, currentGame.id, action.playerId, currentHand.cards as CardId[], cardId, targetId, guessedRank);
       if (idempotentOrMissing) return idempotentOrMissing;
 
       const definition = CARD_DEFINITIONS[cardId];
@@ -107,14 +108,14 @@ export async function handlePlayCard(action: GameActionRequest): Promise<GameAct
       updatedHand.splice(cardIndex, 1);
       await tx.update(hands).set({ cards: updatedHand, updatedAt: new Date() }).where(eq(hands.id, currentHand.id));
 
-      const discardPile = [...(game!.discardPile as CardId[]), cardId];
-      let deckState = game!.deckState as DeckState;
+      const discardPile = [...(currentGame.discardPile as CardId[]), cardId];
+      let deckState = currentGame.deckState as DeckState;
       const eliminationQueue: PlayerId[] = [];
       let logMessage = `${actingPlayer.nickname} が ${definition.name} を使用`;
 
-      await tx.insert(actions).values({ gameId: game!.id, actorId: actingPlayer.id, type: "play_card", payload: { cardId, targetId: targetPlayer?.id ?? null, guessedRank: guessedRank ?? null } });
+      await tx.insert(actions).values({ gameId: currentGame.id, actorId: actingPlayer.id, type: "play_card", payload: { cardId, targetId: targetPlayer?.id ?? null, guessedRank: guessedRank ?? null } });
 
-      const rulesPlayers: RulesPlayerSnapshot[] = await Promise.all(candidatePlayers.map(async (p) => ({ id: p.id, nickname: p.nickname, isSelf: p.id === actingPlayer.id, isEliminated: p.isEliminated, shield: p.shield, hand: ((await getHand(tx, game!.id, p.id))?.cards ?? []) as CardId[] })));
+      const rulesPlayers: RulesPlayerSnapshot[] = await Promise.all(candidatePlayers.map(async (p) => ({ id: p.id, nickname: p.nickname, isSelf: p.id === actingPlayer.id, isEliminated: p.isEliminated, shield: p.shield, hand: ((await getHand(tx, currentGame.id, p.id))?.cards ?? []) as CardId[] })));
       const effectResult = resolveCardEffect({ actorId: actingPlayer.id, actorNickname: actingPlayer.nickname, cardId, actorHandAfterPlay: updatedHand as CardId[], targetId: targetPlayer?.id, guessedRank, players: rulesPlayers, drawPileCount: deckState.drawPile.length });
       if (!effectResult.ok) return { success: false, message: effectResult.message ?? "カード効果の解決に失敗しました。" };
       logMessage += effectResult.logSuffix;
@@ -123,40 +124,40 @@ export async function handlePlayCard(action: GameActionRequest): Promise<GameAct
       for (const instruction of effectResult.instructions) {
         if (instruction.type === "insert_action") {
           if (instruction.actionType !== "force_discard") {
-            await tx.insert(actions).values({ gameId: game!.id, actorId: actingPlayer.id, type: instruction.actionType, payload: instruction.payload });
+            await tx.insert(actions).values({ gameId: currentGame.id, actorId: actingPlayer.id, type: instruction.actionType, payload: instruction.payload });
           }
         } else if (instruction.type === "set_shield") {
           await tx.update(players).set({ shield: true }).where(eq(players.id, instruction.playerId));
         } else if (instruction.type === "swap_hands") {
-          await swapHands(tx, game!.id, instruction.playerA, instruction.playerB);
+          await swapHands(tx, currentGame.id, instruction.playerA, instruction.playerB);
         } else if (instruction.type === "force_discard") {
-          const discardResult = await resolveForceDiscard(tx, game!, deckState, instruction.targetId);
+          const discardResult = await resolveForceDiscard(tx, currentGame, deckState, instruction.targetId);
           deckState = discardResult.deckState;
           if (discardResult.eliminated) eliminationQueue.push(instruction.targetId);
           if (discardResult.discardedCard) {
             discardPile.push(discardResult.discardedCard);
-            await tx.insert(actions).values({ gameId: game!.id, actorId: actingPlayer.id, type: "force_discard", payload: { targetId: instruction.targetId, cardId: discardResult.discardedCard } });
+            await tx.insert(actions).values({ gameId: currentGame.id, actorId: actingPlayer.id, type: "force_discard", payload: { targetId: instruction.targetId, cardId: discardResult.discardedCard } });
           }
         }
       }
 
-      await tx.update(games).set({ discardPile, deckState, updatedAt: new Date() }).where(eq(games.id, game!.id));
-      await tx.insert(logs).values({ gameId: game!.id, actorId: actingPlayer.id, message: logMessage, icon: definition.icon });
+      await tx.update(games).set({ discardPile, deckState, updatedAt: new Date() }).where(eq(games.id, currentGame.id));
+      await tx.insert(logs).values({ gameId: currentGame.id, actorId: actingPlayer.id, message: logMessage, icon: definition.icon });
       if (eliminationQueue.length > 0) await eliminatePlayers(tx, eliminationQueue);
 
       const postPlayers = await tx.select().from(players).where(eq(players.roomId, action.roomId)).orderBy(players.seat);
       const survivors = postPlayers.filter((p) => !p.isEliminated && p.role === "player");
       if (survivors.length <= 1) {
-        await concludeRound(tx, game!, survivors.map((p) => p.id), "elimination");
+        await concludeRound(tx, currentGame, survivors.map((p) => p.id), "elimination");
         return { success: true };
       }
       if (deckState.drawPile.length === 0) {
-        const winnerIds = await determineWinnersByHand(tx, game!.id, survivors);
-        await concludeRound(tx, game!, winnerIds, "deck_exhausted");
+        const winnerIds = await determineWinnersByHand(tx, currentGame.id, survivors);
+        await concludeRound(tx, currentGame, winnerIds, "deck_exhausted");
         return { success: true };
       }
-      await advanceTurn(tx, game!, postPlayers);
-      const [nextGame] = await tx.select().from(games).where(eq(games.id, game!.id));
+      await advanceTurn(tx, currentGame, postPlayers);
+      const [nextGame] = await tx.select().from(games).where(eq(games.id, currentGame.id));
       const nextPlayer = nextGame?.activePlayerId ? postPlayers.find((p) => p.id === nextGame.activePlayerId) : undefined;
       const shouldRunBot = !!(nextGame?.activePlayerId && nextGame.phase === "choose_card" && nextPlayer?.isBot && !nextPlayer.isEliminated);
       return { success: true, runBotAfterCommit: shouldRunBot };

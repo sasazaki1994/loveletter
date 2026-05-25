@@ -97,3 +97,16 @@ They remain future work and must not enter the deck in beta.
 ## Observer status (beta)
 - `player_role=observer` はデータモデル上存在するが、観戦フローは future work。
 - observer は状態閲覧境界の検証対象であり、play_card 実行は拒否されるべき。
+
+
+## Acceptance scenarios (beta hardening)
+- Bot連続ターン:
+  - Given bot room and bot active turn
+  - When room participant calls `/api/game/bot-action`
+  - Then bot plays valid card and turn progresses (or game finishes)
+  - And API does not return 500
+- 2人戦セットアップ:
+  - Given two human players and game start
+  - Then `revealedSetupCards.length === 3`
+  - And `drawPileCount` reflects burn/revealed/initial-hands/first-draw processing
+  - And burn card is not exposed in public state or any player hand view
