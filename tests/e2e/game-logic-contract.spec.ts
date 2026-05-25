@@ -6,6 +6,7 @@ import {
   findOpponent,
   findSelf,
   postPlayCard,
+  createTwoPlayerHumanRoomViaAPI,
 } from "./fixtures";
 
 type PublicPlayer = { id: string; isEliminated: boolean; nickname: string };
@@ -179,4 +180,53 @@ test("Oracle peek is actor-only hint", async ({ request }) => {
   const targetState = await fetchStateForPlayer(request, created.roomId, target.id) as any;
   expect(actor.effectHints?.peek?.targetId).toBe(target.id);
   expect(targetState.effectHints?.peek).toBeUndefined();
+});
+
+
+test("Botが連続ターンで詰まらず進行する", async ({ request }) => {
+  const deck = "oracle,sentinel,oracle,warder,warder,duelist,arbiter";
+  const created = await createBotRoomViaAPI(request, `BotTurn_${Date.now()}`, { deck });
+
+  const before = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as any;
+  const target = findOpponent(before, created.playerId)!;
+  const turnIndexBefore = before.turnIndex;
+  const botBefore = before.players.find((p: any) => p.isBot && p.id !== created.playerId);
+  const botDiscardBefore = (botBefore?.discardPile ?? []).length;
+
+  await postPlayCard(request, { roomId: created.roomId, gameId: before.id, playerId: created.playerId, cardId: 'sentinel', targetId: target.id, guessedRank: 2 });
+  const mid = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as any;
+  expect(mid.activePlayerId).not.toBe(created.playerId);
+
+  const botRes = await request.post('/api/game/bot-action', {
+    headers: { 'X-Player-Id': created.playerId },
+    data: { roomId: created.roomId, skipThinkDelay: true },
+  });
+  const botJson = await botRes.json();
+  expect(botRes.status()).toBe(200);
+  expect(botJson.success).toBe(true);
+
+  const after = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as any;
+  const botAfter = after.players.find((p: any) => p.id === botBefore?.id);
+  const botDiscardAfter = (botAfter?.discardPile ?? []).length;
+  expect(botDiscardAfter).toBeGreaterThan(botDiscardBefore);
+  expect(after.turnIndex).toBeGreaterThan(turnIndexBefore);
+  expect(after.phase === 'choose_card' || after.phase === 'finished').toBeTruthy();
+  expect(after.activePlayerId !== mid.activePlayerId || after.phase === 'finished').toBeTruthy();
+});
+
+test("2人戦 setup: burn非公開 + revealed 3枚", async ({ request }) => {
+  const created = await createTwoPlayerHumanRoomViaAPI(request, `Host_${Date.now()}`, `Guest_${Date.now()}`);
+  const hostState = (await fetchStateForPlayer(request, created.roomId, created.host.id)) as any;
+  const guestState = (await fetchStateForPlayer(request, created.roomId, created.guest.id)) as any;
+
+  expect(hostState.revealedSetupCards.length).toBe(3);
+  expect(guestState.revealedSetupCards.length).toBe(3);
+  expect(hostState.drawPileCount).toBe(8);
+
+  const knownHostCards = [...(hostState.hand ?? []), ...(hostState.discardPile ?? []), ...(hostState.revealedSetupCards ?? [])];
+  const knownGuestCards = [...(guestState.hand ?? []), ...(guestState.discardPile ?? []), ...(guestState.revealedSetupCards ?? [])];
+  expect((hostState as Record<string, unknown>).burnCard).toBeUndefined();
+  expect((guestState as Record<string, unknown>).burnCard).toBeUndefined();
+  expect(knownHostCards.length).toBe(4);
+  expect(knownGuestCards.length).toBe(4);
 });
