@@ -134,3 +134,17 @@ test.describe("Game logic API contract", () => {
     expect(visibleCards).not.toContain("ambush");
   });
 });
+
+test("Legate force discard で対象手札が捨てられる", async ({ request }) => {
+  const deck = "sentinel,legate,oracle,warder,warder,duelist,arbiter";
+  const created = await createBotRoomViaAPI(request, `Legate_${Date.now()}`, { deck });
+  const before = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as PublicState;
+  const target = findOpponent(before, created.playerId)!;
+  const res = await postPlayCard(request, { roomId: created.roomId, gameId: before.id, playerId: created.playerId, cardId: 'legate', targetId: target.id });
+  expect(res.ok()).toBeTruthy();
+  const after = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as PublicState;
+  const targetState = after.players.find((p)=>p.id===target.id)!;
+  expect(targetState.isEliminated).toBe(false);
+  expect((after.discardPile ?? []).includes('oracle')).toBeTruthy();
+});
+
