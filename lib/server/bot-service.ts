@@ -17,13 +17,22 @@ export function chooseBotCard(cards: CardId[]): CardId {
   return [...cards].sort((a, b) => CARD_DEFINITIONS[a].rank - CARD_DEFINITIONS[b].rank)[0];
 }
 
+function chooseGuessFromDiscard(discardPile: CardId[]): number {
+  const seen = new Set(discardPile.map((c) => CARD_DEFINITIONS[c].rank));
+  for (const rank of [2, 3, 4, 5, 6, 7, 8]) {
+    if (!seen.has(rank)) return rank;
+  }
+  return 2;
+}
+
 export function chooseBotAction(input: BotDecisionInput): BotDecision {
   const forcedCard = getForcedPlayableCard(input.hand);
-  const aliveTargets = input.players.filter((p) => p.id !== input.selfId && !p.isEliminated && !p.shield);
+  const aliveTargets = input.players.filter((p) => p.id !== input.selfId && !p.isEliminated && !p.shield && p.handCount > 0);
   const sorted = [...input.hand].sort((a, b) => CARD_DEFINITIONS[a].rank - CARD_DEFINITIONS[b].rank);
   const nonEmissary = sorted.filter((c) => c !== "emissary");
   const cardId = forcedCard ?? nonEmissary[0] ?? sorted[0];
-  const targetId = CARD_DEFINITIONS[cardId].target === "self" ? input.selfId : aliveTargets[0]?.id;
-  const guessedRank = CARD_DEFINITIONS[cardId].requiresGuess ? 2 : undefined;
+  const target = aliveTargets[0];
+  const targetId = CARD_DEFINITIONS[cardId].target === "self" ? input.selfId : target?.id;
+  const guessedRank = CARD_DEFINITIONS[cardId].requiresGuess ? chooseGuessFromDiscard(target?.discardPile ?? []) : undefined;
   return { cardId, targetId, guessedRank };
 }
