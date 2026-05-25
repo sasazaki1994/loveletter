@@ -4,12 +4,10 @@ import { and, desc, eq, inArray, lt } from "drizzle-orm";
 
 import { db, type DbClient } from "@/lib/db/client";
 import { buildFullDeck, draw, shuffleDeck, getTestDeckOverrides, type TestDeckOverrides } from "@/lib/game/deck";
-import { CARD_POOL } from "@/lib/game/cards";
 import type { VariantConfig } from "@/lib/game/variants";
 import { isSupportedVariantCardId } from "@/lib/game/variant-support";
 import { generateOpaqueToken, hashToken } from "@/lib/server/auth";
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
-import { getForcedPlayableCard } from "@/lib/game/forced-card-rules";
 import { generateShortRoomId } from "@/lib/utils/room-id";
 import type {
   CardId,
@@ -51,6 +49,8 @@ const MAX_LOGS = 50;
 type PlayerRole = (typeof playerRoleEnum.enumValues)[number];
 
 type TransactionClient = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
+type DbErrorLike = { code?: string; message?: string };
+type RoomWithHostPlayerId = typeof rooms.$inferSelect & { hostPlayerId?: string | null };
 
 const BASE_CARD_BY_RANK: Record<1 | 2 | 3 | 4 | 5 | 6 | 7, CardId> = {
   1: "sentinel",
@@ -331,8 +331,9 @@ export async function joinRoomAsPlayer(roomId: string, nickname: string, userId?
         } as const;
       });
     } catch (error) {
-      const code = (error as any)?.code as string | undefined;
-      const message = (error as any)?.message as string | undefined;
+      const typedError = error as DbErrorLike;
+      const code = typedError.code;
+      const message = typedError.message;
       const isUniqueSeat =
         code === "23505" || message?.includes?.("players_room_id_seat_unique");
       const shouldRetry = isUniqueSeat && attempt < maxRetries;
@@ -368,7 +369,8 @@ export async function startHumanGame(roomId: string, hostId: string) {
     const host = playerRows.find((p) => p.id === hostId);
     if (!host) throw new Error("ホストのみ開始できます");
     // rooms.hostPlayerId が存在する場合はそれを優先し、移行前データは seat0 をホストとみなす
-    const expectedHostId = (room as any).hostPlayerId ?? playerRows.find((p) => p.seat === 0)?.id ?? null;
+    const roomWithHost = room as RoomWithHostPlayerId;
+    const expectedHostId = roomWithHost.hostPlayerId ?? playerRows.find((p) => p.seat === 0)?.id ?? null;
     if (!expectedHostId || host.id !== expectedHostId) throw new Error("ホストのみ開始できます");
 
     const isRestart = Boolean(
@@ -678,12 +680,6 @@ function randomAvatarSeed() {
   return Math.random().toString(36).substring(2, 10);
 }
 
-function findNextSeat(taken: number[]) {
-  for (let i = 0; i < 4; i += 1) {
-    if (!taken.includes(i)) return i;
-  }
-  return 0;
-}
 
 function buildVariantConfigFromIds(ids: CardId[]): VariantConfig {
   const config: VariantConfig = {};

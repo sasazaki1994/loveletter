@@ -153,3 +153,31 @@ export async function waitForServerState(
     await new Promise((r) => setTimeout(r, 500));
   }
 }
+
+
+export async function createTwoPlayerHumanRoomViaAPI(request: APIRequestContext, hostNickname: string, guestNickname: string) {
+  const createRes = await request.post('/api/room/create-human', { data: { nickname: hostNickname } });
+  expect(createRes.ok()).toBeTruthy();
+  const created = await createRes.json() as { roomId: string; playerId: string; playerToken?: string };
+
+  const joinRes = await request.post('/api/room/join', { data: { roomId: created.roomId, nickname: guestNickname } });
+  expect(joinRes.ok()).toBeTruthy();
+  const joined = await joinRes.json() as { playerId: string; playerToken?: string };
+
+  const startRes = await request.post('/api/room/start', {
+    headers: {
+      'X-Player-Id': created.playerId,
+      ...(created.playerToken ? { 'X-Player-Token': created.playerToken } : {}),
+    },
+    data: { roomId: created.roomId },
+  });
+  expect(startRes.ok()).toBeTruthy();
+  const started = await startRes.json() as { gameId: string };
+
+  return {
+    roomId: created.roomId,
+    gameId: started.gameId,
+    host: { id: created.playerId, token: created.playerToken },
+    guest: { id: joined.playerId, token: joined.playerToken },
+  };
+}
