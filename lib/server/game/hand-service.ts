@@ -61,6 +61,12 @@ export async function resolveForceDiscard(
     .set({ cards: remaining, updatedAt: new Date() })
     .where(eq(hands.id, hand.id));
 
+  const eliminated = discarded === "emissary";
+
+  if (eliminated) {
+    return { deckState, eliminated, discardedCard: discarded };
+  }
+
   const nextDraw = draw(deckState.drawPile);
   const newDeckState: DeckState = {
     drawPile: nextDraw.deck,
@@ -73,8 +79,6 @@ export async function resolveForceDiscard(
       .set({ cards: [...remaining, nextDraw.card], updatedAt: new Date() })
       .where(eq(hands.id, hand.id));
   }
-
-  const eliminated = discarded === "emissary";
 
   return { deckState: newDeckState, eliminated, discardedCard: discarded };
 }

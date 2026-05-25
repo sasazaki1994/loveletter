@@ -29,9 +29,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: process.env.CI ? 'pnpm start --port 3100' : 'pnpm dev --port 3100',
-    url: 'http://localhost:3100',
-    reuseExistingServer: !process.env.CI,
+    command: process.env.CI || process.env.PLAYWRIGHT_E2E
+      ? (process.env.CI ? 'pnpm start --port 3100' : 'pnpm dev --port 3100')
+      : 'pnpm dev --port 3000',
+    url: process.env.CI || process.env.PLAYWRIGHT_E2E ? 'http://localhost:3100' : 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI && !process.env.PLAYWRIGHT_E2E,
     timeout: 1000 * 60 * 2,
     stdout: 'pipe',
     stderr: 'pipe',

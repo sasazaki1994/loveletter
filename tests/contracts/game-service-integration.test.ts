@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 
 import { createRoomWithBot, fetchGameState, handleGameAction } from "@/lib/server/game-service";
 
-const dbUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
-const describeIfDb = dbUrl ? test.describe : test.describe.skip;
+const hasTestDb = Boolean(process.env.TEST_DATABASE_URL);
+const describeIfDb = hasTestDb ? test.describe : test.describe.skip;
 
 describeIfDb("game-service integration (DB)", () => {
   test("forced marquise violation is rejected", async () => {
