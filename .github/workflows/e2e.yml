@@ -32,6 +32,8 @@ jobs:
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -91,5 +93,4 @@ jobs:
             artifacts
             monkey-artifacts
           if-no-files-found: ignore
-
 
