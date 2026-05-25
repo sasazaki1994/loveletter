@@ -607,3 +607,19 @@ npm run db:push
 - [Drizzle ORM ドキュメント](https://orm.drizzle.team/)
 - [Neon ドキュメント](https://neon.tech/docs)
 - [アーキテクチャ詳細](./docs/architecture.md)
+
+
+## Testing
+
+- `pnpm test` (contract tests)
+- `pnpm test:contracts`
+- `pnpm e2e:test`
+- `pnpm monkey:test`
+
+E2E/monkey tests require `DATABASE_URL` or `NEON_DATABASE_URL` and Playwright browser install:
+
+```bash
+pnpm exec playwright install --with-deps chromium
+```
+
+Variant policy: `feint` / `wager` / `marquise` are supported, while `insight` / `standoff` / `ambush` are currently ignored even if submitted to room creation API.

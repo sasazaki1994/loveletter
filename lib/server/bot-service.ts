@@ -3,6 +3,10 @@ import { getForcedPlayableCard } from "@/lib/game/forced-card-rules";
 import type { CardId } from "@/lib/game/types";
 
 export function chooseBotCard(cards: CardId[]): CardId {
+  if (cards.length === 0) {
+    throw new Error("Bot hand is empty");
+  }
+
   const forcedCard = getForcedPlayableCard(cards);
   if (forcedCard) return forcedCard;
 

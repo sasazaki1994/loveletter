@@ -64,3 +64,15 @@
 
 ## unsupported variants
 - `ambush` / `insight` / `standoff` は引き続き deck へ投入しない（選択されても無効化）。
+
+
+### Supported variant matrix
+
+| variant | status | note |
+|---|---|---|
+| feint | supported | reveal contract covered |
+| wager | supported | reveal contract covered |
+| marquise | supported | forced-play rule active |
+| insight | unsupported | 未実装（山札2枚操作） |
+| standoff | unsupported | 未実装（discard仕様未確定） |
+| ambush | unsupported | 未実装（effectChoice必須仕様は future work） |
