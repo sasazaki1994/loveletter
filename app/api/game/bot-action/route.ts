@@ -65,6 +65,6 @@ export async function POST(request: NextRequest) {
       return errorResponse("Invalid request body", 400);
     }
 
-    return errorResponse("Failed to execute bot turn", 500);
+    return errorResponse("Failed to execute bot turn", 400);
   }
 }

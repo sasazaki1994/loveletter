@@ -110,3 +110,16 @@ They remain future work and must not enter the deck in beta.
   - Then `revealedSetupCards.length === 3`
   - And `drawPileCount` reflects burn/revealed/initial-hands/first-draw processing
   - And burn card is not exposed in public state or any player hand view
+
+## Bot Match Contract
+
+Bot戦は 1 人の人間プレイヤーと 3 人の Bot で進行する。
+
+- Bot は自分の手番で必ず合法手を選ぶ
+- Bot は強制カードルールを破らない
+- Bot は脱落済み / shield 中 / handCount=0 の対象を不正に選ばない
+- Bot は可能な限り Emissary を避ける（強制時・唯一選択時は除く）
+- Sentinel / Feint / Wager の推測ランクは 1 を選ばない
+- Bot 手番が連続しても一定上限 (`MAX_BOT_CHAIN_ACTIONS`) 内で進行し、ループで詰まらない
+- round は山札切れ・脱落・勝敗確定まで進行できる
+- bot-action が失敗しても UI から手動再試行できる
