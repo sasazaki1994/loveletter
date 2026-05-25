@@ -129,3 +129,4 @@ Bot戦は 1 人の人間プレイヤーと 3 人の Bot で進行する。
 - `pnpm test` (`tsx --test tests/contracts/*.test.ts`) は全サブテスト完了後に終了する。
 - テスト実行中に import されるサーバーモジュールの常駐タイマー（`setInterval`）は `unref()` し、テストプロセスをブロックしない。
 - `PLAYWRIGHT_E2E=1` 実行時は API rate limit を実質バイパスし、CI 並列実行で 429 を発生させない。
+- `PLAYWRIGHT_E2E=1` 実行時は `/api/room/create?test=1&deck=...` の test deck override を有効化し、`next start`(production mode) でも E2E 契約テストの決定論を維持する。

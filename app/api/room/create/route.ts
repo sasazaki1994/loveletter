@@ -33,8 +33,9 @@ export async function POST(request: Request) {
     // テスト用のオプション（開発/テストのみ有効）: ?test=1&seed=...&deck=sentinel,oracle,...
     const url = new URL(request.url);
     const isProd = process.env.NODE_ENV === "production";
+    const isPlaywrightE2E = process.env.PLAYWRIGHT_E2E === "1";
     let overrides: TestDeckOverrides | undefined;
-    if (!isProd && url.searchParams.get("test") === "1") {
+    if ((isPlaywrightE2E || !isProd) && url.searchParams.get("test") === "1") {
       const seed = url.searchParams.get("seed")?.trim() || undefined;
       const deckParam = url.searchParams.get("deck")?.trim();
       let fixedDeck: CardId[] | undefined;
@@ -90,4 +91,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
