@@ -149,7 +149,7 @@ test("Legate force discard で対象手札が捨てられる", async ({ request 
 });
 
 
-test("Warder shield + unshield next turn", async ({ request }) => {
+test("Warder applies shield to self", async ({ request }) => {
   const deck = "oracle,warder,sentinel,sentinel,sentinel,duelist,oracle";
   const created = await createBotRoomViaAPI(request, `Warder_${Date.now()}`, { deck });
   const s1 = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as PublicState;

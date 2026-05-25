@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
-import { db } from "@/lib/db/client";
+import { db, type DbClient } from "@/lib/db/client";
 import type { CardId, GameActionRequest } from "@/lib/game/types";
 import { chooseBotAction, type BotDecisionInput } from "@/lib/server/bot-service";
 import { actions, games, hands, players } from "@/drizzle/schema";
@@ -27,11 +27,13 @@ function buildDiscardMap(actionRows: typeof actions.$inferSelect[]): Map<string,
   return discardMap;
 }
 
-async function buildBotDecisionInput(roomId: string, gameId: string, selfId: string, hand: CardId[]): Promise<BotDecisionInput> {
+type QueryClient = DbClient | Parameters<Parameters<DbClient["transaction"]>[0]>[0];
+
+async function buildBotDecisionInput(tx: QueryClient, roomId: string, gameId: string, selfId: string, hand: CardId[]): Promise<BotDecisionInput> {
   const [roomPlayers, handRows, actionRows] = await Promise.all([
-    db.select().from(players).where(and(eq(players.roomId, roomId), eq(players.role, "player"))),
-    db.select().from(hands).where(eq(hands.gameId, gameId)),
-    db.select().from(actions).where(eq(actions.gameId, gameId)),
+    tx.select().from(players).where(and(eq(players.roomId, roomId), eq(players.role, "player"))),
+    tx.select().from(hands).where(eq(hands.gameId, gameId)),
+    tx.select().from(actions).where(eq(actions.gameId, gameId)),
   ]);
   const handCountMap = new Map(handRows.map((h) => [h.playerId, h.cards.length]));
   const discardMap = buildDiscardMap(actionRows);
@@ -63,7 +65,7 @@ export async function executeBotTurn(roomId: string, options?: { skipThinkDelay?
     const hand = await getHand(tx, game.id, game.activePlayerId);
     if (!hand || hand.cards.length === 0) return null;
 
-    const decisionInput = await buildBotDecisionInput(roomId, game.id, botPlayer.id, hand.cards as CardId[]);
+    const decisionInput = await buildBotDecisionInput(tx, roomId, game.id, botPlayer.id, hand.cards as CardId[]);
     const decision = chooseBotAction(decisionInput);
     return {
       gameId: game.id,

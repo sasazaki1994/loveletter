@@ -27,8 +27,15 @@ function mapPublicPlayers(playerRows: typeof players.$inferSelect[], handRows: t
   }));
 }
 
+
+function determineLogType(message: string): "elimination" | "win" | undefined {
+  if (message.includes("脱落") || message.includes("自滅")) return "elimination";
+  if (message.includes("勝利")) return "win";
+  return undefined;
+}
+
 function mapLogs(logRows: typeof logs.$inferSelect[]): ClientGameState["logs"] {
-  return logRows.slice().reverse().map((log) => ({ id: log.id, timestamp: log.createdAt.toISOString(), message: log.message, type: log.message.includes("脱落") || log.message.includes("自滅") ? "elimination" : log.message.includes("勝利") ? "win" : undefined, actorId: log.actorId ?? undefined, icon: (log.icon as ClientGameState["logs"][number]["icon"]) ?? "info" }));
+  return logRows.slice().reverse().map((log) => ({ id: log.id, timestamp: log.createdAt.toISOString(), message: log.message, type: determineLogType(log.message), actorId: log.actorId ?? undefined, icon: (log.icon as ClientGameState["logs"][number]["icon"]) ?? "info" }));
 }
 
 function attachPerspectiveState(base: ClientGameState, playerRows: typeof players.$inferSelect[], handRows: typeof hands.$inferSelect[], perspectivePlayerId?: string) {
