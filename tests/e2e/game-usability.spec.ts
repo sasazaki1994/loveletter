@@ -1,6 +1,7 @@
 import { test, expect, createBotRoomViaUI, waitForGameUI } from "./fixtures";
 
 test.use({ viewport: { width: 1365, height: 1000 } });
+test.setTimeout(90_000);
 
 test("待機画面でゲーム目的と基本ルールが見える", async ({ page }) => {
   await page.goto("/");

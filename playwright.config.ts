@@ -2,8 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'tests',
-  timeout: 1000 * 60 * 8, // 8 min
-  retries: process.env.CI ? 2 : 0,
+  timeout: 1000 * 60 * 2, // 2 min (fail-fast in CI)
+  retries: process.env.CI ? 1 : 0,
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
@@ -39,5 +39,4 @@ export default defineConfig({
     stderr: 'pipe',
   },
 });
-
 
