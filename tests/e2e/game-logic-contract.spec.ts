@@ -148,3 +148,35 @@ test("Legate force discard で対象手札が捨てられる", async ({ request 
   expect((after.discardPile ?? []).includes('oracle')).toBeTruthy();
 });
 
+
+test("Warder applies shield to self", async ({ request }) => {
+  const deck = "oracle,warder,sentinel,sentinel,sentinel,duelist,oracle";
+  const created = await createBotRoomViaAPI(request, `Warder_${Date.now()}`, { deck });
+  const s1 = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as PublicState;
+  await postPlayCard(request, { roomId: created.roomId, gameId: s1.id, playerId: created.playerId, cardId: "warder" });
+  const s2 = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as PublicState;
+  expect(findSelf(s2, created.playerId)?.shield).toBe(true);
+});
+
+test("Arbiter swaps hands", async ({ request }) => {
+  const deck = "sentinel,arbiter,oracle,warder,warder,sentinel";
+  const created = await createBotRoomViaAPI(request, `Arbiter_${Date.now()}`, { deck });
+  const before = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as PublicState;
+  const target = findOpponent(before, created.playerId)!;
+  const res = await postPlayCard(request, { roomId: created.roomId, gameId: before.id, playerId: created.playerId, cardId: "arbiter", targetId: target.id });
+  expect(res.ok()).toBeTruthy();
+  const after = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as PublicState;
+  expect(after.hand?.[0]).toBe("oracle");
+});
+
+test("Oracle peek is actor-only hint", async ({ request }) => {
+  const deck = "sentinel,oracle,legate,warder,warder,duelist";
+  const created = await createBotRoomViaAPI(request, `OraclePeek_${Date.now()}`, { deck });
+  const s1 = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as any;
+  const target = findOpponent(s1, created.playerId)!;
+  await postPlayCard(request, { roomId: created.roomId, gameId: s1.id, playerId: created.playerId, cardId: "oracle", targetId: target.id });
+  const actor = await fetchStateForPlayer(request, created.roomId, created.playerId) as any;
+  const targetState = await fetchStateForPlayer(request, created.roomId, target.id) as any;
+  expect(actor.effectHints?.peek?.targetId).toBe(target.id);
+  expect(targetState.effectHints?.peek).toBeUndefined();
+});
