@@ -15,6 +15,7 @@ import { usePlayerSession } from "@/lib/client/session";
 import { loadLastNickname, saveLastNickname } from "@/lib/client/nickname";
 import { useSoundEffects } from "@/lib/hooks/use-sound-effects";
 import { CARD_POOL } from "@/lib/game/cards";
+import { SUPPORTED_VARIANT_CARD_IDS } from "@/lib/game/variant-support";
 import { isValidShortRoomId, normalizeRoomId } from "@/lib/utils/room-id";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -48,10 +49,7 @@ export function RoomLobby() {
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [variants, setVariants] = useState<Record<string, boolean>>({
     feint: false,
-    insight: false,
-    standoff: false,
     wager: false,
-    ambush: false,
     marquise: false,
   });
 
@@ -541,12 +539,13 @@ export function RoomLobby() {
               <div className="grid grid-cols-1 gap-2 text-xs text-[var(--color-text-muted)] sm:grid-cols-2">
                 {[
                   { id: "feint", label: "Rank1: Feint (推測→公開)" },
-                  { id: "insight", label: "Rank2: Insight (山札2枚操作)" },
-                  { id: "standoff", label: "Rank3: Standoff (公開比較)" },
                   { id: "wager", label: "Rank4: Wager (推測→公開)" },
-                  { id: "ambush", label: "Rank6: Ambush (密やかな交換)" },
                   { id: "marquise", label: "Rank7: Marquise (合計12以上は強制)" },
-                ].map((opt) => (
+                ]
+                  .filter((opt) =>
+                    (SUPPORTED_VARIANT_CARD_IDS as readonly string[]).includes(opt.id),
+                  )
+                  .map((opt) => (
                   <label key={opt.id} className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -833,4 +832,3 @@ export function RoomLobby() {
     </div>
   );
 }
-

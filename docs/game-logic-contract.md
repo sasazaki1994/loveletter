@@ -23,6 +23,23 @@
 - `standoff` (説明と実装の意味差分が未整理)
 - `ambush` (effectChoice swap/keep 未実装)
 
+## Beta variant policy
+
+β版では、variant cards は以下のみ有効化する。
+
+Supported:
+- Feint
+- Wager
+- Marquise
+
+Disabled / hidden:
+- Insight
+- Standoff
+- Ambush
+
+Disabled cards are not shown in the room creation UI and are ignored by the server if submitted through API payloads.  
+They remain future work and must not enter the deck in beta.
+
 ## Future work
 - `effectChoice` は将来の選択式効果（例: ambush swap/keep）で利用する拡張ポイント。
 - Ambush / Insight / Standoff を本実装する場合は、サーバ契約・bot判断・UI選択・秘匿情報管理を同時に更新する。
