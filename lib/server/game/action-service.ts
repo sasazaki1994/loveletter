@@ -84,7 +84,7 @@ export async function handlePlayCard(action: GameActionRequest, options?: { supp
       const [actingPlayerRow] = await tx
         .select({ id: players.id, roomId: players.roomId, isEliminated: players.isEliminated })
         .from(players)
-        .where(eq(players.id, action.playerId))
+        .where(and(eq(players.id, action.playerId), eq(players.roomId, action.roomId)))
         .for("update");
       if (!actingPlayerRow || actingPlayerRow.roomId !== action.roomId) {
         return { success: false, message: "プレイヤー状態が不正です。" };

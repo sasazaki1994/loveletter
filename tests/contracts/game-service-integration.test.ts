@@ -1,7 +1,7 @@
 import type { CardId } from "@/lib/game/types";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import { actions, hands, logs } from "@/drizzle/schema";
@@ -11,16 +11,18 @@ const hasTestDb = Boolean(process.env.TEST_DATABASE_URL);
 const describeIfDb = hasTestDb ? test.describe : test.describe.skip;
 
 describeIfDb("game-service integration (DB)", () => {
-  async function getMutationCounts(gameId: string, playerId: string) {
+  async function getMutationCounts(gameId: string) {
     const [actionRows, logRows, handRows] = await Promise.all([
       db.select().from(actions).where(eq(actions.gameId, gameId)),
       db.select().from(logs).where(eq(logs.gameId, gameId)),
-      db.select().from(hands).where(and(eq(hands.gameId, gameId), eq(hands.playerId, playerId))),
+      db.select().from(hands).where(eq(hands.gameId, gameId)),
     ]);
     return {
       actionCount: actionRows.length,
       logCount: logRows.length,
-      handCards: (handRows[0]?.cards ?? []) as CardId[],
+      handsByPlayer: handRows
+        .map((row) => ({ playerId: row.playerId, cards: (row.cards ?? []) as CardId[] }))
+        .sort((a, b) => a.playerId.localeCompare(b.playerId)),
     };
   }
 
@@ -99,7 +101,7 @@ describeIfDb("game-service integration (DB)", () => {
     const roomB = await createRoomWithBot(`B_${Date.now()}`);
     const stateA = (await fetchGameState(roomA.roomId, roomA.playerId)).state!;
     const stateB = (await fetchGameState(roomB.roomId, roomB.playerId)).state!;
-    const before = await getMutationCounts(stateB.id, roomB.playerId);
+    const before = await getMutationCounts(stateB.id);
 
     const result = await handleGameAction({
       roomId: roomB.roomId,
@@ -110,7 +112,7 @@ describeIfDb("game-service integration (DB)", () => {
     });
     assert.equal(result.success, false);
 
-    const after = await getMutationCounts(stateB.id, roomB.playerId);
+    const after = await getMutationCounts(stateB.id);
     assert.deepEqual(after, before);
   });
 
@@ -119,7 +121,7 @@ describeIfDb("game-service integration (DB)", () => {
     const roomB = await createRoomWithBot(`B_${Date.now()}`);
     const stateA = (await fetchGameState(roomA.roomId, roomA.playerId)).state!;
     const stateB = (await fetchGameState(roomB.roomId, roomB.playerId)).state!;
-    const before = await getMutationCounts(stateB.id, roomB.playerId);
+    const before = await getMutationCounts(stateB.id);
 
     const result = await handleGameAction({
       roomId: roomB.roomId,
@@ -130,7 +132,7 @@ describeIfDb("game-service integration (DB)", () => {
     });
     assert.equal(result.success, false);
 
-    const after = await getMutationCounts(stateB.id, roomB.playerId);
+    const after = await getMutationCounts(stateB.id);
     assert.deepEqual(after, before);
   });
 
@@ -139,7 +141,7 @@ describeIfDb("game-service integration (DB)", () => {
     const state = (await fetchGameState(room.roomId, room.playerId)).state!;
     const nonActivePlayerId = state.players.find((p) => p.id !== state.activePlayerId && !p.isEliminated)?.id;
     assert.ok(nonActivePlayerId);
-    const before = await getMutationCounts(state.id, state.activePlayerId);
+    const before = await getMutationCounts(state.id);
 
     const result = await handleGameAction({
       roomId: room.roomId,
@@ -150,21 +152,23 @@ describeIfDb("game-service integration (DB)", () => {
     });
     assert.equal(result.success, false);
 
-    const after = await getMutationCounts(state.id, state.activePlayerId);
+    const after = await getMutationCounts(state.id);
     assert.deepEqual(after, before);
   });
 
   test("play_card auth contract: non-existing gameId is rejected", async () => {
     const room = await createRoomWithBot(`T_${Date.now()}`);
-    const state = (await fetchGameState(room.roomId, room.playerId)).state!;
+    const beforeState = (await fetchGameState(room.roomId, room.playerId)).state!;
 
     const result = await handleGameAction({
       roomId: room.roomId,
       gameId: "00000000-0000-4000-8000-000000000000",
       playerId: room.playerId,
       type: "play_card",
-      payload: { cardId: "oracle", targetId: state.players.find((p) => p.id !== room.playerId && !p.isEliminated)?.id },
+      payload: { cardId: "oracle", targetId: beforeState.players.find((p) => p.id !== room.playerId && !p.isEliminated)?.id },
     });
     assert.equal(result.success, false);
+    const afterState = (await fetchGameState(room.roomId, room.playerId)).state!;
+    assert.deepEqual(afterState, beforeState);
   });
 });
