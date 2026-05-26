@@ -87,6 +87,7 @@ export function GameBoard() {
   const [botTurnSince, setBotTurnSince] = useState<number | null>(null);
   const [forcingBot, setForcingBot] = useState(false);
   const [botActionError, setBotActionError] = useState<string | null>(null);
+  const [showBotRecovery, setShowBotRecovery] = useState(false);
   const prevTurnRef = useRef<boolean>(false);
   const prevRoundRef = useRef<number | null>(null);
   const cutinInitializedRef = useRef(false);
@@ -112,7 +113,20 @@ export function GameBoard() {
     setBotTurnSince((prev) => prev ?? Date.now());
   }, [isActiveBotTurn, state?.activePlayerId, state?.turnIndex]);
 
-  const showBotRecovery = Boolean(isActiveBotTurn && botTurnSince && Date.now() - botTurnSince >= 3500);
+  useEffect(() => {
+    if (!isActiveBotTurn || !botTurnSince) {
+      setShowBotRecovery(false);
+      return;
+    }
+    const elapsed = Date.now() - botTurnSince;
+    if (elapsed >= 3500) {
+      setShowBotRecovery(true);
+      return;
+    }
+    const timeoutId = window.setTimeout(() => setShowBotRecovery(true), Math.max(0, 3500 - elapsed));
+    return () => window.clearTimeout(timeoutId);
+  }, [botTurnSince, isActiveBotTurn]);
+
   const handleForceBotTurn = useCallback(async () => {
     if (!roomId || forcingBot) return;
     setForcingBot(true);

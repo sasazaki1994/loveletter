@@ -67,7 +67,7 @@ function validateTargetSelection(params: { definition: (typeof CARD_DEFINITIONS)
   return null;
 }
 
-export async function handlePlayCard(action: GameActionRequest): Promise<GameActionResult> {
+export async function handlePlayCard(action: GameActionRequest, options?: { suppressAutoBot?: boolean }): Promise<GameActionResult> {
   const { cardId, targetId, guessedRank } = action.payload ?? {};
   if (!cardId) return { success: false, message: "cardId が必要です。" };
 
@@ -170,6 +170,6 @@ export async function handlePlayCard(action: GameActionRequest): Promise<GameAct
   }
 
   if (success) invalidateStateCache(action.roomId);
-  if (runBotAfterCommit) executeBotTurn(action.roomId).catch((error) => console.error("bot turn error", error));
+  if (runBotAfterCommit && !options?.suppressAutoBot) executeBotTurn(action.roomId).catch((error) => console.error("bot turn error", error));
   return { success };
 }

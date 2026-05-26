@@ -18,9 +18,15 @@ export function chooseBotCard(cards: CardId[]): CardId {
   return [...cards].sort((a, b) => CARD_DEFINITIONS[a].rank - CARD_DEFINITIONS[b].rank)[0];
 }
 
-export function chooseGuessRank(discardPile: CardId[]): number {
+export function chooseGuessRank(discardPile: CardId[], myHand: CardId[] = []): number {
   const seen = new Set(discardPile.map((c) => CARD_DEFINITIONS[c].rank));
+  const blockedUniqueRanks = new Set(
+    myHand
+      .filter((c) => CARD_DEFINITIONS[c].copies === 1)
+      .map((c) => CARD_DEFINITIONS[c].rank),
+  );
   for (const rank of [8, 7, 6, 5, 4, 3, 2]) {
+    if (blockedUniqueRanks.has(rank)) continue;
     if (!seen.has(rank)) return rank;
   }
   return 2;
@@ -73,6 +79,6 @@ export function chooseBotAction(input: BotDecisionInput): BotDecision {
   const cardId = forcedCard ?? preferredArbiter ?? preferredDuelist ?? safeCandidates[0] ?? nonEmissary[0] ?? selectable[0] ?? sorted[0];
   const target = chooseBestTarget(input, cardId);
   const targetId = target?.id;
-  const guessedRank = CARD_DEFINITIONS[cardId].requiresGuess ? chooseGuessRank(target?.discardPile ?? []) : undefined;
+  const guessedRank = CARD_DEFINITIONS[cardId].requiresGuess ? chooseGuessRank(target?.discardPile ?? [], getRemainingHandAfterPlay(input.hand, cardId)) : undefined;
   return { cardId, targetId, guessedRank };
 }

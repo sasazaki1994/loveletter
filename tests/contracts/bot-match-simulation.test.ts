@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { chooseBotAction, getLegalBotTargets } from "@/lib/server/bot-service";
+import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardId } from "@/lib/game/types";
 
 const cards: CardId[] = ["sentinel", "oracle", "duelist", "warder", "legate", "arbiter", "vizier", "emissary", "feint", "wager", "marquise"];
@@ -20,11 +21,15 @@ test("bot simulation seeds 1..50 stay legal", () => {
     };
     const action = chooseBotAction(input);
     assert.ok(hand.includes(action.cardId));
-    if (action.targetId) {
-      const legal = getLegalBotTargets(input, action.cardId).map((p) => p.id);
+    const definition = CARD_DEFINITIONS[action.cardId];
+    const legal = getLegalBotTargets(input, action.cardId).map((p) => p.id);
+    const requiresTarget = definition.target !== "none" && legal.length > 0;
+    if (requiresTarget) {
+      assert.ok(action.targetId);
       assert.ok(legal.includes(action.targetId));
     }
     if (["sentinel", "feint", "wager"].includes(action.cardId)) {
+      assert.equal(typeof action.guessedRank, "number");
       assert.notEqual(action.guessedRank, 1);
     }
   }

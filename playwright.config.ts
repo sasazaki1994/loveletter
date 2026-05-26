@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const useE2EServer = Boolean(process.env.CI || process.env.PLAYWRIGHT_E2E);
+const serverPort = useE2EServer ? 3100 : 3000;
+const serverUrl = `http://localhost:${serverPort}`;
+
 export default defineConfig({
   testDir: 'tests',
   timeout: 1000 * 60 * 2, // 2 min (fail-fast in CI)
@@ -15,7 +19,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: process.env.CI ? 'retain-on-failure' : 'off',
     viewport: { width: 1400, height: 900 },
-    baseURL: 'http://localhost:3100',
+    baseURL: serverUrl,
     ignoreHTTPSErrors: true,
   },
   projects: [
@@ -29,14 +33,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: process.env.CI || process.env.PLAYWRIGHT_E2E
+    command: useE2EServer
       ? (process.env.CI ? 'pnpm start --port 3100' : 'pnpm dev --port 3100')
       : 'pnpm dev --port 3000',
-    url: process.env.CI || process.env.PLAYWRIGHT_E2E ? 'http://localhost:3100' : 'http://localhost:3000',
+    url: serverUrl,
     reuseExistingServer: !process.env.CI && !process.env.PLAYWRIGHT_E2E,
     timeout: 1000 * 60 * 2,
     stdout: 'pipe',
     stderr: 'pipe',
   },
 });
-

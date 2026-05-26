@@ -82,9 +82,13 @@ export async function executeBotTurn(roomId: string, options?: { skipThinkDelay?
     });
 
     if (!botAction) return;
-    visitedTurns.add(botAction.turnIndex);
     try {
-      await handlePlayCard(botAction satisfies GameActionRequest);
+      const result = await handlePlayCard(botAction satisfies GameActionRequest, { suppressAutoBot: true });
+      if (!result.success) {
+        console.error("[executeBotTurn] bot action soft-failed", { roomId, turnIndex: botAction.turnIndex, message: result.message });
+        return;
+      }
+      visitedTurns.add(botAction.turnIndex);
     } catch (error) {
       console.error("[executeBotTurn] failed to handle bot action", { roomId, error });
       return;
