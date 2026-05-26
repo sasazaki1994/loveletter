@@ -5,6 +5,8 @@ import { db } from "@/lib/db/client";
 import { users } from "@/drizzle/schema";
 import { createUserSession, hashPassword, buildUserSessionCookies } from "@/lib/server/user-auth";
 import { eq } from "drizzle-orm";
+import { getClientIp } from "@/lib/server/auth";
+import { rateLimit } from "@/lib/server/rate-limit";
 
 const schema = z.object({
   username: z
@@ -20,6 +22,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = schema.parse(body);
     const username = parsed.username.trim();
+    const normalizedUsername = username.toLowerCase();
+    const ip = getClientIp(request as any);
+    const rl = rateLimit(`auth:signup:${ip}:${normalizedUsername}`, 5, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json({ error: "試行回数が多すぎます。しばらくしてからお試しください。" }, { status: 429, headers: { "Retry-After": Math.ceil((rl.resetAt - Date.now()) / 1000).toString() } });
+    }
 
     const existing = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).limit(1);
     if (existing.length > 0) {
@@ -48,5 +56,4 @@ export async function POST(request: Request) {
     );
   }
 }
-
 

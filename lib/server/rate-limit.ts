@@ -1,6 +1,10 @@
 type Entry = { count: number; resetAt: number };
 
 const BUCKET = new Map<string, Entry>();
+// NOTE:
+// This in-memory bucket is process-local and does not synchronize across instances.
+// In serverless / multi-instance deployments, limits are therefore best-effort only.
+// For strict global enforcement, migrate to shared storage (e.g. Redis/Upstash) in a follow-up PR.
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 

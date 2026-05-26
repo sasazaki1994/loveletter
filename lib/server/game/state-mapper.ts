@@ -46,13 +46,14 @@ function attachPerspectiveState(base: ClientGameState, playerRows: typeof player
   base.hand = hand.cards as CardId[];
 }
 
-function attachEffectHints(base: ClientGameState, actionRows: ActionRow[], handRows: typeof hands.$inferSelect[], perspectivePlayerId?: string) {
+function attachEffectHints(base: ClientGameState, actionRows: ActionRow[], perspectivePlayerId?: string) {
   if (!perspectivePlayerId) return;
   const lastPeek = actionRows.slice().reverse().find((a) => a.type === "peek" && a.actorId === perspectivePlayerId);
   if (!lastPeek) return;
-  const targetId = ((lastPeek.payload ?? {}) as { targetId?: string }).targetId;
-  const targetTop = targetId ? (handRows.find((h) => h.playerId === targetId)?.cards?.[0] as CardId | undefined) : undefined;
-  if (targetId && targetTop) base.effectHints = { ...(base.effectHints ?? {}), peek: { actionId: lastPeek.id, targetId, card: targetTop } };
+  const payload = (lastPeek.payload ?? {}) as { targetId?: string; cardId?: CardId };
+  if (payload.targetId && payload.cardId) {
+    base.effectHints = { ...(base.effectHints ?? {}), peek: { actionId: lastPeek.id, targetId: payload.targetId, card: payload.cardId } };
+  }
 }
 
 function attachLastAction(base: ClientGameState, actionRows: ActionRow[]) {
@@ -68,7 +69,7 @@ export function mapToClientState(game: typeof games.$inferSelect, playerRows: ty
     id: game.id, roomId: game.roomId, phase: game.phase, turnIndex: game.turnIndex, round: game.round, createdAt: game.createdAt.toISOString(), updatedAt: game.updatedAt.toISOString(), drawPileCount: drawPile.length, discardPile: game.discardPile as CardId[], revealedSetupCards: game.revealedSetupCards as CardId[], topDiscard: (game.discardPile as CardId[]).slice(-1)[0], players: mapPublicPlayers(playerRows, handRows, discardMap), activePlayerId: game.activePlayerId ?? undefined, awaitingPlayerId: game.awaitingPlayerId ?? undefined, logs: mapLogs(logRows), self: undefined, hand: undefined, result: (game.result ?? undefined) as ClientGameState["result"],
   };
   attachPerspectiveState(base, playerRows, handRows, perspectivePlayerId);
-  attachEffectHints(base, actionRows, handRows, perspectivePlayerId);
+  attachEffectHints(base, actionRows, perspectivePlayerId);
   attachLastAction(base, actionRows);
   return base;
 }

@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { CARD_DEFINITIONS } from "@/lib/game/cards";
 import type { CardId } from "@/lib/game/types";
-import { games, hands, logs, players, rooms } from "@/drizzle/schema";
+import { actions, games, hands, logs, players, rooms } from "@/drizzle/schema";
 import type { TransactionClient } from "@/lib/server/game/hand-service";
 
 export function determineWinnersByHandFromCards(
@@ -29,9 +29,41 @@ export async function determineWinnersByHand(
   survivors: typeof players.$inferSelect[],
 ) {
   const handRows = await tx.select().from(hands).where(and(eq(hands.gameId, gameId), inArray(hands.playerId, survivors.map((p) => p.id))));
-  return determineWinnersByHandFromCards(
-    survivors.map((p) => ({ playerId: p.id, cards: (handRows.find((h) => h.playerId === p.id)?.cards ?? []) as CardId[] })),
-  );
+  const byHand = survivors.map((p) => ({ playerId: p.id, cards: (handRows.find((h) => h.playerId === p.id)?.cards ?? []) as CardId[] }));
+  const firstPass = determineWinnersByHandFromCards(byHand);
+  if (firstPass.length <= 1) return firstPass;
+
+  const relevantActions = await tx
+    .select({ type: actions.type, actorId: actions.actorId, payload: actions.payload })
+    .from(actions)
+    .where(eq(actions.gameId, gameId));
+  const discardSums = new Map<string, number>();
+  for (const action of relevantActions) {
+    if (action.type === "play_card" && action.actorId) {
+      const payload = action.payload as { cardId?: CardId } | null;
+      const cardId = payload?.cardId;
+      if (!cardId) continue;
+      discardSums.set(action.actorId, (discardSums.get(action.actorId) ?? 0) + CARD_DEFINITIONS[cardId].rank);
+    }
+    if (action.type === "force_discard") {
+      const payload = action.payload as { targetId?: string; cardId?: CardId } | null;
+      const cardId = payload?.cardId;
+      const targetId = payload?.targetId;
+      if (!cardId || !targetId) continue;
+      discardSums.set(targetId, (discardSums.get(targetId) ?? 0) + CARD_DEFINITIONS[cardId].rank);
+    }
+  }
+
+  const topDiscard = Math.max(...firstPass.map((id) => discardSums.get(id) ?? 0));
+  const byDiscard = firstPass.filter((id) => (discardSums.get(id) ?? 0) === topDiscard);
+  if (byDiscard.length <= 1) return byDiscard;
+
+  const survivorById = new Map(survivors.map((p) => [p.id, p]));
+  const bySeatDesc = byDiscard
+    .map((id) => survivorById.get(id))
+    .filter((p): p is (typeof survivors)[number] => Boolean(p))
+    .sort((a, b) => b.seat - a.seat);
+  return bySeatDesc.length > 0 ? [bySeatDesc[0].id] : byDiscard;
 }
 
 export async function concludeRound(

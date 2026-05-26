@@ -74,7 +74,7 @@ export async function createBotRoomViaAPI(
   if (!res.ok()) {
     throw new Error(`create failed: ${json?.error ?? res.status()}`);
   }
-  return json as { roomId: string; playerId: string; gameId?: string };
+  return json as { roomId: string; playerId: string; playerToken?: string; gameId?: string };
 }
 
 export async function fetchStateForPlayer(
@@ -116,10 +116,7 @@ export async function postPlayCard(
   },
 ) {
   return request.post("/api/game/action", {
-    headers: {
-      "X-Player-Id": params.playerId,
-      "Content-Type": "application/json",
-    },
+    headers: { "X-Player-Id": params.playerId, "Content-Type": "application/json" },
     data: {
       gameId: params.gameId,
       roomId: params.roomId,

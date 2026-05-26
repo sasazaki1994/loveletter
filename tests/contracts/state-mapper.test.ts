@@ -7,4 +7,5 @@ const players:any=[{id:'p1',nickname:'p1',seat:0,shield:false,isEliminated:false
 const hands:any=[{playerId:'p1',cards:['oracle']},{playerId:'p2',cards:['legate']}];
 
 test('self sees own hand only',()=>{const s=mapToClientState(baseGame,players,hands,[],[],'p1');assert.deepEqual(s.hand,['oracle']);assert.equal(s.players[1]?.handCount,1);});
-test('peek hint only for actor',()=>{const act:any=[{id:'a1',type:'peek',actorId:'p1',payload:{targetId:'p2'}}];const s1=mapToClientState(baseGame,players,hands,act,[],'p1');const s2=mapToClientState(baseGame,players,hands,act,[],'p2');assert.equal(s1.effectHints?.peek?.card,'legate');assert.equal(s2.effectHints?.peek,undefined);});
+test('peek hint only for actor with persisted payload cardId',()=>{const act:any=[{id:'a1',type:'peek',actorId:'p1',payload:{targetId:'p2',cardId:'legate'}}];const s1=mapToClientState(baseGame,players,hands,act,[],'p1');const s2=mapToClientState(baseGame,players,hands,act,[],'p2');assert.equal(s1.effectHints?.peek?.card,'legate');assert.equal(s2.effectHints?.peek,undefined);});
+test('peek hint is hidden when legacy payload has no cardId',()=>{const act:any=[{id:'a1',type:'peek',actorId:'p1',payload:{targetId:'p2'}}];const s1=mapToClientState(baseGame,players,hands,act,[],'p1');assert.equal(s1.effectHints?.peek,undefined);});
