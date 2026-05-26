@@ -84,6 +84,10 @@ export function GameBoard() {
   const [showTurnCutin, setShowTurnCutin] = useState(false);
   const [cutinText, setCutinText] = useState("あなたの番");
   const [cutinSequence, setCutinSequence] = useState(0);
+  const [botTurnSince, setBotTurnSince] = useState<number | null>(null);
+  const [forcingBot, setForcingBot] = useState(false);
+  const [botActionError, setBotActionError] = useState<string | null>(null);
+  const [showBotRecovery, setShowBotRecovery] = useState(false);
   const prevTurnRef = useRef<boolean>(false);
   const prevRoundRef = useRef<number | null>(null);
   const cutinInitializedRef = useRef(false);
@@ -93,6 +97,57 @@ export function GameBoard() {
     setCutinSequence((prev) => prev + 1);
     setShowTurnCutin(true);
   }, []);
+
+  const isActiveBotTurn = Boolean(
+    state &&
+      state.phase === "choose_card" &&
+      state.activePlayerId &&
+      state.players.some((p) => p.id === state.activePlayerId && p.isBot && !p.isEliminated),
+  );
+  useEffect(() => {
+    if (!isActiveBotTurn) {
+      setBotTurnSince(null);
+      setBotActionError(null);
+      return;
+    }
+    setBotTurnSince((prev) => prev ?? Date.now());
+  }, [isActiveBotTurn, state?.activePlayerId, state?.turnIndex]);
+
+  useEffect(() => {
+    if (!isActiveBotTurn || !botTurnSince) {
+      setShowBotRecovery(false);
+      return;
+    }
+    const elapsed = Date.now() - botTurnSince;
+    if (elapsed >= 3500) {
+      setShowBotRecovery(true);
+      return;
+    }
+    const timeoutId = window.setTimeout(() => setShowBotRecovery(true), Math.max(0, 3500 - elapsed));
+    return () => window.clearTimeout(timeoutId);
+  }, [botTurnSince, isActiveBotTurn]);
+
+  const handleForceBotTurn = useCallback(async () => {
+    if (!roomId || forcingBot) return;
+    setForcingBot(true);
+    setBotActionError(null);
+    try {
+      const res = await fetch("/api/game/bot-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(selfId ? { "X-Player-Id": selfId } : {}) },
+        body: JSON.stringify({ roomId, skipThinkDelay: true }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body?.success === false) {
+        throw new Error(body?.message ?? `HTTP ${res.status}`);
+      }
+      await refetch();
+    } catch (error) {
+      setBotActionError(error instanceof Error ? error.message : "Bot進行に失敗しました。");
+    } finally {
+      setForcingBot(false);
+    }
+  }, [forcingBot, refetch, roomId, selfId]);
 
   useEffect(() => {
     if (!state) return;
@@ -964,7 +1019,17 @@ export function GameBoard() {
               {!isMyTurn && state?.self && !state.self.isEliminated && (
                 <span className="text-xs text-[var(--color-text-muted)]">ターン待機中...</span>
               )}
+              {isActiveBotTurn && <span className="text-xs text-[var(--color-text-muted)]">Botが考えています...</span>}
             </div>
+            {showBotRecovery && (
+              <div className="mt-2 flex flex-col items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                <p>Botの手番です。しばらく進まない場合は「Botの手番を進める」を押してください。</p>
+                <button className="rounded border px-3 py-1 text-white disabled:opacity-50" onClick={() => void handleForceBotTurn()} disabled={forcingBot}>
+                  {forcingBot ? "進行中..." : "Botの手番を進める"}
+                </button>
+                {botActionError && <p className="text-red-300">{botActionError}</p>}
+              </div>
+            )}
             <div data-testid="player-hand" className="mt-3 flex min-h-[5.5rem] flex-wrap justify-center gap-4">
               {hand && hand.length > 0 ? (
                 <LayoutGroup id="player-hand">

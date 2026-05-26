@@ -110,3 +110,26 @@ They remain future work and must not enter the deck in beta.
   - Then `revealedSetupCards.length === 3`
   - And `drawPileCount` reflects burn/revealed/initial-hands/first-draw processing
   - And burn card is not exposed in public state or any player hand view
+
+## Bot Match Contract
+
+Bot戦は 1 人の人間プレイヤーと 3 人の Bot で進行する。
+
+- Bot は自分の手番で必ず合法手を選ぶ
+- Bot は強制カードルールを破らない
+- Bot は脱落済み / shield 中 / handCount=0 の対象を不正に選ばない
+- Bot は可能な限り Emissary を避ける（強制時・唯一選択時は除く）
+- Sentinel / Feint / Wager の推測ランクは 1 を選ばない
+- Bot 手番が連続しても一定上限 (`MAX_BOT_CHAIN_ACTIONS`) 内で進行し、ループで詰まらない
+- round は山札切れ・脱落・勝敗確定まで進行できる
+- bot-action が失敗しても UI から手動再試行できる
+
+## Test runner contract (Node)
+
+- `pnpm test` (`tsx --test tests/contracts/*.test.ts`) は全サブテスト完了後に終了する。
+- テスト実行中に import されるサーバーモジュールの常駐タイマー（`setInterval`）は `unref()` し、テストプロセスをブロックしない。
+- `PLAYWRIGHT_E2E=1` 実行時は API rate limit を実質バイパスし、CI 並列実行で 429 を発生させない。
+- `PLAYWRIGHT_E2E=1` 実行時は `/api/room/create?test=1&deck=...` の test deck override を有効化し、`next start`(production mode) でも E2E 契約テストの決定論を維持する。
+- E2E は fail-fast 方針として CI の global timeout を 2 分、retry を 1 回に制限し、ハング時の待ち時間を抑制する。
+
+- E2E UI tests must dismiss cookie consent banner before interacting with lobby/join controls.

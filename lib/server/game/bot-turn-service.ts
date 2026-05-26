@@ -9,6 +9,7 @@ import { handlePlayCard } from "@/lib/server/game/action-service";
 
 const BOT_FALLBACK_THINK_TIME_MS = 2500;
 const BOT_THINK_JITTER_RATIO = 0.4;
+const MAX_BOT_CHAIN_ACTIONS = 8;
 
 type DelayedTurnSnapshot = { gameId: string; activePlayerId: string; turnIndex: number };
 
@@ -55,26 +56,43 @@ export async function executeBotTurn(roomId: string, options?: { skipThinkDelay?
     await new Promise<void>((resolve) => setTimeout(resolve, thinkDelay));
   }
 
-  const botAction = await db.transaction(async (tx) => {
-    const [game] = await tx.select().from(games).where(delayedTurnSnapshot ? eq(games.id, delayedTurnSnapshot.gameId) : eq(games.roomId, roomId));
-    if (!game || game.phase !== "choose_card" || !game.activePlayerId) return null;
-    if (delayedTurnSnapshot && (game.activePlayerId !== delayedTurnSnapshot.activePlayerId || game.turnIndex !== delayedTurnSnapshot.turnIndex)) return null;
+  const visitedTurns = new Set<number>();
+  for (let chain = 0; chain < MAX_BOT_CHAIN_ACTIONS; chain++) {
+    const botAction = await db.transaction(async (tx) => {
+      const [game] = await tx.select().from(games).where(delayedTurnSnapshot ? eq(games.id, delayedTurnSnapshot.gameId) : eq(games.roomId, roomId));
+      if (!game || game.phase !== "choose_card" || !game.activePlayerId) return null;
+      if (delayedTurnSnapshot && (game.activePlayerId !== delayedTurnSnapshot.activePlayerId || game.turnIndex !== delayedTurnSnapshot.turnIndex)) return null;
+      if (visitedTurns.has(game.turnIndex)) return null;
 
-    const [botPlayer] = await tx.select().from(players).where(and(eq(players.id, game.activePlayerId), eq(players.isBot, true)));
-    if (!botPlayer || botPlayer.isEliminated) return null;
-    const hand = await getHand(tx, game.id, game.activePlayerId);
-    if (!hand || hand.cards.length === 0) return null;
+      const [botPlayer] = await tx.select().from(players).where(and(eq(players.id, game.activePlayerId), eq(players.isBot, true)));
+      if (!botPlayer || botPlayer.isEliminated) return null;
+      const hand = await getHand(tx, game.id, game.activePlayerId);
+      if (!hand || hand.cards.length === 0) return null;
 
-    const decisionInput = await buildBotDecisionInput(tx, roomId, game.id, botPlayer.id, hand.cards as CardId[]);
-    const decision = chooseBotAction(decisionInput);
-    return {
-      gameId: game.id,
-      roomId,
-      playerId: game.activePlayerId,
-      type: "play_card" as const,
-      payload: { cardId: decision.cardId, targetId: decision.targetId, guessedRank: decision.guessedRank },
-    } satisfies GameActionRequest;
-  });
+      const decisionInput = await buildBotDecisionInput(tx, roomId, game.id, botPlayer.id, hand.cards as CardId[]);
+      const decision = chooseBotAction(decisionInput);
+      return {
+        gameId: game.id,
+        roomId,
+        playerId: game.activePlayerId,
+        turnIndex: game.turnIndex,
+        type: "play_card" as const,
+        payload: { cardId: decision.cardId, targetId: decision.targetId, guessedRank: decision.guessedRank },
+      };
+    });
 
-  if (botAction) await handlePlayCard(botAction);
+    if (!botAction) return;
+    try {
+      const result = await handlePlayCard(botAction satisfies GameActionRequest, { suppressAutoBot: true });
+      if (!result.success) {
+        console.error("[executeBotTurn] bot action soft-failed", { roomId, turnIndex: botAction.turnIndex, message: result.message });
+        return;
+      }
+      visitedTurns.add(botAction.turnIndex);
+    } catch (error) {
+      console.error("[executeBotTurn] failed to handle bot action", { roomId, error });
+      return;
+    }
+    delayedTurnSnapshot = null;
+  }
 }

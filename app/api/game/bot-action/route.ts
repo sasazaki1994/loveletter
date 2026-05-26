@@ -65,6 +65,13 @@ export async function POST(request: NextRequest) {
       return errorResponse("Invalid request body", 400);
     }
 
+    if (typeof error === "object" && error !== null && "statusCode" in error && (error as { statusCode?: number }).statusCode === 400) {
+      const message = "message" in error && typeof (error as { message?: unknown }).message === "string"
+        ? (error as { message: string }).message
+        : "Bad Request";
+      return errorResponse(message, 400);
+    }
+
     return errorResponse("Failed to execute bot turn", 500);
   }
 }
