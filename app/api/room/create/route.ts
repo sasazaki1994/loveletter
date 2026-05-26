@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
     const result = await createRoomWithBot(parsed.nickname.trim(), variantIds, overrides);
 
-    const cookies = buildAuthCookies(result.playerId, null);
+    const cookies = buildAuthCookies(result.playerId, result.playerToken);
 
     const response = NextResponse.json(
       result,

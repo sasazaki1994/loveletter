@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
 
@@ -156,6 +156,8 @@ export async function createRoomWithBot(
   overrides?: TestDeckOverrides,
 ) {
   return db.transaction(async (tx) => {
+    const playerToken = generateOpaqueToken(32);
+    const tokenHash = hashToken(playerToken);
     const shortId = await generateUniqueShortId(tx);
     const [room] = await tx
       .insert(rooms)
@@ -171,6 +173,7 @@ export async function createRoomWithBot(
         seat: 0,
         role: "player",
         avatarSeed: hostAvatar,
+        authTokenHash: tokenHash,
       })
       .returning();
 
@@ -203,6 +206,7 @@ export async function createRoomWithBot(
     return {
       roomId: room.id,
       playerId: host.id,
+      playerToken,
       botId: botRows[0]?.id,
       botIds: botRows.map((bot) => bot.id),
       gameId: setup.game.id,
@@ -502,18 +506,30 @@ export async function fetchGameState(
 
   // より効率的なETag生成：ゲーム状態の主要な変化を反映
   // updatedAt + 最新ログ + フェーズ + ターン + プレイヤー数（状態変化をより正確に反映）
-  const stateVersion = [
-    game.updatedAt.getTime(),
-    logRows[0]?.createdAt.getTime() ?? 0,
-    game.phase,
-    game.turnIndex,
-    game.round,
-    allPlayers.length,
-    playerId ?? 'common', // プレイヤー固有の状態も考慮
-  ].join(':');
-  
-  // 簡易ハッシュ（長い文字列を短縮）
-  const etag = `"${Buffer.from(stateVersion).toString('base64').slice(0, 32)}"`;
+  const latestLog = logRows[0];
+  const latestAction = actionRows[actionRows.length - 1];
+  const etagSnapshot = {
+    gameUpdatedAt: game.updatedAt.toISOString(),
+    latestLog: latestLog ? { id: latestLog.id, createdAt: latestLog.createdAt.toISOString() } : null,
+    latestAction: latestAction ? { id: latestAction.id, createdAt: latestAction.createdAt.toISOString() } : null,
+    phase: game.phase,
+    turnIndex: game.turnIndex,
+    round: game.round,
+    activePlayerId: game.activePlayerId,
+    playerId: playerId ?? null,
+    players: allPlayers.filter((p) => p.role === "player").map((p) => ({
+      id: p.id,
+      isEliminated: p.isEliminated,
+      shield: p.shield,
+      lastActiveAt: p.lastActiveAt?.toISOString() ?? null,
+    })),
+    hands: handRows.map((h) => ({
+      playerId: h.playerId,
+      updatedAt: h.updatedAt.toISOString(),
+      cardsLength: h.cards.length,
+    })),
+  };
+  const etag = `"${createHash("sha256").update(JSON.stringify(etagSnapshot)).digest("hex").slice(0, 32)}"`;
 
   return {
     state: clientState,
@@ -542,7 +558,7 @@ async function handleResign(playerId: string, roomId: string) {
   const result = await db.transaction(async (tx) => {
     await tx
       .update(players)
-      .set({ isEliminated: true })
+      .set({ isEliminated: true, lastActiveAt: new Date() })
       .where(eq(players.id, playerId));
 
     const [game] = await tx
@@ -587,6 +603,7 @@ async function handleResign(playerId: string, roomId: string) {
         }
       }
     }
+    await tx.update(games).set({ updatedAt: new Date() }).where(eq(games.id, game.id));
 
     return { success: true };
   });

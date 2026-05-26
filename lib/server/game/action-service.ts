@@ -125,7 +125,16 @@ export async function handlePlayCard(action: GameActionRequest, options?: { supp
       for (const instruction of effectResult.instructions) {
         if (instruction.type === "insert_action") {
           if (instruction.actionType !== "force_discard") {
-            await tx.insert(actions).values({ gameId: currentGame.id, actorId: actingPlayer.id, type: instruction.actionType, payload: instruction.payload });
+            const actionPayload = { ...(instruction.payload ?? {}) } as Record<string, unknown>;
+            if (instruction.actionType === "peek") {
+              const targetId = (actionPayload.targetId as string | undefined) ?? undefined;
+              if (targetId) {
+                const targetHand = await getHand(tx, currentGame.id, targetId);
+                const peekedCard = (targetHand?.cards?.[0] as CardId | undefined) ?? undefined;
+                if (peekedCard) actionPayload.cardId = peekedCard;
+              }
+            }
+            await tx.insert(actions).values({ gameId: currentGame.id, actorId: actingPlayer.id, type: instruction.actionType, payload: actionPayload });
           }
         } else if (instruction.type === "set_shield") {
           await tx.update(players).set({ shield: true }).where(eq(players.id, instruction.playerId));

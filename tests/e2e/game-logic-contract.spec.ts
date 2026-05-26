@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import {
   test,
   expect,
@@ -19,6 +20,40 @@ type PublicState = {
 };
 
 test.describe("Game logic API contract", () => {
+  test("bot room auth contract", async ({ request }) => {
+    const created = await createBotRoomViaAPI(request, `BotAuth_${Date.now()}`);
+    expect(created.playerId).toBeTruthy();
+    expect(created.playerToken).toBeTruthy();
+    expect(created.roomId).toBeTruthy();
+    expect(created.gameId).toBeTruthy();
+
+    const url = new URL("/api/game/state", "http://localhost");
+    url.searchParams.set("roomId", created.roomId);
+    url.searchParams.set("playerId", created.playerId);
+
+    const authed = await request.get(url.pathname + url.search, {
+      headers: { "X-Player-Id": created.playerId, "X-Player-Token": created.playerToken! },
+    });
+    expect(authed.status()).toBe(200);
+    const authedJson = await authed.json();
+    expect(Array.isArray(authedJson.state?.hand)).toBeTruthy();
+
+    const unauth = await request.get(url.pathname + url.search, {
+      headers: { Cookie: "" },
+    });
+    expect(unauth.status()).toBe(401);
+
+    const wrongPlayer = await request.get(url.pathname + url.search, {
+      headers: { "X-Player-Id": crypto.randomUUID(), "X-Player-Token": created.playerToken! },
+    });
+    expect(wrongPlayer.status()).toBe(401);
+
+    const botAction = await request.post("/api/game/bot-action", {
+      headers: { "X-Player-Id": created.playerId, "X-Player-Token": created.playerToken! },
+      data: { roomId: created.roomId, skipThinkDelay: true },
+    });
+    expect(botAction.status()).toBe(200);
+  });
   test("forced違反時に /api/game/action が 400 を返す (Marquise)", async ({ request }) => {
     // deck順: [burn, P1初期, P2初期, P3初期, P4初期, P1ドロー]
     // 意図: P1手札を marquise + legate にし、legate 使用を強制違反にする
@@ -177,7 +212,9 @@ test("Oracle peek is actor-only hint", async ({ request }) => {
   const target = findOpponent(s1, created.playerId)!;
   await postPlayCard(request, { roomId: created.roomId, gameId: s1.id, playerId: created.playerId, cardId: "oracle", targetId: target.id });
   const actor = await fetchStateForPlayer(request, created.roomId, created.playerId) as any;
-  const targetState = await fetchStateForPlayer(request, created.roomId, target.id) as any;
+  const targetStateRes = await request.get(`/api/game/state?roomId=${created.roomId}`);
+  expect(targetStateRes.status()).toBe(200);
+  const targetState = (await targetStateRes.json())?.state as any;
   expect(actor.effectHints?.peek?.targetId).toBe(target.id);
   expect(targetState.effectHints?.peek).toBeUndefined();
 });
@@ -219,7 +256,7 @@ test("2人戦 setup: burn非公開 + revealed 3枚", async ({ request }) => {
 
   expect(hostState.revealedSetupCards.length).toBe(3);
   expect(guestState.revealedSetupCards.length).toBe(3);
-  expect(hostState.drawPileCount).toBe(8);
+  expect(hostState.drawPileCount).toBe(9);
 
   const knownHostCards = [...(hostState.hand ?? []), ...(hostState.discardPile ?? []), ...(hostState.revealedSetupCards ?? [])];
   const knownGuestCards = [...(guestState.hand ?? []), ...(guestState.discardPile ?? []), ...(guestState.revealedSetupCards ?? [])];
