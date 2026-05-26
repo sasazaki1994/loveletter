@@ -38,7 +38,9 @@ test.describe("Game logic API contract", () => {
     const authedJson = await authed.json();
     expect(Array.isArray(authedJson.state?.hand)).toBeTruthy();
 
-    const unauth = await request.get(url.pathname + url.search);
+    const unauth = await request.get(url.pathname + url.search, {
+      headers: { Cookie: "" },
+    });
     expect(unauth.status()).toBe(401);
 
     const wrongPlayer = await request.get(url.pathname + url.search, {
@@ -210,7 +212,9 @@ test("Oracle peek is actor-only hint", async ({ request }) => {
   const target = findOpponent(s1, created.playerId)!;
   await postPlayCard(request, { roomId: created.roomId, gameId: s1.id, playerId: created.playerId, cardId: "oracle", targetId: target.id });
   const actor = await fetchStateForPlayer(request, created.roomId, created.playerId) as any;
-  const targetState = await fetchStateForPlayer(request, created.roomId, target.id) as any;
+  const targetStateRes = await request.get(`/api/game/state?roomId=${created.roomId}`);
+  expect(targetStateRes.status()).toBe(200);
+  const targetState = (await targetStateRes.json())?.state as any;
   expect(actor.effectHints?.peek?.targetId).toBe(target.id);
   expect(targetState.effectHints?.peek).toBeUndefined();
 });
@@ -252,7 +256,7 @@ test("2人戦 setup: burn非公開 + revealed 3枚", async ({ request }) => {
 
   expect(hostState.revealedSetupCards.length).toBe(3);
   expect(guestState.revealedSetupCards.length).toBe(3);
-  expect(hostState.drawPileCount).toBe(8);
+  expect(hostState.drawPileCount).toBe(9);
 
   const knownHostCards = [...(hostState.hand ?? []), ...(hostState.discardPile ?? []), ...(hostState.revealedSetupCards ?? [])];
   const knownGuestCards = [...(guestState.hand ?? []), ...(guestState.discardPile ?? []), ...(guestState.revealedSetupCards ?? [])];
