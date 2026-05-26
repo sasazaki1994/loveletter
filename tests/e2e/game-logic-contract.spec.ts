@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import {
   test,
   expect,
@@ -260,4 +261,3 @@ test("2人戦 setup: burn非公開 + revealed 3枚", async ({ request }) => {
   expect(knownHostCards.length).toBe(4);
   expect(knownGuestCards.length).toBe(4);
 });
-import crypto from "node:crypto";
