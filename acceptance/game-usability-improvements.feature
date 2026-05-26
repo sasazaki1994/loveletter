@@ -35,3 +35,9 @@ Scenario: Player perspective requires valid player token
   When a client requests state or stream with another player's id without a valid token
   Then the API should return unauthorized
   And hidden hand information should never be exposed
+
+Scenario: Action authorization rejects inconsistent room/game/player combinations
+  Given the game has started
+  When a client posts play_card with mismatched roomId, gameId, or playerId
+  Then the API should return success false without mutating game state
+  And card effects, hand updates, and action or log inserts should not happen

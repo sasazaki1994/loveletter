@@ -77,6 +77,19 @@ export async function handlePlayCard(action: GameActionRequest, options?: { supp
   try {
     const txResult: TxResult = await db.transaction(async (tx) => {
       const [game] = await tx.select().from(games).where(eq(games.id, action.gameId)).for("update");
+      if (!game || game.roomId !== action.roomId) {
+        return { success: false, message: "ゲームが存在しません。" };
+      }
+
+      const [actingPlayerRow] = await tx
+        .select({ id: players.id, roomId: players.roomId, isEliminated: players.isEliminated })
+        .from(players)
+        .where(eq(players.id, action.playerId))
+        .for("update");
+      if (!actingPlayerRow || actingPlayerRow.roomId !== action.roomId) {
+        return { success: false, message: "プレイヤー状態が不正です。" };
+      }
+
       const gameValidationError = validateGameCanAcceptAction(game, action);
       if (gameValidationError) return gameValidationError;
       const currentGame = game;
