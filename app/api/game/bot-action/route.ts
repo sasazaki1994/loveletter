@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
       if (!user || user.id !== row.userId) {
         return errorResponse("Unauthorized", 401);
       }
-    } else if (row.authTokenHash) {
-      if (!playerToken || !verifyToken(playerToken, row.authTokenHash)) {
+    } else {
+      if (!row.authTokenHash || !playerToken || !verifyToken(playerToken, row.authTokenHash)) {
         return errorResponse("Unauthorized", 401);
       }
     }

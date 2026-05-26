@@ -49,13 +49,10 @@ export async function POST(request: NextRequest) {
       if (!user || user.id !== row.userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-    } else if (row.authTokenHash) {
-      // レガシー: player token で認可
-      if (!playerToken || !verifyToken(playerToken, row.authTokenHash)) {
+    } else {
+      if (!row.authTokenHash || !playerToken || !verifyToken(playerToken, row.authTokenHash)) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-    } else {
-      // Bot room: allow
     }
 
     const { gameId } = await startHumanGame(parsed.roomId, playerId);
@@ -78,5 +75,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 
