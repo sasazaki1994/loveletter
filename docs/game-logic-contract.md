@@ -131,3 +131,5 @@ Bot戦は 1 人の人間プレイヤーと 3 人の Bot で進行する。
 - `PLAYWRIGHT_E2E=1` 実行時は API rate limit を実質バイパスし、CI 並列実行で 429 を発生させない。
 - `PLAYWRIGHT_E2E=1` 実行時は `/api/room/create?test=1&deck=...` の test deck override を有効化し、`next start`(production mode) でも E2E 契約テストの決定論を維持する。
 - E2E は fail-fast 方針として CI の global timeout を 2 分、retry を 1 回に制限し、ハング時の待ち時間を抑制する。
+
+- E2E UI tests must dismiss cookie consent banner before interacting with lobby/join controls.

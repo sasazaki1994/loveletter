@@ -1,13 +1,14 @@
-import { test, expect, createBotRoomViaUI, waitForGameUI } from "./fixtures";
+import { test, expect, createBotRoomViaUI, dismissCookieConsentIfVisible, waitForGameUI } from "./fixtures";
 
 test.use({ viewport: { width: 1365, height: 1000 } });
 test.setTimeout(90_000);
 
 test("待機画面でゲーム目的と基本ルールが見える", async ({ page }) => {
   await page.goto("/");
+  await dismissCookieConsentIfVisible(page);
   const input = page.getByLabel(/ニックネーム|Nickname/i).or(page.getByPlaceholder(/例|name|nickname/i));
   await input.first().fill(`Usability_${Date.now()}`);
-  await page.getByRole("button", { name: /フレンドと遊ぶ|友達と遊ぶ|対人|Human|Room/i }).first().click();
+  await page.getByRole("button", { name: /フレンドと遊ぶ|友達と遊ぶ|対人|Human|Room|ルーム作成|ルームを作成/i }).first().click();
 
   await page.waitForURL(/\/game\//, { timeout: 15000 });
   await expect(page.getByTestId("waiting-room-rule-panel")).toBeVisible();
@@ -18,6 +19,7 @@ test("待機画面でゲーム目的と基本ルールが見える", async ({ pa
 
 test("プレイ中に次の操作ガイドが表示される", async ({ page }) => {
   await createBotRoomViaUI(page, `UsabilityBot_${Math.floor(Math.random() * 10000)}`);
+  await dismissCookieConsentIfVisible(page);
   await waitForGameUI(page, 45000);
 
   await expect(page.getByTestId("action-next-step")).toBeVisible();
@@ -41,6 +43,7 @@ test("結果画面で勝敗理由と次の行動が表示される", async ({ pa
   }, [createdJson.roomId, createdJson.playerId]);
 
   await page.goto(`/game/${createdJson.roomId}`);
+  await dismissCookieConsentIfVisible(page);
   await waitForGameUI(page, 45000);
 
   // 早期終了のために降参を実行

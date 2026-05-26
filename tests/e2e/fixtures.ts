@@ -81,14 +81,27 @@ export async function fetchStateForPlayer(
   request: APIRequestContext,
   roomId: string,
   playerId: string,
+  playerToken?: string,
 ) {
   const url = new URL("/api/game/state", "http://localhost");
   url.searchParams.set("roomId", roomId);
   url.searchParams.set("playerId", playerId);
-  const res = await request.get(url.pathname + url.search);
+  const res = await request.get(url.pathname + url.search, {
+    headers: {
+      "X-Player-Id": playerId,
+      ...(playerToken ? { "X-Player-Token": playerToken } : {}),
+    },
+  });
   expect(res.ok()).toBeTruthy();
   const json = (await res.json()) as { state: any };
   return json.state;
+}
+
+export async function dismissCookieConsentIfVisible(page: Page) {
+  const acceptBtn = page.getByRole("button", { name: /同意する|Accept/i });
+  if (await acceptBtn.first().isVisible().catch(() => false)) {
+    await acceptBtn.first().click({ timeout: 3000 }).catch(() => {});
+  }
 }
 
 export async function postPlayCard(

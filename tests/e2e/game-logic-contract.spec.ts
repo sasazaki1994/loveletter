@@ -190,8 +190,7 @@ test("Botが連続ターンで詰まらず進行する", async ({ request }) => 
   const before = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as any;
   const target = findOpponent(before, created.playerId)!;
   const turnIndexBefore = before.turnIndex;
-  const botBefore = before.players.find((p: any) => p.isBot && p.id !== created.playerId);
-  const botDiscardBefore = (botBefore?.discardPile ?? []).length;
+  const botDiscardBefore = before.players.filter((p: any) => p.isBot).reduce((acc: number, p: any) => acc + ((p.discardPile ?? []).length), 0);
 
   await postPlayCard(request, { roomId: created.roomId, gameId: before.id, playerId: created.playerId, cardId: 'sentinel', targetId: target.id, guessedRank: 2 });
   const mid = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as any;
@@ -206,8 +205,7 @@ test("Botが連続ターンで詰まらず進行する", async ({ request }) => 
   expect(botJson.success).toBe(true);
 
   const after = (await fetchStateForPlayer(request, created.roomId, created.playerId)) as any;
-  const botAfter = after.players.find((p: any) => p.id === botBefore?.id);
-  const botDiscardAfter = (botAfter?.discardPile ?? []).length;
+  const botDiscardAfter = after.players.filter((p: any) => p.isBot).reduce((acc: number, p: any) => acc + ((p.discardPile ?? []).length), 0);
   expect(botDiscardAfter).toBeGreaterThan(botDiscardBefore);
   expect(after.turnIndex).toBeGreaterThan(turnIndexBefore);
   expect(after.phase === 'choose_card' || after.phase === 'finished').toBeTruthy();
@@ -216,8 +214,8 @@ test("Botが連続ターンで詰まらず進行する", async ({ request }) => 
 
 test("2人戦 setup: burn非公開 + revealed 3枚", async ({ request }) => {
   const created = await createTwoPlayerHumanRoomViaAPI(request, `Host_${Date.now()}`, `Guest_${Date.now()}`);
-  const hostState = (await fetchStateForPlayer(request, created.roomId, created.host.id)) as any;
-  const guestState = (await fetchStateForPlayer(request, created.roomId, created.guest.id)) as any;
+  const hostState = (await fetchStateForPlayer(request, created.roomId, created.host.id, created.host.token)) as any;
+  const guestState = (await fetchStateForPlayer(request, created.roomId, created.guest.id, created.guest.token)) as any;
 
   expect(hostState.revealedSetupCards.length).toBe(3);
   expect(guestState.revealedSetupCards.length).toBe(3);

@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures";
+import { test, expect, dismissCookieConsentIfVisible } from "./fixtures";
 
 test.describe("QR join flow", () => {
   test("QRコード読み取りでRoom IDを自動入力できる", async ({ page }) => {
@@ -19,6 +19,7 @@ test.describe("QR join flow", () => {
     });
 
     await page.goto("/");
+    await dismissCookieConsentIfVisible(page);
     // ニックネームはBot/マルチ共通（どちらの入力欄でもOK）
     await page.getByPlaceholder("例: Velvet Strategist").first().fill("QR Tester");
     await page.getByRole("button", { name: "QR読取" }).click();
@@ -27,7 +28,7 @@ test.describe("QR join flow", () => {
       window.__llrTestTriggerQr?.("https://localhost:3100/?join=QR2345&mode=multi"),
     );
 
-    const joinInput = page.getByPlaceholder("Room ID を入力");
+    const joinInput = page.getByPlaceholder(/Room ID を入力|ルームID/i);
     await expect(joinInput).toHaveValue("QR2345", { timeout: 5000 });
     await expect(page.getByRole("dialog", { name: "QRコードで入室" })).not.toBeVisible({ timeout: 5000 });
   });
@@ -39,12 +40,12 @@ test.describe("QR join flow", () => {
     });
 
     await page.goto("/");
+    await dismissCookieConsentIfVisible(page);
     await page.getByRole("button", { name: "QR読取" }).click();
     await expect(
       page.getByText("このブラウザはQRコード読み取りに対応していません"),
     ).toBeVisible();
   });
 });
-
 
 

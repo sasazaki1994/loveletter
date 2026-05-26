@@ -72,6 +72,7 @@ export async function handlePlayCard(action: GameActionRequest, options?: { supp
   if (!cardId) return { success: false, message: "cardId が必要です。" };
 
   let success = false;
+  let message: string | undefined;
   let runBotAfterCommit = false;
   try {
     const txResult: TxResult = await db.transaction(async (tx) => {
@@ -163,6 +164,7 @@ export async function handlePlayCard(action: GameActionRequest, options?: { supp
       return { success: true, runBotAfterCommit: shouldRunBot };
     });
     success = !!txResult.success;
+    message = txResult.message;
     runBotAfterCommit = !!txResult.runBotAfterCommit;
   } catch (error) {
     console.error("[handlePlayCard] transaction failed", error);
@@ -171,5 +173,5 @@ export async function handlePlayCard(action: GameActionRequest, options?: { supp
 
   if (success) invalidateStateCache(action.roomId);
   if (runBotAfterCommit && !options?.suppressAutoBot) executeBotTurn(action.roomId).catch((error) => console.error("bot turn error", error));
-  return { success };
+  return { success, ...(message ? { message } : {}) };
 }
