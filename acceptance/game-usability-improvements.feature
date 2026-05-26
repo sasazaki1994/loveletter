@@ -29,3 +29,9 @@ Scenario: Rapid clicks should not corrupt game state
   When the player clicks an action repeatedly
   Then the game state should remain valid
   And duplicate execution should be prevented where necessary
+
+Scenario: Player perspective requires valid player token
+  Given the game has started
+  When a client requests state or stream with another player's id without a valid token
+  Then the API should return unauthorized
+  And hidden hand information should never be exposed

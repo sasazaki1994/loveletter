@@ -39,16 +39,12 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
           }
           perspectiveId = parsed.playerId;
-        } else if (!row.authTokenHash) {
-          // Legacy (bot room): allow perspective without token
-          perspectiveId = parsed.playerId;
         } else {
           const { playerId, playerToken } = extractPlayerAuth(request);
-          const isAuthed = playerId === parsed.playerId && playerToken && verifyToken(playerToken, row.authTokenHash);
+          const isAuthed = playerId === parsed.playerId && !!row.authTokenHash && !!playerToken && verifyToken(playerToken, row.authTokenHash);
           if (isAuthed) {
             perspectiveId = playerId;
           } else {
-            // ヒューマンルームでトークン不一致なら閲覧させない
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
           }
         }
@@ -115,4 +111,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

@@ -25,6 +25,11 @@
 - DBスキーマ変更。
 - 新モード・ランキング・実績機能追加。
 
+## Security requirements
+- `playerId` を指定した状態取得（`/api/game/state`, `/api/game/stream`）は、アカウント所有者または正しい `X-Player-Token` を必須とする。
+- `authTokenHash` が `null` のプレイヤーに対する例外認可は許可しない（bot部屋を含む）。
+- 認可失敗時は `401 Unauthorized` を返し、秘匿情報（手札/peek情報）を返却しない。
+
 ## UI requirements
 - `game-header` にゲーム名・状態・進捗・ラウンドを表示。
 - `game-rule-panel` に目的/基本操作/勝利条件を表示。

@@ -50,15 +50,13 @@ export async function POST(request: Request) {
           { status: 401 },
         );
       }
-    } else if (row.authTokenHash) {
-      if (!playerToken || !verifyToken(playerToken, row.authTokenHash)) {
+    } else {
+      if (!row.authTokenHash || !playerToken || !verifyToken(playerToken, row.authTokenHash)) {
         return NextResponse.json(
           { success: false, message: "Unauthorized" },
           { status: 401 },
         );
       }
-    } else {
-      // Bot room: allow
     }
 
     const result = await handleGameAction(parsed);
@@ -108,4 +106,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

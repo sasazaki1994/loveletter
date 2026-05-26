@@ -48,11 +48,9 @@ export async function GET(request: NextRequest) {
             });
           }
           effectivePlayerId = parsed.playerId;
-        } else if (!row.authTokenHash) {
-          effectivePlayerId = parsed.playerId;
         } else {
           const { playerId, playerToken } = extractPlayerAuth(request);
-          const isAuthed = playerId === parsed.playerId && playerToken && verifyToken(playerToken, row.authTokenHash);
+          const isAuthed = playerId === parsed.playerId && !!row.authTokenHash && !!playerToken && verifyToken(playerToken, row.authTokenHash);
           if (isAuthed) {
             effectivePlayerId = playerId;
           } else {
@@ -253,4 +251,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
